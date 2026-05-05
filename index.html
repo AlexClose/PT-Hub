@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PT Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
 <style>
 :root{--bg:#0e0e0f;--surface:#161618;--surface2:#1e1e21;--border:rgba(255,255,255,0.07);--text:#f0ede8;--muted:rgba(240,237,232,0.4);--accent:#e8ff47;--accent2:#47c4ff;--danger:#ff5c5c;--warn:#ffad47;--success:#47ffb0;--radius:12px;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -80,6 +79,7 @@ textarea{resize:vertical;min-height:60px;}
 .workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;}
 .workout-inputs input{font-size:13px;padding:8px 10px;text-align:center;}
 .wi-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:2px;}
+.ss-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--warn);margin-bottom:6px;margin-top:4px;}
 .loading{text-align:center;padding:40px 20px;color:var(--muted);}
 .spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -128,11 +128,7 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </main>
 
-<!-- CLIENT DETAIL -->
-
 <div class="modal-overlay" id="clientModal"><div class="modal" id="clientModalBody"></div></div>
-
-<!-- ADD CLIENT -->
 
 <div class="modal-overlay" id="addClientModal">
   <div class="modal">
@@ -160,8 +156,6 @@ textarea{resize:vertical;min-height:60px;}
     </div>
   </div>
 </div>
-
-<!-- EDIT CLIENT -->
 
 <div class="modal-overlay" id="editClientModal">
   <div class="modal">
@@ -191,8 +185,6 @@ textarea{resize:vertical;min-height:60px;}
   </div>
 </div>
 
-<!-- ADD EQUIPMENT -->
-
 <div class="modal-overlay" id="addEquipModal">
   <div class="modal">
     <div class="modal-handle"></div><div class="modal-title">Add Equipment</div>
@@ -203,8 +195,6 @@ textarea{resize:vertical;min-height:60px;}
     </div>
   </div>
 </div>
-
-<!-- LOG SESSION -->
 
 <div class="modal-overlay" id="logModal">
   <div class="modal">
@@ -218,8 +208,6 @@ textarea{resize:vertical;min-height:60px;}
     </div>
   </div>
 </div>
-
-<!-- RENEW -->
 
 <div class="modal-overlay" id="renewModal">
   <div class="modal">
@@ -236,183 +224,80 @@ textarea{resize:vertical;min-height:60px;}
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── SUPABASE CONFIG ──────────────────────────────────────────────────────────
 const SB_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
-const HEADERS = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+const H = { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
 async function sb(method, table, body=null, params='') {
-  const url = `${SB_URL}/rest/v1/${table}${params}`;
-  const opts = { method, headers: HEADERS };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  if (!res.ok) { const e = await res.text(); throw new Error(e); }
-  const text = await res.text();
-  return text ? JSON.parse(text) : [];
+  const res = await fetch(`${SB_URL}/rest/v1/${table}${params}`, { method, headers: H, body: body ? JSON.stringify(body) : null });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text(); return t ? JSON.parse(t) : [];
 }
 
 const db = {
-  getClients:   ()         => sb('GET',    'clients',   null, '?order=first.asc'),
-  getClient:    (id)       => sb('GET',    'clients',   null, `?id=eq.${id}`).then(r=>r[0]),
-  addClient:    (data)     => sb('POST',   'clients',   data),
-  updateClient: (id, data) => sb('PATCH',  'clients',   data, `?id=eq.${id}`),
-  deleteClient: (id)       => sb('DELETE', 'clients',   null, `?id=eq.${id}`),
-  getSessions:  (cid)      => sb('GET',    'sessions',  null, `?client_id=eq.${cid}&order=created_at.desc`),
-  addSession:   (data)     => sb('POST',   'sessions',  data),
-  getEquipment: ()         => sb('GET',    'equipment', null, '?order=name.asc'),
-  addEquipment: (name)     => sb('POST',   'equipment', {name}),
-  delEquipment: (id)       => sb('DELETE', 'equipment', null, `?id=eq.${id}`),
+  getClients:    ()        => sb('GET',    'clients',       null, '?order=first.asc'),
+  addClient:     (d)       => sb('POST',   'clients',       d),
+  updateClient:  (id, d)   => sb('PATCH',  'clients',       d,   `?id=eq.${id}`),
+  deleteClient:  (id)      => sb('DELETE', 'clients',       null,`?id=eq.${id}`),
+  getSessions:   (cid)     => sb('GET',    'sessions',      null,`?client_id=eq.${cid}&order=created_at.desc`),
+  addSession:    (d)       => sb('POST',   'sessions',      d),
+  getEquipment:  ()        => sb('GET',    'equipment',     null,'?order=name.asc'),
+  addEquipment:  (name)    => sb('POST',   'equipment',     {name}),
+  delEquipment:  (id)      => sb('DELETE', 'equipment',     null,`?id=eq.${id}`),
+  addExLog:      (d)       => sb('POST',   'exercise_logs', d),
+  getExLogs:     (cid)     => sb('GET',    'exercise_logs', null,`?client_id=eq.${cid}&order=created_at.asc`),
 };
 
-// ─── CHRIS'S PROGRAM ─────────────────────────────────────────────────────────
-const CHRIS_PROGRAM = {
-  type:'structured',
-  days:[
-    { name:'Push Day', color:'#e05252', exercises:[
-      {name:'Bench Press',             prescription:'x15, 10, 8, 6', load:'135 / 175 / 185 / 195 lbs'},
-      {name:'Arsenal Incline Press',   prescription:'x12',            load:'55e'},
-      {name:'Arnold Press Seated',     prescription:'x10 slow',       load:'37.5 lbs'},
-      {name:'Cable Lateral Raise',     prescription:'x12e',           load:''},
-      {name:'Machine Fly + BW Dips',   prescription:'x15 & 8-12',    load:'140 lbs'},
-      {name:'Op. Finisher: 75 Pushups',prescription:'x75',            load:'Bodyweight'},
-    ]},
-    { name:'Leg Day', color:'#c9a84c', exercises:[
-      {name:'Barbell Back Squat',      prescription:'x12, 8, 6, 5',  load:'135 / 175 / 205 lbs'},
-      {name:'Barbell RDL',             prescription:'x10',            load:'115 lbs'},
-      {name:'Tempo Hack Squat',        prescription:'x10 @0:3:0',    load:'20 lbs'},
-      {name:'Hip Thrust',              prescription:'x12',            load:'245 lbs'},
-      {name:'Leg Extension + Leg Curl',prescription:'x10e',           load:'60 & 125 lbs'},
-    ]},
-    { name:'Back + Core', color:'#4caf70', exercises:[
-      {name:'T Bar Row',             prescription:'3x10',  load:'25e side'},
-      {name:'Machine Pullover',      prescription:'3x12',  load:'100 lbs'},
-      {name:'CG Lat Pulldown',       prescription:'3x10',  load:'130 lbs'},
-      {name:'Bent Over EZ Bar Row',  prescription:'3x12',  load:'60 lbs'},
-      {name:'Machine Crunches',      prescription:'x15',   load:'130 lbs'},
-      {name:'Decline Bench SLR',     prescription:'x10',   load:'2 holes showing'},
-      {name:'Rope Woodchops',        prescription:'3x10',  load:'40 lbs'},
-      {name:'Back Ext + Wide Ext',   prescription:'3x10e', load:''},
-    ]}
-  ]
-};
+let clients=[], equipment=[], pendingLogId=null, pendingRenewId=null;
 
-const SEED_CLIENTS = [
-  {first:'Michael',          last:'', schedule:'Mon/Tue/Wed/Thu 6:30 AM',                          duration:60, notes:'Mon, Tue, Wed, Thu at 6:30 AM'},
-  {first:'Tim',              last:'', schedule:'Mon/Wed/Fri 7:30 AM',                              duration:60, notes:''},
-  {first:'Joe',              last:'', schedule:'Mon/Wed/Fri 8:45 AM',                              duration:60, notes:''},
-  {first:'Kyle',             last:'', schedule:'Mon/Wed/Fri 9:45 AM',                              duration:60, notes:''},
-  {first:'Chris',            last:'', schedule:'Mon 11AM · Tue 11:30AM · Thu 8:30AM · Fri 11AM',  duration:60, notes:'', useChris:true},
-  {first:'Chase',            last:'', schedule:'Mon 12:00 PM · Wed/Fri 1:30 PM',                  duration:60, notes:''},
-  {first:'Lissette',         last:'', schedule:'Tue/Wed/Fri 12:30 PM',                             duration:60, notes:''},
-  {first:'Lissette (Summer)',last:'', schedule:'Tue 2:45 PM · Wed/Fri 2:30 PM',                   duration:60, notes:'June–July only'},
-  {first:'Ashley',           last:'', schedule:'Mon 4PM · Tue 9AM · Thu 5:45PM (30 min each)',    duration:30, notes:''},
-  {first:'Justin',           last:'', schedule:'Mon/Wed/Fri 4:30 PM · Thu 4:45 PM',               duration:60, notes:''},
-  {first:'Mark',             last:'', schedule:'Mon/Thu 7:15 PM',                                  duration:60, notes:''},
-  {first:'Jeff',             last:'', schedule:'Tue/Thu 7:30 AM · Fri 6:30 AM',                   duration:60, notes:''},
-  {first:'Ali',              last:'', schedule:'Tue/Thu 9:30 AM',                                  duration:60, notes:''},
-  {first:'Beth',             last:'', schedule:'Tue/Thu 10:30 AM',                                 duration:60, notes:''},
-  {first:'Tosia',            last:'', schedule:'Tue 4:00 PM · Thu 3:45 PM',                        duration:60, notes:''},
-];
-
-// ─── LOCAL STATE ──────────────────────────────────────────────────────────────
-let clients = [];
-let equipment = [];
-let pendingLogId = null;
-let pendingRenewId = null;
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   showLoading('dashClients');
   try {
-    clients = await db.getClients();
-    equipment = await db.getEquipment();
-
-    // Seed clients on first load if empty
-    if (clients.length === 0) {
-      toast('Setting up your clients...');
-      for (const s of SEED_CLIENTS) {
-        const row = {
-          first: s.first, last: s.last||'', age: '', level: 'Intermediate',
-          package_size: 0, remaining: 0, schedule: s.schedule, duration: s.duration,
-          goals: '', injuries: '', notes: s.notes,
-          program: null,
-          structured_program: s.useChris ? CHRIS_PROGRAM : null,
-          exercise_history: {}
-        };
-        const created = await db.addClient(row);
-        if (created && created[0]) clients.push(created[0]);
-      }
-      toast('All clients loaded ✓');
-    }
+    [clients, equipment] = await Promise.all([db.getClients(), db.getEquipment()]);
     renderDashboard();
   } catch(e) {
-    document.getElementById('dashClients').innerHTML = `<div class="alert alert-danger"><span>⚠️</span><div>Could not connect to database. Check your connection.</div></div>`;
-    console.error(e);
+    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span>⚠️</span><div>Could not connect to database.</div></div>`;
   }
 }
 
-function showLoading(id) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = `<div class="loading"><div class="spinner"></div><div>Loading...</div></div>`;
-}
-
-// ─── VIEWS ────────────────────────────────────────────────────────────────────
-function showView(name, el) {
+function showLoading(id){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="loading"><div class="spinner"></div><div>Loading...</div></div>`;}
+function showView(name,el){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  if(el) el.classList.add('active');
-  if(name==='dashboard') renderDashboard();
-  if(name==='clients') renderClientList();
-  if(name==='equipment') renderEquipList();
+  if(el)el.classList.add('active');
+  if(name==='dashboard')renderDashboard();
+  if(name==='clients')renderClientList();
+  if(name==='equipment')renderEquipList();
 }
-
-function toast(msg) {
-  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 3200);
-}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.modal-overlay').forEach(o=>{
-  o.addEventListener('click', e=>{if(e.target===o) o.classList.remove('open');});
-});
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function renderDashboard() {
-  const withPkg = clients.filter(c=>c.package_size>0);
-  const low  = withPkg.filter(c=>c.remaining>0 && c.remaining<=2);
-  const out  = withPkg.filter(c=>c.remaining<=0);
-
-  document.getElementById('dashStats').innerHTML = `
+function renderDashboard(){
+  const withPkg=clients.filter(c=>c.package_size>0);
+  const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
+  const out=withPkg.filter(c=>c.remaining<=0);
+  document.getElementById('dashStats').innerHTML=`
     <div class="stat-card"><div class="stat-num">${clients.length}</div><div class="stat-label">Clients</div></div>
     <div class="stat-card"><div class="stat-num">${clients.reduce((a,c)=>a+(c.session_count||0),0)}</div><div class="stat-label">Sessions Logged</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${low.length}</div><div class="stat-label">Low Sessions</div></div>
     <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${out.length}</div><div class="stat-label">Invoice Needed</div></div>`;
-
   let alerts='';
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span>⚠️</span><div><b>${c.first} ${c.last}</b> is out of sessions — invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span>🔔</span><div><b>${c.first} ${c.last}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left</div></div>`;});
-  document.getElementById('dashAlerts').innerHTML = alerts;
-
-  const sorted = [...clients].sort((a,b)=>{
-    if(a.package_size===0 && b.package_size===0) return 0;
-    if(a.package_size===0) return 1; if(b.package_size===0) return -1;
-    return a.remaining - b.remaining;
-  });
-  document.getElementById('dashClients').innerHTML = clients.length===0
-    ? `<div class="empty"><div class="empty-icon">👤</div>No clients yet</div>`
-    : sorted.map(clientRowHtml).join('');
+  document.getElementById('dashAlerts').innerHTML=alerts;
+  const sorted=[...clients].sort((a,b)=>{if(a.package_size===0&&b.package_size===0)return 0;if(a.package_size===0)return 1;if(b.package_size===0)return -1;return a.remaining-b.remaining;});
+  document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div>No clients yet</div>`:sorted.map(clientRowHtml).join('');
 }
 
-function clientRowHtml(c) {
-  const hasPkg = c.package_size > 0;
-  const pct = hasPkg ? Math.max(0, c.remaining/c.package_size*100) : 0;
-  const col = !hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
-  const badge = !hasPkg?'<span class="badge badge-blue">No pkg</span>'
-    :c.remaining<=0?'<span class="badge badge-red">OUT</span>'
-    :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
-    :`<span class="badge badge-green">${c.remaining} left</span>`;
-  const isSummer = c.first.toLowerCase().includes('summer');
+function clientRowHtml(c){
+  const hasPkg=c.package_size>0;
+  const pct=hasPkg?Math.max(0,c.remaining/c.package_size*100):0;
+  const col=!hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
+  const badge=!hasPkg?'<span class="badge badge-blue">No pkg</span>':c.remaining<=0?'<span class="badge badge-red">OUT</span>':c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`:`<span class="badge badge-green">${c.remaining} left</span>`;
+  const isSummer=c.first.toLowerCase().includes('summer');
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:${hasPkg?'10':'0'}px">
       <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
@@ -430,128 +315,74 @@ function clientRowHtml(c) {
   </div>`;
 }
 
-// ─── CLIENT LIST ──────────────────────────────────────────────────────────────
-function renderClientList() {
-  const q = (document.getElementById('clientSearch')?.value||'').toLowerCase();
-  const filtered = clients.filter(c=>`${c.first} ${c.last}`.toLowerCase().includes(q));
-  document.getElementById('clientList').innerHTML = filtered.length===0
-    ? `<div class="empty"><div class="empty-icon">👤</div>${clients.length===0?'No clients yet':'No results'}</div>`
-    : filtered.map(clientRowHtml).join('');
+function renderClientList(){
+  const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+  const filtered=clients.filter(c=>`${c.first} ${c.last}`.toLowerCase().includes(q));
+  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">👤</div>${clients.length===0?'No clients yet':'No results'}</div>`:filtered.map(clientRowHtml).join('');
 }
 
-// ─── ADD CLIENT ───────────────────────────────────────────────────────────────
-function openAddClient() {
+function openAddClient(){
   ['acFirst','acLast','acAge','acGoals','acInjuries','acNotes','acSchedule'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('acLevel').value='Intermediate';
-  document.getElementById('acPackage').value='0';
-  document.getElementById('acRemaining').value='';
-  document.getElementById('acDuration').value='60';
+  document.getElementById('acLevel').value='Intermediate';document.getElementById('acPackage').value='0';
+  document.getElementById('acRemaining').value='';document.getElementById('acDuration').value='60';
   openModal('addClientModal');
 }
-async function saveClient() {
-  const first = document.getElementById('acFirst').value.trim();
-  if(!first){toast('Enter a name');return;}
-  const pkg = parseInt(document.getElementById('acPackage').value)||0;
-  const data = {
-    first, last:document.getElementById('acLast').value.trim(),
-    age:document.getElementById('acAge').value,
-    level:document.getElementById('acLevel').value,
-    package_size:pkg,
-    remaining:parseInt(document.getElementById('acRemaining').value)||0,
-    schedule:document.getElementById('acSchedule').value.trim(),
-    duration:parseInt(document.getElementById('acDuration').value)||60,
-    goals:document.getElementById('acGoals').value.trim(),
-    injuries:document.getElementById('acInjuries').value.trim(),
-    notes:document.getElementById('acNotes').value.trim(),
-    exercise_history:{}
-  };
-  try {
-    const created = await db.addClient(data);
-    if(created&&created[0]) clients.push(created[0]);
-    closeModal('addClientModal'); renderClientList(); renderDashboard();
-    toast(`${first} added ✓`);
-  } catch(e){toast('Error saving client');}
+async function saveClient(){
+  const first=document.getElementById('acFirst').value.trim();if(!first){toast('Enter a name');return;}
+  const pkg=parseInt(document.getElementById('acPackage').value)||0;
+  try{
+    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{}});
+    if(created&&created[0])clients.push(created[0]);
+    closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
+  }catch(e){toast('Error saving client');}
 }
 
-// ─── EDIT CLIENT ──────────────────────────────────────────────────────────────
-function openEditClient(id) {
-  const c = clients.find(x=>x.id===id); if(!c)return;
-  document.getElementById('ecId').value=id;
-  document.getElementById('ecFirst').value=c.first;
-  document.getElementById('ecLast').value=c.last||'';
-  document.getElementById('ecAge').value=c.age||'';
-  document.getElementById('ecLevel').value=c.level||'Intermediate';
-  document.getElementById('ecPackage').value=c.package_size||0;
-  document.getElementById('ecRemaining').value=c.remaining||0;
-  document.getElementById('ecSchedule').value=c.schedule||'';
-  document.getElementById('ecDuration').value=c.duration||60;
-  document.getElementById('ecGoals').value=c.goals||'';
-  document.getElementById('ecInjuries').value=c.injuries||'';
-  document.getElementById('ecNotes').value=c.notes||'';
-  closeModal('clientModal'); openModal('editClientModal');
+function openEditClient(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';
+  closeModal('clientModal');openModal('editClientModal');
 }
-async function saveEditClient() {
-  const id = document.getElementById('ecId').value;
-  const c = clients.find(x=>x.id===id); if(!c)return;
-  const data = {
-    first:document.getElementById('ecFirst').value.trim(),
-    last:document.getElementById('ecLast').value.trim(),
-    age:document.getElementById('ecAge').value,
-    level:document.getElementById('ecLevel').value,
-    package_size:parseInt(document.getElementById('ecPackage').value)||0,
-    remaining:parseInt(document.getElementById('ecRemaining').value)||0,
-    schedule:document.getElementById('ecSchedule').value.trim(),
-    duration:parseInt(document.getElementById('ecDuration').value)||60,
-    goals:document.getElementById('ecGoals').value.trim(),
-    injuries:document.getElementById('ecInjuries').value.trim(),
-    notes:document.getElementById('ecNotes').value.trim(),
-  };
-  try {
-    await db.updateClient(id, data);
-    Object.assign(c, data);
-    closeModal('editClientModal'); renderClientModal(c); openModal('clientModal');
-    renderClientList(); renderDashboard(); toast('Updated ✓');
-  } catch(e){toast('Error updating client');}
+async function saveEditClient(){
+  const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim()};
+  try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
+  catch(e){toast('Error updating');}
 }
 
-// ─── CLIENT DETAIL ────────────────────────────────────────────────────────────
-async function openClientDetail(id) {
-  const c = clients.find(x=>x.id===id); if(!c)return;
+async function openClientDetail(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
   document.getElementById('clientModalBody').innerHTML=`<div class="loading" style="padding:60px 20px"><div class="spinner"></div></div>`;
   openModal('clientModal');
-  try {
-    c._sessions = await db.getSessions(id);
-    renderClientModal(c);
-  } catch(e){ renderClientModal(c); }
+  try{c._sessions=await db.getSessions(id);}catch(e){c._sessions=[];}
+  renderClientModal(c);
 }
 
-function renderClientModal(c) {
-  const hasPkg = c.package_size>0;
-  const pct = hasPkg?Math.max(0,c.remaining/c.package_size*100):0;
-  const col = !hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
-  const sessions = c._sessions||[];
-  const isSummer = c.first.toLowerCase().includes('summer');
-  const history = c.exercise_history||{};
+function renderClientModal(c){
+  const hasPkg=c.package_size>0;
+  const pct=hasPkg?Math.max(0,c.remaining/c.package_size*100):0;
+  const col=!hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
+  const sessions=c._sessions||[];
+  const isSummer=c.first.toLowerCase().includes('summer');
 
-  const sessHtml = sessions.length===0
-    ? '<div class="muted" style="padding:8px 0;font-size:13px">No sessions logged yet.</div>'
-    : sessions.slice(0,10).map(s=>`
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
-          <div>
-            <div style="font-size:13px;font-weight:500">${s.date}</div>
-            ${s.note?`<div class="muted" style="font-size:12px">${s.note}</div>`:''}
-            ${s.workout&&s.workout.length>0?`<div style="font-size:11px;color:var(--accent2);margin-top:3px">${s.workout.map(w=>`${w.name}${w.weight?' · '+w.weight:''}`).join(' · ')}</div>`:''}
-          </div>
-          <span class="badge badge-green">✓</span>
-        </div>`).join('')
+  const sessHtml=sessions.length===0
+    ?'<div class="muted" style="padding:8px 0;font-size:13px">No sessions logged yet.</div>'
+    :sessions.slice(0,10).map(s=>`
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:500">${s.date}</div>
+          ${s.note?`<div class="muted" style="font-size:12px">${s.note}</div>`:''}
+          ${s.workout&&s.workout.length>0?`<div style="font-size:11px;color:var(--accent2);margin-top:3px">${s.workout.map(w=>`${w.name}${w.weight?' · '+w.weight:''}`).join(' · ')}</div>`:''}
+        </div>
+        <span class="badge badge-green">✓</span>
+      </div>`).join('')
     +(sessions.length>10?`<div class="muted" style="font-size:12px;padding-top:8px">+${sessions.length-10} more</div>`:'');
 
-  let progSection = '';
-  if(c.structured_program) progSection = renderStructuredProgram(c);
-  else if(c.program) progSection = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-secondary btn-sm" onclick="generateProgram('${c.id}')">↺ Regen</button></div>`+renderAIProgramHtml(c.program);
-  else progSection = `<div style="text-align:center;padding:24px 0"><div class="muted" style="margin-bottom:14px;font-size:13px">No program yet</div><button class="btn btn-primary" onclick="generateProgram('${c.id}')">✦ Generate 6-Week Program</button></div>`;
+  let progSection='';
+  if(c.structured_program)progSection=renderStructuredProgram(c);
+  else if(c.program)progSection=`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-secondary btn-sm" onclick="generateProgram('${c.id}')">↺ Regen</button></div>`+renderAIProgramHtml(c.program);
+  else progSection=`<div style="text-align:center;padding:24px 0"><div class="muted" style="margin-bottom:14px;font-size:13px">No program yet</div><button class="btn btn-primary" onclick="generateProgram('${c.id}')">✦ Generate 6-Week Program</button></div>`;
 
-  document.getElementById('clientModalBody').innerHTML = `
+  document.getElementById('clientModalBody').innerHTML=`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       <div class="client-avatar" style="width:46px;height:46px;font-size:17px">${c.first[0]}${c.last?c.last[0]:''}</div>
@@ -564,16 +395,12 @@ function renderClientModal(c) {
       </div>
       <button class="btn btn-secondary btn-sm" onclick="closeModal('clientModal')">✕</button>
     </div>
-
     ${c.schedule?`<div style="margin-bottom:14px"><div class="label" style="margin-bottom:4px">Schedule</div><div style="font-size:13px;color:var(--accent2)">${c.schedule}</div>${c.notes?`<div class="muted" style="font-size:12px;margin-top:3px">${c.notes}</div>`:''}</div>`:''}
-
     <div class="card" style="margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'10':'0'}px">
         <div>
           <div class="label">Package</div>
-          ${hasPkg
-            ?`<div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:${col};line-height:1.1">${c.remaining}<span style="font-size:14px;color:var(--muted)"> / ${c.package_size}</span></div><div class="muted" style="font-size:12px">sessions remaining</div>`
-            :`<div class="muted" style="font-size:13px;padding-top:4px">No package set</div>`}
+          ${hasPkg?`<div style="font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:${col};line-height:1.1">${c.remaining}<span style="font-size:14px;color:var(--muted)"> / ${c.package_size}</span></div><div class="muted" style="font-size:12px">sessions remaining</div>`:`<div class="muted" style="font-size:13px;padding-top:4px">No package set</div>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
           <button class="btn btn-primary btn-sm" onclick="openLogSession('${c.id}')">Log Session</button>
@@ -582,13 +409,7 @@ function renderClientModal(c) {
       </div>
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
     </div>
-
-    ${c.goals||c.injuries?`<div class="card" style="margin-bottom:12px">
-      ${c.goals?`<div class="label" style="margin-bottom:4px">Goals</div><div style="font-size:13px">${c.goals}</div>`:''}
-      ${c.goals&&c.injuries?'<div class="divider"></div>':''}
-      ${c.injuries?`<div class="label" style="margin-bottom:4px">Injuries</div><div style="font-size:13px;color:var(--warn)">${c.injuries}</div>`:''}
-    </div>`:''}
-
+    ${c.goals||c.injuries?`<div class="card" style="margin-bottom:12px">${c.goals?`<div class="label" style="margin-bottom:4px">Goals</div><div style="font-size:13px">${c.goals}</div>`:''}${c.goals&&c.injuries?'<div class="divider"></div>':''}${c.injuries?`<div class="label" style="margin-bottom:4px">Injuries</div><div style="font-size:13px;color:var(--warn)">${c.injuries}</div>`:''}</div>`:''}
     <div style="margin-bottom:16px">
       <div class="label" style="margin-bottom:8px">Session History (${sessions.length})</div>
       ${sessHtml}
@@ -603,18 +424,20 @@ function renderClientModal(c) {
     </div>`;
 }
 
-// ─── STRUCTURED PROGRAM ───────────────────────────────────────────────────────
-function renderStructuredProgram(c) {
-  const prog = c.structured_program;
-  const history = c.exercise_history||{};
+function renderStructuredProgram(c){
+  const prog=c.structured_program;const history=c.exercise_history||{};
   return prog.days.map((day,di)=>{
-    const exRows = day.exercises.map(ex=>{
-      const key = ex.name.toLowerCase().replace(/\s+/g,'_');
-      const last = history[key];
-      const lastHtml = last
-        ? `<div class="ex-last has-data">📊 Last: <b>${last.weight||'—'}</b> · ${last.reps||'—'} · <span style="opacity:.7">${last.date}</span></div>`
-        : `<div class="ex-last">No data yet — log a session to track</div>`;
-      return `<div class="ex-row"><div class="ex-name">${ex.name}</div><div class="ex-prescription">${ex.prescription}${ex.load?' · <span style="color:var(--muted)">'+ex.load+'</span>':''}</div>${lastHtml}</div>`;
+    const exRows=day.exercises.map(ex=>{
+      const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+      const last=history[key];
+      const isSuperset=ex.name.match(/^SS\d[AB]:/i);
+      const lastHtml=last?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'—'}</b> · <b>${last.weight||'—'}</b> · <span style="opacity:.7">${last.date}</span></div>`:`<div class="ex-last">No data yet</div>`;
+      return `<div class="ex-row" ${isSuperset?'style="padding-left:24px;border-left:2px solid var(--warn);margin-left:14px"':''}>
+        ${isSuperset?`<div class="ss-label">Superset</div>`:''}
+        <div class="ex-name">${ex.name.replace(/^SS\d[AB]:\s*/i,'')}</div>
+        <div class="ex-prescription">${ex.prescription}${ex.load?' · <span style="color:var(--muted)">'+ex.load+'</span>':''}</div>
+        ${lastHtml}
+      </div>`;
     }).join('');
     return `<div class="prog-day-block">
       <div class="prog-day-header" onclick="this.nextElementSibling.classList.toggle('open')">
@@ -626,34 +449,36 @@ function renderStructuredProgram(c) {
   }).join('');
 }
 
-// ─── LOG SESSION ──────────────────────────────────────────────────────────────
-function openLogSession(id) {
-  const c = clients.find(x=>x.id===id); if(!c)return;
-  if(c.package_size>0 && c.remaining<=0){toast('⚠️ No sessions left — renew first!');return;}
-  pendingLogId = id;
-  document.getElementById('logModalTitle').textContent = `Log Session — ${c.first}`;
-  document.getElementById('logNote').value = '';
-  let workoutHtml = '';
+function openLogSession(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  if(c.package_size>0&&c.remaining<=0){toast('⚠️ No sessions left — renew first!');return;}
+  pendingLogId=id;
+  document.getElementById('logModalTitle').textContent=`Log Session — ${c.first}`;
+  document.getElementById('logNote').value='';
+  let workoutHtml='';
   if(c.structured_program){
-    workoutHtml = `<div class="form-group"><label class="form-label">Today's Workout</label>
+    workoutHtml=`<div class="form-group"><label class="form-label">Today's Workout</label>
       <select id="logDaySelect" onchange="updateLogWorkout('${id}')">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}</select></div>
       <div id="logExercises"></div>`;
   }
-  document.getElementById('logWorkoutSection').innerHTML = workoutHtml;
-  if(c.structured_program) setTimeout(()=>updateLogWorkout(id), 50);
+  document.getElementById('logWorkoutSection').innerHTML=workoutHtml;
+  if(c.structured_program)setTimeout(()=>updateLogWorkout(id),50);
   openModal('logModal');
 }
 
-function updateLogWorkout(clientId) {
-  const c = clients.find(x=>x.id===clientId); if(!c||!c.structured_program)return;
-  const di = parseInt(document.getElementById('logDaySelect').value)||0;
-  const day = c.structured_program.days[di];
-  const history = c.exercise_history||{};
-  document.getElementById('logExercises').innerHTML = day.exercises.map((ex,ei)=>{
-    const key = ex.name.toLowerCase().replace(/\s+/g,'_');
-    const last = history[key];
-    return `<div class="workout-ex-row">
-      <div class="workout-ex-name">${ex.name}</div>
+function updateLogWorkout(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
+  const di=parseInt(document.getElementById('logDaySelect').value)||0;
+  const day=c.structured_program.days[di];const history=c.exercise_history||{};
+  let html='';let inSuperset=false;
+  day.exercises.forEach((ex,ei)=>{
+    const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+    const last=history[key];
+    const isSuperset=ex.name.match(/^SS\d[AB]:/i);
+    const displayName=ex.name.replace(/^SS\d[AB]:\s*/i,'');
+    html+=`<div class="workout-ex-row" ${isSuperset?'style="border-left:2px solid var(--warn);padding-left:14px"':''}>
+      ${isSuperset?`<div class="ss-label">Superset</div>`:''}
+      <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:11px;color:var(--accent);margin-bottom:${last?'4':'6'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
       ${last?`<div style="font-size:11px;color:var(--accent2);margin-bottom:6px">Last: ${last.reps||'—'} · ${last.weight||'—'} on ${last.date}</div>`:''}
       <div class="workout-inputs">
@@ -661,121 +486,103 @@ function updateLogWorkout(clientId) {
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
       </div>
     </div>`;
-  }).join('');
+  });
+  document.getElementById('logExercises').innerHTML=html;
 }
 
-async function confirmLogSession() {
-  const c = clients.find(x=>x.id===pendingLogId); if(!c)return;
-  const note = document.getElementById('logNote').value.trim();
-  const dateStr = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  let workout = [];
-  const newHistory = {...(c.exercise_history||{})};
+async function confirmLogSession(){
+  const c=clients.find(x=>x.id===pendingLogId);if(!c)return;
+  const note=document.getElementById('logNote').value.trim();
+  const dateStr=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  let workout=[];const newHistory={...(c.exercise_history||{})};
+  const exLogs=[];
 
   if(c.structured_program){
-    const di = parseInt(document.getElementById('logDaySelect')?.value)||0;
-    const day = c.structured_program.days[di];
+    const di=parseInt(document.getElementById('logDaySelect')?.value)||0;
+    const day=c.structured_program.days[di];
     day.exercises.forEach((ex,ei)=>{
-      const wr = document.getElementById('wr-'+ei)?.value.trim();
-      const wt = document.getElementById('wt-'+ei)?.value.trim();
+      const wr=document.getElementById('wr-'+ei)?.value.trim();
+      const wt=document.getElementById('wt-'+ei)?.value.trim();
       if(wr||wt){
-        const key = ex.name.toLowerCase().replace(/\s+/g,'_');
-        newHistory[key] = {reps:wr||'',weight:wt||'',date:dateStr};
+        const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+        newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr};
         workout.push({name:ex.name,reps:wr||'',weight:wt||''});
+        // Build individual exercise log entry
+        exLogs.push({
+          client_id:c.id,
+          session_date:dateStr,
+          exercise_name:ex.name.replace(/^SS\d[AB]:\s*/i,''),
+          reps:wr||'',
+          weight:wt||'',
+          day_name:day.name
+        });
       }
     });
   }
 
-  try {
-    // Save session
-    await db.addSession({client_id:c.id, date:dateStr, note, workout});
-    // Update client remaining + exercise history
-    const newRemaining = c.package_size>0 ? Math.max(0,c.remaining-1) : c.remaining;
-    await db.updateClient(c.id, {remaining:newRemaining, exercise_history:newHistory});
-    c.remaining = newRemaining;
-    c.exercise_history = newHistory;
-    c._sessions = await db.getSessions(c.id);
-
-    closeModal('logModal');
-    renderClientModal(c); renderDashboard();
+  try{
+    await db.addSession({client_id:c.id,date:dateStr,note,workout});
+    // Save individual exercise logs
+    for(const log of exLogs){ await db.addExLog(log); }
+    const newRemaining=c.package_size>0?Math.max(0,c.remaining-1):c.remaining;
+    await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
+    c.remaining=newRemaining;c.exercise_history=newHistory;
+    c._sessions=await db.getSessions(c.id);
+    closeModal('logModal');renderClientModal(c);renderDashboard();
     if(c.package_size>0){
-      if(c.remaining===0) setTimeout(()=>toast(`🔴 ${c.first} is OUT — invoice via Square!`),300);
-      else if(c.remaining<=2) setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} left`),300);
+      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is OUT — invoice via Square!`),300);
+      else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} left`),300);
       else toast(`Session logged ✓ — ${c.remaining} remaining`);
-    } else { toast('Session logged ✓'); }
-  } catch(e){ toast('Error saving session'); console.error(e); }
+    }else toast('Session logged ✓');
+  }catch(e){toast('Error saving session');console.error(e);}
 }
 
-// ─── RENEW ────────────────────────────────────────────────────────────────────
-function openRenew(id) {
-  const c = clients.find(x=>x.id===id); if(!c)return;
-  pendingRenewId = id;
-  document.getElementById('renewTitle').textContent = `Renew — ${c.first}`;
-  document.getElementById('renewPkg').value = c.package_size||10;
-  openModal('renewModal');
+function openRenew(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew — ${c.first}`;
+  document.getElementById('renewPkg').value=c.package_size||10;openModal('renewModal');
 }
-async function confirmRenew() {
-  const c = clients.find(x=>x.id===pendingRenewId); if(!c)return;
-  const pkg = parseInt(document.getElementById('renewPkg').value);
-  try {
-    await db.updateClient(c.id, {package_size:pkg, remaining:pkg});
-    c.package_size=pkg; c.remaining=pkg;
-    closeModal('renewModal'); renderClientModal(c); renderDashboard();
-    toast(`${c.first} renewed — ${pkg} sessions ✓`);
-  } catch(e){ toast('Error renewing package'); }
+async function confirmRenew(){
+  const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
+  const pkg=parseInt(document.getElementById('renewPkg').value);
+  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed — ${pkg} sessions ✓`);}
+  catch(e){toast('Error renewing');}
 }
 
-async function deleteClient(id) {
-  if(!confirm('Remove this client? This cannot be undone.'))return;
-  try {
-    await db.deleteClient(id);
-    clients = clients.filter(x=>x.id!==id);
-    closeModal('clientModal'); renderClientList(); renderDashboard();
-    toast('Client removed');
-  } catch(e){ toast('Error removing client'); }
+async function deleteClient(id){
+  if(!confirm('Remove this client?'))return;
+  try{await db.deleteClient(id);clients=clients.filter(x=>x.id!==id);closeModal('clientModal');renderClientList();renderDashboard();toast('Removed');}
+  catch(e){toast('Error removing client');}
 }
 
-// ─── EQUIPMENT ────────────────────────────────────────────────────────────────
-function renderEquipList() {
-  const el = document.getElementById('equipList');
-  el.innerHTML = equipment.length===0
-    ? `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🏋️</div>No equipment added yet</div>`
-    : equipment.map(e=>`<div class="equip-item"><span>${e.name}</span><span class="remove" onclick="removeEquip('${e.id}')">×</span></div>`).join('');
+function renderEquipList(){
+  const el=document.getElementById('equipList');
+  el.innerHTML=equipment.length===0?`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🏋️</div>No equipment added yet</div>`:equipment.map(e=>`<div class="equip-item"><span>${e.name}</span><span class="remove" onclick="removeEquip('${e.id}')">×</span></div>`).join('');
 }
 function openAddEquip(){document.getElementById('equipName').value='';openModal('addEquipModal');}
 async function saveEquip(){
-  const name=document.getElementById('equipName').value.trim(); if(!name)return;
-  try {
-    const created = await db.addEquipment(name);
-    if(created&&created[0]) equipment.push(created[0]);
-    closeModal('addEquipModal'); renderEquipList(); toast(`${name} added ✓`);
-  } catch(e){ toast('Error adding equipment'); }
+  const name=document.getElementById('equipName').value.trim();if(!name)return;
+  try{const created=await db.addEquipment(name);if(created&&created[0])equipment.push(created[0]);closeModal('addEquipModal');renderEquipList();toast(`${name} added ✓`);}
+  catch(e){toast('Error adding equipment');}
 }
 async function removeEquip(id){
-  try {
-    await db.delEquipment(id);
-    equipment = equipment.filter(e=>e.id!==id);
-    renderEquipList();
-  } catch(e){ toast('Error removing equipment'); }
+  try{await db.delEquipment(id);equipment=equipment.filter(e=>e.id!==id);renderEquipList();}
+  catch(e){toast('Error removing equipment');}
 }
 
-// ─── AI PROGRAM ───────────────────────────────────────────────────────────────
-async function generateProgram(id) {
-  const c = clients.find(x=>x.id===id); if(!c)return;
-  const section = document.getElementById('prog-'+id); if(!section)return;
-  section.innerHTML = `<div class="ai-output"><span class="ai-thinking">✦ Building program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
-  const equip = equipment.length>0 ? equipment.map(e=>e.name).join(', ') : 'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Bands';
-  const days = (c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
-  const prompt = `Expert trainer. 6-week program.\nClient: ${c.first}, ${c.level}, Goals: ${c.goals||'General fitness'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: note\n\nWEEK 3-4: BUILD\n[same]\n\nWEEK 5-6: PEAK\n[same]`;
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
-    const data = await res.json();
-    const text = data.content?.map(b=>b.text||'').join('')||'Could not generate.';
-    await db.updateClient(c.id, {program:text});
-    c.program = text;
-    if(section) section.innerHTML = renderAIProgramHtml(text);
-  } catch(e){
-    if(section) section.innerHTML = `<div class="ai-output" style="color:var(--danger)">Failed. Try again.</div>`;
-  }
+async function generateProgram(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const section=document.getElementById('prog-'+id);if(!section)return;
+  section.innerHTML=`<div class="ai-output"><span class="ai-thinking">✦ Building program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
+  const equip=equipment.length>0?equipment.map(e=>e.name).join(', '):'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Bands';
+  const days=(c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
+  const prompt=`Expert trainer. 6-week program.\nClient: ${c.first}, ${c.level}, Goals: ${c.goals||'General fitness'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: note\n\nWEEK 3-4: BUILD\n[same]\n\nWEEK 5-6: PEAK\n[same]`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Could not generate.';
+    await db.updateClient(c.id,{program:text});c.program=text;
+    if(section)section.innerHTML=renderAIProgramHtml(text);
+  }catch(e){if(section)section.innerHTML=`<div class="ai-output" style="color:var(--danger)">Failed. Try again.</div>`;}
 }
 
 function renderAIProgramHtml(text){
