@@ -613,6 +613,8 @@ const db={
   delEquipment: (id)    => sb('DELETE','equipment',null,`?id=eq.${id}`),
   addExLog:     (d)     => sb('POST','exercise_logs',d),
   getLibrary:   ()      => sb('GET','exercise_library',null,'?order=muscle_group.asc,name.asc'),
+  getSharedPkgs: ()     => sb('GET','shared_packages',null,'?order=name.asc'),
+  updateSharedPkg:(id,d)=> sb('PATCH','shared_packages',d,`?id=eq.${id}`),
   addLibEx:     (d)     => sb('POST','exercise_library',d),
   updateLibEx:  (id,d)  => sb('PATCH','exercise_library',d,`?id=eq.${id}`),
   delLibEx:     (id)    => sb('DELETE','exercise_library',null,`?id=eq.${id}`),
@@ -620,7 +622,7 @@ const db={
 
 const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
 
-let clients=[],equipment=[],library=[],pendingLogId=null,pendingRenewId=null;
+let clients=[],equipment=[],library=[],sharedPackages=[],pendingLogId=null,pendingRenewId=null;
 let editingClientId=null,editingDayIndex=null,editingExercises=[];
 
 // ── GREETING ──
@@ -632,7 +634,7 @@ function getGreeting(){
 async function init(){
   showLoading('dashClients');
   try{
-    [clients,equipment,library]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[])]);
+    [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
     document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
     renderDashboard();
   }catch(e){
@@ -670,16 +672,39 @@ function renderDashboard(){
   let alerts='';
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
+  // Shared package alerts
+  sharedPackages.forEach(pkg=>{
+    const linked=clients.filter(c=>c.shared_package_id===pkg.id).map(c=>c.first).join(' & ');
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
+    else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
+  });
   document.getElementById('dashAlerts').innerHTML=alerts;
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:sorted.map(clientRowHtml).join('');
 }
 
 function clientRowHtml(c){
-  const hasPkg=c.package_size>0;
-  const pct=hasPkg?Math.max(0,c.remaining/c.package_size*100):0;
-  const col=!hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
-  const badge=!hasPkg?'<span class="badge badge-blue">Pay per session</span>':c.remaining<=0?'<span class="badge badge-red">OUT OF SESSIONS</span>':c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`:`<span class="badge badge-green">${c.remaining} left</span>`;
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const hasPkg=c.package_size>0 || !!sharedPkg;
+  const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
+  const pct=hasPkg?Math.max(0,displayRem/displayTotal*100):0;
+  const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
+  // Check for shared package
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
+  const effectiveHasPkg = hasPkg || !!sharedPkg;
+  const effectivePct = effectiveHasPkg ? Math.max(0, displayRemaining/displayTotal*100) : 0;
+  const effectiveCol = !effectiveHasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
+  const badge = sharedPkg
+    ? displayRemaining<=0?'<span class="badge badge-red">OUT</span>'
+      :displayRemaining<=2?`<span class="badge badge-yellow">${displayRemaining} shared</span>`
+      :`<span class="badge badge-green">${displayRemaining} shared</span>`
+    : !hasPkg?'<span class="badge badge-blue">Pay per session</span>'
+      :c.remaining<=0?'<span class="badge badge-red">OUT OF SESSIONS</span>'
+      :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
+      :`<span class="badge badge-green">${c.remaining} left</span>`;
   const isSummer=c.first.toLowerCase().includes('summer');
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
@@ -694,7 +719,7 @@ function clientRowHtml(c){
       </div>
       ${badge}
     </div>
-    ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
+    ${effectiveHasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
   </div>`;
 }
 
@@ -742,9 +767,12 @@ async function openClientDetail(id){
 }
 
 function renderClientModal(c){
-  const hasPkg=c.package_size>0;
-  const pct=hasPkg?Math.max(0,c.remaining/c.package_size*100):0;
-  const col=!hasPkg?'var(--muted)':c.remaining<=0?'var(--danger)':c.remaining<=2?'var(--warn)':'var(--success)';
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const hasPkg=c.package_size>0 || !!sharedPkg;
+  const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
+  const pct=hasPkg?Math.max(0,displayRem/displayTotal*100):0;
+  const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
 
@@ -763,7 +791,7 @@ function renderClientModal(c){
 
   let progSection='';
   if(c.structured_program)progSection=renderStructuredProgram(c);
-  else if(c.program)progSection=`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-secondary btn-sm" onclick="generateProgram('${c.id}')">↺ Regenerate</button></div>`+renderAIProgramHtml(c.program);
+  else if(c.program)progSection=renderAIProgramHtml(c.program);
   else progSection=`<div style="text-align:center;padding:28px 0">
     <div class="muted" style="margin-bottom:16px;font-size:13px">No program built yet</div>
     <button class="btn btn-primary" onclick="generateProgram('${c.id}')">✦ Generate 6-Week Program</button>
@@ -793,7 +821,9 @@ function renderClientModal(c){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
         <div>
           <div class="page-label" style="margin-bottom:6px">Package Status</div>
-          ${hasPkg
+          ${sharedPkg
+            ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${sharedPkg.remaining_sessions}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${sharedPkg.total_sessions} shared</span></div><div class="muted" style="font-size:12px;margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
+            :c.package_size>0
             ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${c.package_size} sessions</span></div>`
             :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session — no package tracking</div>`}
         </div>
@@ -954,7 +984,7 @@ function updateLogWorkout(clientId){
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-      ${last?`<div style="font-size:11px;color:var(--accent);background:var(--accent-glow);border-radius:6px;padding:4px 8px;margin-bottom:8px;display:inline-block">Last: ${last.reps||'—'} · ${last.weight||'—'} · ${last.date}</div><br>`:''}
+      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
@@ -984,12 +1014,28 @@ async function confirmLogSession(){
   try{
     await db.addSession({client_id:c.id,date:dateStr,note,workout});
     for(const log of exLogs)await db.addExLog(log);
-    const newRemaining=c.package_size>0?Math.max(0,c.remaining-1):c.remaining;
+    let newRemaining=c.package_size>0?Math.max(0,c.remaining-1):c.remaining;
     await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
     c.remaining=newRemaining;c.exercise_history=newHistory;
+    // Deduct from shared package if linked
+    if(c.shared_package_id){
+      const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
+      if(sharedPkg&&sharedPkg.remaining_sessions>0){
+        const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
+        await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
+        sharedPkg.remaining_sessions=newShared;
+      }
+    }
     c._sessions=await db.getSessions(c.id);
     closeModal('logModal');renderClientModal(c);renderDashboard();
-    if(c.package_size>0){
+    if(c.shared_package_id){
+      const sp=sharedPackages.find(p=>p.id===c.shared_package_id);
+      if(sp){
+        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out — invoice via Square!`),300);
+        else if(sp.remaining_sessions<=2)setTimeout(()=>toast(`🟡 Shared package: ${sp.remaining_sessions} left`),300);
+        else toast(`Session logged ✓ — ${sp.remaining_sessions} shared remaining`);
+      }
+    } else if(c.package_size>0){
       if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions — invoice via Square!`),300);
       else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
       else toast(`Session logged ✓ — ${c.remaining} remaining`);
