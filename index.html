@@ -699,8 +699,14 @@ function showView(name,el){
   if(name==='library'){renderLibrary();renderEquipList();}
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow='';
+}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
 // ── DASHBOARD ──
@@ -908,9 +914,26 @@ function renderClientModal(c){
       <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit Client</button>
       <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove</button>
     </div>
-    <div style="padding:60px 20px 48px;text-align:center;margin-top:20px">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:28px;letter-spacing:-0.5px;opacity:0.06;color:#ffffff;line-height:1.1">BAYMADE<br>TRAINING</div>
-      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;opacity:0.04;color:#ffffff;margin-top:6px">Coach Portal</div>
+    <div style="padding:60px 20px 56px;text-align:center;margin-top:24px">
+      <svg viewBox="0 0 200 80" width="160" style="opacity:0.07" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <!-- Left outer plate -->
+        <rect x="4" y="20" width="28" height="40" rx="6"/>
+        <!-- Left inner plate -->
+        <rect x="28" y="26" width="16" height="28" rx="4"/>
+        <!-- Bar -->
+        <rect x="44" y="34" width="112" height="12" rx="4"/>
+        <!-- Center knurl marks -->
+        <rect x="76" y="34" width="4" height="12" rx="1" fill="rgba(0,0,0,0.3)"/>
+        <rect x="86" y="34" width="4" height="12" rx="1" fill="rgba(0,0,0,0.3)"/>
+        <rect x="96" y="34" width="4" height="12" rx="1" fill="rgba(0,0,0,0.3)"/>
+        <rect x="106" y="34" width="4" height="12" rx="1" fill="rgba(0,0,0,0.3)"/>
+        <rect x="116" y="34" width="4" height="12" rx="1" fill="rgba(0,0,0,0.3)"/>
+        <!-- Right inner plate -->
+        <rect x="156" y="26" width="16" height="28" rx="4"/>
+        <!-- Right outer plate -->
+        <rect x="168" y="20" width="28" height="40" rx="6"/>
+      </svg>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:3px;text-transform:uppercase;opacity:0.07;color:#ffffff;margin-top:12px">BAYMADE TRAINING</div>
     </div>`;
 }
 
