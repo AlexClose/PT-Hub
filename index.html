@@ -99,7 +99,7 @@ color:#ffffff !important;
 }
 .nav-logo span{color:#7ec8ff !important;font-family:‘Syne’,sans-serif;font-weight:800;}
 .nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;}
-.nav-tabs{display:flex;gap:4px;background:var(–surface2);border:1px solid var(–border);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.nav-tabs{display:flex;gap:4px;background:rgba(20,24,32,0.9);border:1px solid rgba(37,99,235,0.35);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 0 0 1px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.05);}
 .nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{
 font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
@@ -909,6 +909,39 @@ function renderClientModal(c){
 }
 
 // ── STRUCTURED PROGRAM ──
+function toggleDay(el){
+  const body = el.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  if(isOpen){
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.style.overflow = 'hidden';
+    requestAnimationFrame(()=>{
+      body.style.transition = 'max-height 0.3s ease';
+      body.style.maxHeight = '0';
+      setTimeout(()=>{
+        body.classList.remove('open');
+        body.style.maxHeight = '';
+        body.style.overflow = '';
+        body.style.transition = '';
+      }, 300);
+    });
+  } else {
+    body.classList.add('open');
+    const h = body.scrollHeight;
+    body.style.maxHeight = '0';
+    body.style.overflow = 'hidden';
+    body.style.transition = 'max-height 0.3s ease';
+    requestAnimationFrame(()=>{
+      body.style.maxHeight = h + 'px';
+      setTimeout(()=>{
+        body.style.maxHeight = '';
+        body.style.overflow = '';
+        body.style.transition = '';
+      }, 300);
+    });
+  }
+}
+
 function renderStructuredProgram(c){
   const prog=c.structured_program;const history=c.exercise_history||{};
   return prog.days.map((day,di)=>{
@@ -930,7 +963,7 @@ function renderStructuredProgram(c){
       </div>`;
     }).join('');
     return `<div class="prog-day-block">
-      <div class="prog-day-header" onclick="this.nextElementSibling.classList.toggle('open')">
+      <div class="prog-day-header" onclick="toggleDay(this)">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:10px;height:10px;border-radius:50%;background:${day.color};flex-shrink:0"></div>
           <span class="prog-day-title" style="color:${day.color}">${day.name}</span>
@@ -941,7 +974,7 @@ function renderStructuredProgram(c){
           <span style="color:var(--muted);font-size:12px">▼</span>
         </div>
       </div>
-      <div class="prog-day-body ${di===0?'open':''}">
+      <div class="prog-day-body">
         <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(37,99,235,0.06)">
           <button onclick="event.stopPropagation();openLogSession('${c.id}',${di})" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.4)">⚡ LOG THIS WORKOUT</button>
         </div>
@@ -1210,7 +1243,7 @@ function renderAIProgramHtml(text){
   if(cur)weeks.push(cur);if(!weeks.length)return`<div class="ai-output">${text}</div>`;
   return weeks.map((w,wi)=>{
     const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('—');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">— '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
-    return`<div class="prog-day-block"><div class="prog-day-header" onclick="this.nextElementSibling.classList.toggle('open')"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
+    return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
   }).join('');
 }
 
