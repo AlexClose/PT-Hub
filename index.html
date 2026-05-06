@@ -95,8 +95,8 @@ letter-spacing:-0.3px;
 margin-right:auto;
 line-height:1.1;
 }
-.nav-logo span{color:var(–accent-bright);}
-.nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(–muted);margin-top:1px;}
+.nav-logo span{color:#7ec8ff !important;}
+.nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5) !important;margin-top:1px;}
 .nav-tabs{display:flex;gap:4px;background:var(–surface2);border:1px solid var(–border);border-radius:12px;padding:4px;}
 .nav-tab{
 font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
@@ -865,7 +865,12 @@ function renderStructuredProgram(c){
           <span style="color:var(--muted);font-size:12px">▼</span>
         </div>
       </div>
-      <div class="prog-day-body ${di===0?'open':''}">${exRows}</div>
+      <div class="prog-day-body ${di===0?'open':''}">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(37,99,235,0.06)">
+          <button onclick="event.stopPropagation();openLogSession('${c.id}',${di})" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.4)">⚡ LOG THIS WORKOUT</button>
+        </div>
+        ${exRows}
+      </div>
     </div>`;
   }).join('');
 }
@@ -909,7 +914,7 @@ async function saveProgramDay(){
 }
 
 // ── LOG SESSION ──
-function openLogSession(id){
+function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
   if(c.package_size>0&&c.remaining<=0){toast('⚠️ No sessions remaining — renew package first!');return;}
   pendingLogId=id;
@@ -922,7 +927,17 @@ function openLogSession(id){
       <div id="logExercises"></div>`;
   }
   document.getElementById('logWorkoutSection').innerHTML=workoutHtml;
-  if(c.structured_program)setTimeout(()=>updateLogWorkout(id),50);
+  if(c.structured_program){
+    if(preselectedDay !== undefined){
+      setTimeout(()=>{
+        const sel = document.getElementById('logDaySelect');
+        if(sel){ sel.value = preselectedDay; }
+        updateLogWorkout(id);
+      },50);
+    } else {
+      setTimeout(()=>updateLogWorkout(id),50);
+    }
+  }
   openModal('logModal');
 }
 function updateLogWorkout(clientId){
