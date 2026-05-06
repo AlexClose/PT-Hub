@@ -260,14 +260,14 @@ background:var(–surface2);transition:background .2s;
 /* ── LOG SESSION ── */
 .workout-ex-row{
 background:var(–surface2);border:1px solid var(–border2);
-border-radius:var(–radius-sm);padding:14px;margin-bottom:10px;
+border-radius:var(–radius-sm);padding:16px;margin-bottom:12px;
 transition:border-color .15s;
 }
 .workout-ex-row:focus-within{border-color:var(–accent);}
-.workout-ex-name{font-size:13px;font-weight:600;margin-bottom:3px;color:var(–text);}
-.workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-.workout-inputs input{font-size:13px;padding:9px 12px;text-align:center;}
-.wi-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(–muted);text-align:center;margin-top:3px;}
+.workout-ex-name{font-size:18px;font-weight:700;margin-bottom:4px;color:#ffffff;font-family:‘Syne’,sans-serif;}
+.workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.workout-inputs input{font-size:16px;padding:14px 12px;text-align:center;font-weight:600;color:#ffffff;background:var(–surface3);border:1px solid var(–border2);}
+.wi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(–muted);text-align:center;margin-top:4px;font-weight:600;}
 
 /* ── LIBRARY ── */
 .muscle-group{margin-bottom:12px;}
@@ -671,7 +671,7 @@ function renderDashboard(){
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
   document.getElementById('dashAlerts').innerHTML=alerts;
-  const sorted=[...clients].sort((a,b)=>{if(a.package_size===0&&b.package_size===0)return 0;if(a.package_size===0)return 1;if(b.package_size===0)return -1;return a.remaining-b.remaining;});
+  const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:sorted.map(clientRowHtml).join('');
 }
 
@@ -953,7 +953,7 @@ function updateLogWorkout(clientId){
     return `<div class="workout-ex-row" ${isSuperset?'style="border-left:3px solid var(--warn)"':''}>
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
-      <div style="font-size:11px;color:var(--accent-bright);margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
+      <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
       ${last?`<div style="font-size:11px;color:var(--accent);background:var(--accent-glow);border-radius:6px;padding:4px 8px;margin-bottom:8px;display:inline-block">Last: ${last.reps||'—'} · ${last.weight||'—'} · ${last.date}</div><br>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
