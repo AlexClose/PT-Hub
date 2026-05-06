@@ -99,7 +99,8 @@ color:#ffffff !important;
 }
 .nav-logo span{color:#7ec8ff !important;font-family:‘Syne’,sans-serif;font-weight:800;}
 .nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;}
-.nav-tabs{display:flex;gap:4px;background:var(–surface2);border:1px solid var(–border);border-radius:12px;padding:4px;}
+.nav-tabs{display:flex;gap:4px;background:var(–surface2);border:1px solid var(–border);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{
 font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
 letter-spacing:.5px;text-transform:uppercase;
@@ -361,30 +362,10 @@ box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 ::-webkit-scrollbar-thumb{background:var(–border2);border-radius:2px;}
 
 /* ── ANIMATIONS ── */
-.view{transition:opacity .2s ease;}
-.view.active{animation:fadeIn .25s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-
-.modal{animation:slideUp .3s cubic-bezier(.34,1.2,.64,1);}
-@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-
-.client-card{animation:cardIn .3s ease both;}
-@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-
 .btn:active{transform:scale(0.97);transition:transform .1s;}
 .btn-primary:active{transform:scale(0.96);}
-
-/* Skeleton loader */
-.skeleton{background:linear-gradient(90deg,var(–surface2) 25%,var(–surface3) 50%,var(–surface2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* Stat number animation */
+.client-card:active{transform:scale(0.99);transition:transform .1s;}
 .stat-num{transition:color .3s ease;}
-
-/* Log button pulse */
-button[onclick*=“openLogSession”]{animation:none;}
-button[onclick*=“openLogSession”]:hover{animation:pulse .6s ease;}
-@keyframes pulse{0%,100%{box-shadow:0 2px 16px rgba(37,99,235,0.3)}50%{box-shadow:0 2px 28px rgba(37,99,235,0.6)}}
 </style>
 
 </head>
