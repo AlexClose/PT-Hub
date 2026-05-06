@@ -685,18 +685,11 @@ function renderDashboard(){
 
 function clientRowHtml(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
-  const hasPkg=c.package_size>0 || !!sharedPkg;
-  const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
-  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const pct=hasPkg?Math.max(0,displayRem/displayTotal*100):0;
-  const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
-  // Check for shared package
-  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const hasPkg = c.package_size>0 || !!sharedPkg;
   const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const effectiveHasPkg = hasPkg || !!sharedPkg;
-  const effectivePct = effectiveHasPkg ? Math.max(0, displayRemaining/displayTotal*100) : 0;
-  const effectiveCol = !effectiveHasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
+  const effectivePct = hasPkg ? Math.max(0, displayRemaining/displayTotal*100) : 0;
+  const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
   const badge = sharedPkg
     ? displayRemaining<=0?'<span class="badge badge-red">OUT</span>'
       :displayRemaining<=2?`<span class="badge badge-yellow">${displayRemaining} shared</span>`
@@ -719,7 +712,7 @@ function clientRowHtml(c){
       </div>
       ${badge}
     </div>
-    ${effectiveHasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
+    ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
   </div>`;
 }
 
