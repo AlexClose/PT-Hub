@@ -56,6 +56,7 @@ if(link)link.href=dataURL;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Baymade Training</title>
+<!-- v-fix-regen -->
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -772,11 +773,11 @@ function renderClientModal(c){
   const sessHtml=sessions.length===0
     ?'<div class="muted" style="padding:12px 0;font-size:13px">No sessions logged yet.</div>'
     :sessions.slice(0,10).map(s=>`
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
         <div>
-          <div style="font-size:13px;font-weight:600">${s.date}</div>
-          ${s.note?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}
-          ${s.workout&&s.workout.length>0?`<div style="font-size:11px;color:var(--accent-bright);margin-top:4px">${s.workout.map(w=>`${w.name}${w.weight?' · '+w.weight:''}`).join(' · ')}</div>`:''}
+          <div style="font-size:14px;font-weight:600">${s.date}</div>
+          ${s.workout&&s.workout.length>0?`<div class="muted" style="font-size:12px;margin-top:2px">${s.workout[0]?.day||s.note||''}</div>`:''}
+          ${s.note&&(!s.workout||s.workout.length===0)?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}
         </div>
         <span class="badge badge-green" style="flex-shrink:0;margin-left:8px">✓ Done</span>
       </div>`).join('')
