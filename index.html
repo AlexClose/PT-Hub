@@ -762,10 +762,18 @@ async function saveEditClient(){
 // ── CLIENT DETAIL ──
 async function openClientDetail(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  document.getElementById('clientModalBody').innerHTML=`<div class="loading" style="padding:80px 20px"><div class="spinner"></div></div>`;
-  openModal('clientModal');
-  try{c._sessions=await db.getSessions(id);}catch(e){c._sessions=[];}
+  // Render immediately with cached sessions so there is no black flash
+  if(!c._sessions) c._sessions=[];
   renderClientModal(c);
+  openModal('clientModal');
+  // Then load sessions in background and refresh
+  try{
+    const fresh=await db.getSessions(id);
+    if(JSON.stringify(fresh)!==JSON.stringify(c._sessions)){
+      c._sessions=fresh;
+      renderClientModal(c);
+    }
+  }catch(e){}
 }
 
 function renderClientModal(c){
