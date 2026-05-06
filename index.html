@@ -713,7 +713,7 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 
 // ── DASHBOARD ──
 function renderDashboard(){
-  const withPkg=clients.filter(c=>c.package_size>0);
+  const withPkg=clients.filter(c=>c.package_size>0&&!c.paused);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
   const out=withPkg.filter(c=>c.remaining<=0);
   const totalSess=clients.reduce((a,c)=>a+(c.session_count||0),0);
@@ -743,7 +743,9 @@ function clientRowHtml(c){
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
   const effectivePct = hasPkg ? Math.max(0, displayRemaining/displayTotal*100) : 0;
   const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
-  const badge = sharedPkg
+  const badge = c.paused
+    ? '<span class="badge badge-paused">⏸ Paused</span>'
+    : sharedPkg
     ? displayRemaining<=0?'<span class="badge badge-red">OUT</span>'
       :displayRemaining<=2?`<span class="badge badge-yellow">${displayRemaining} shared</span>`
       :`<span class="badge badge-green">${displayRemaining} shared</span>`
@@ -805,6 +807,18 @@ async function saveEditClient(){
 }
 
 // ── CLIENT DETAIL ──
+async function togglePause(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const newPaused=!c.paused;
+  try{
+    await db.updateClient(id,{paused:newPaused});
+    c.paused=newPaused;
+    renderClientModal(c);
+    renderDashboard();
+    toast(newPaused?`⏸ ${c.first} paused — won't show in alerts`:`▶ ${c.first} resumed`);
+  }catch(e){toast('Error updating');}
+}
+
 async function openClientDetail(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   // Render immediately with cached sessions so there is no black flash
@@ -912,10 +926,11 @@ function renderClientModal(c){
     <div id="prog-${c.id}">${progSection}</div>
 
     <div class="divider"></div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit Client</button>
-      <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove</button>
+      <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.05)'};color:${c.paused?'var(--success)':'rgba(200,215,235,0.6)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(255,255,255,0.1)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume Client':'⏸ Pause Client'}</button>
     </div>
+    <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
     <div style="padding:40px 20px 56px;text-align:center;margin-top:24px">
       <svg viewBox="0 0 400 300" width="260" xmlns="http://www.w3.org/2000/svg" style="opacity:0.28">
         <defs>
