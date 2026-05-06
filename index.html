@@ -386,17 +386,20 @@ box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 /* Tab transitions */
 .view{
 opacity:0;
-transform:translateX(12px);
-transition:opacity .25s ease, transform .25s ease;
 pointer-events:none;
 position:absolute;
-width:100%;
+top:56px;left:0;right:0;
 }
 .view.active{
 opacity:1;
-transform:translateX(0);
 pointer-events:all;
 position:relative;
+top:auto;
+animation:tabFadeIn .22s ease forwards;
+}
+@keyframes tabFadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
 }
 </style>
 
