@@ -765,18 +765,17 @@ function renderTodaySessions(){
   todayClients.forEach(c=>{
     const todayDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
-    // Extract time from schedule
     const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
     const time=timeMatch?timeMatch[0]:`${c.duration||60} min`;
-    html+=`<div class="today-card ${isLogged?'logged':''}">
-      <div class="client-avatar" style="width:36px;height:36px;font-size:13px;border-radius:10px;flex-shrink:0">${c.first[0]}${c.last?c.last[0]:''}</div>
-      <div style="flex:1">
-        <div class="today-name">${c.first} ${c.last||''}</div>
-        <div class="today-time">${time}${isLogged?' · ✓ Logged':''}</div>
+    html+=`<div style="background:#0d1117;border:1px solid ${isLogged?'rgba(71,255,176,0.2)':'rgba(37,99,235,0.25)'};border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;opacity:${isLogged?'0.5':'1'}">
+      <div style="width:34px;height:34px;border-radius:9px;background:#2563eb;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-weight:800;font-size:13px;color:#fff;flex-shrink:0">${c.first[0]}${c.last?c.last[0]:''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600;color:#fff">${c.first} ${c.last||''}</div>
+        <div style="font-size:11px;color:rgba(100,160,255,0.7)">${time}</div>
       </div>
       ${isLogged
-        ?'<span class="badge badge-green">✓ Done</span>'
-        :`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">⚡ Log</button>`
+        ?'<span style="font-size:10px;color:var(--success);font-weight:600">✓ Done</span>'
+        :`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">⚡ Log</button>`
       }
     </div>`;
   });
