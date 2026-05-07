@@ -56,7 +56,7 @@ if(link)link.href=dataURL;
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Baymade Training</title>
-<!-- v-fix-regen -->
+<!-- v-fix-regen-2 -->
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -794,7 +794,7 @@ function renderDashboard(){
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
   const out=withPkg.filter(c=>c.remaining<=0);
   const totalSess=clients.reduce((a,c)=>a+(c._sessions||[]).length,0);
-  const statStyle='font-family:Syne,sans-serif;font-size:42px;font-weight:800;line-height:1;letter-spacing:-2px;-webkit-font-smoothing:antialiased';
+  const statStyle='font-family:Syne,sans-serif;font-size:42px;font-weight:800;line-height:1;letter-spacing:-2px';
   document.getElementById('dashStats').innerHTML=`
     <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
     <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions Logged</div></div>
