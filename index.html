@@ -786,11 +786,13 @@ function renderDashboard(){
   const withPkg=clients.filter(c=>c.package_size>0&&!c.paused);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
   const out=withPkg.filter(c=>c.remaining<=0);
-  const totalSess=clients.reduce((a,c)=>a+(c._sessions||[]).length,0);
+  const now=new Date();
+  const monthStr=now.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  const totalSess=clients.reduce((a,c)=>a+(c._sessions||[]).filter(s=>s.date&&s.date.includes(now.toLocaleDateString('en-US',{month:'short',year:'numeric'}).split(' ')[0])&&s.date.includes(now.getFullYear())).length,0);
   const statStyle='font-family:Syne,sans-serif;font-size:42px;font-weight:800;line-height:1;letter-spacing:-2px';
   document.getElementById('dashStats').innerHTML=`
     <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions Logged</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">This Month</div></div>
     <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="${statStyle};color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
     <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="${statStyle};color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
   let alerts='';
