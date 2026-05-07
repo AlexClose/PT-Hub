@@ -685,6 +685,9 @@ async function init(){
     [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
     document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
     renderDashboard();
+    // Load all sessions then re-render
+    await Promise.all(clients.map(c=>db.getSessions(c.id).then(s=>{c._sessions=s;}).catch(()=>{c._sessions=[];})));
+    renderDashboard();
   }catch(e){
     document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
   }
