@@ -181,7 +181,8 @@ async function init(){
     document.getElementById('clientSub').textContent=`${client.level} · ${client.duration||60} min sessions`;
     render();
   }catch(e){
-    document.getElementById('appContent').innerHTML=`<div class="empty">Could not load your workout.<br>Check your connection and try again.</div>`;
+    console.error('Portal error:', e);
+    document.getElementById('appContent').innerHTML=`<div class="empty">Error: ${e.message}<br><br>Path: ${path}<br>ID: ${clientId||'not found'}</div>`;
   }
 }
 
