@@ -713,14 +713,22 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 
 // ── DASHBOARD ──
 function getTodayClients(){
-  const days=['SU','MO','TU','WE','TH','FR','SA'];
-  const dayNames=['sun','mon','tue','wed','thu','fri','sat'];
+  const dayPatterns=[
+    ['sun','sunday'],
+    ['mon','monday'],
+    ['tue','tuesday','tues'],
+    ['wed','wednesday'],
+    ['thu','thursday','thur','thurs'],
+    ['fri','friday'],
+    ['sat','saturday']
+  ];
   const todayIdx=new Date().getDay();
-  const todayStr=dayNames[todayIdx];
+  const patterns=dayPatterns[todayIdx];
   return clients.filter(c=>{
     if(!c.schedule)return false;
     if(c.paused)return false;
-    return c.schedule.toLowerCase().includes(todayStr);
+    const sched=c.schedule.toLowerCase();
+    return patterns.some(p=>sched.includes(p));
   });
 }
 
@@ -784,10 +792,10 @@ function renderDashboard(){
   const out=withPkg.filter(c=>c.remaining<=0);
   const totalSess=clients.reduce((a,c)=>a+(c._sessions||[]).length,0);
   document.getElementById('dashStats').innerHTML=`
-    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffffff">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffffff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions Logged</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
+    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffffff;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffffff;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions Logged</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ffb347;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:#ff5c6a;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
   let alerts='';
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
