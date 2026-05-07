@@ -733,13 +733,14 @@ function getTodayClients(){
 }
 
 function renderTodaySessions(){
-  const todayClients=getTodayClients();
   const el=document.getElementById('todaySessions');
-  if(!el)return;
+  if(!el){ console.log('NO todaySessions element found'); return; }
+  const dayNames2=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName=dayNames2[new Date().getDay()];
+  const todayClients=getTodayClients();
+  console.log('Today:', todayName, 'Clients found:', todayClients.length, todayClients.map(c=>c.first));
   if(todayClients.length===0){
-    const dayNames2=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const todayName=dayNames2[new Date().getDay()];
-    el.innerHTML=`<div style="padding:12px 16px;background:#0d1117;border:1px solid rgba(37,99,235,0.2);border-radius:12px;margin-bottom:4px"><div class="page-label" style="color:#4fa3e8;margin-bottom:4px">Today — ${todayName}</div><div class="muted" style="font-size:12px">No clients scheduled today</div></div>`;
+    el.innerHTML=`<div style="padding:12px 16px;background:#0d1117;border:1px solid rgba(37,99,235,0.2);border-radius:12px;margin-bottom:16px"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#4fa3e8;margin-bottom:4px">TODAY — ${todayName.toUpperCase()}</div><div style="font-size:12px;color:rgba(180,200,230,0.4)">No clients scheduled today</div></div>`;
     return;
   }
   const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
