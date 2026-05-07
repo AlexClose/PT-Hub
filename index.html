@@ -817,7 +817,7 @@ function renderDashboard(){
   const now=new Date();
   const currentMonth=now.getMonth();
   const currentYear=now.getFullYear();
-  const totalSess=clients.reduce((a,c)=>a+(c._sessions||[]).filter(s=>{
+  const totalSess=clients.filter(c=>!c.is_test).reduce((a,c)=>a+(c._sessions||[]).filter(s=>{
     if(!s.date)return false;
     const d=new Date(s.date);
     return d.getMonth()===currentMonth && d.getFullYear()===currentYear;
