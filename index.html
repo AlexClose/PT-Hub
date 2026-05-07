@@ -735,52 +735,42 @@ function getTodayClients(){
 
 function renderTodaySessions(){
   const el=document.getElementById('todaySessions');
-  if(!el){ console.log('NO todaySessions element found'); return; }
-  const dayNames2=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const todayName=dayNames2[new Date().getDay()];
-  const todayClients=getTodayClients();
-  console.log('Today:', todayName, 'Clients found:', todayClients.length, todayClients.map(c=>c.first));
-  if(todayClients.length===0){
-    el.innerHTML=`<div style="padding:12px 16px;background:#0d1117;border:1px solid rgba(37,99,235,0.2);border-radius:12px;margin-bottom:16px"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#4fa3e8;margin-bottom:4px">TODAY — ${todayName.toUpperCase()}</div><div style="font-size:12px;color:rgba(180,200,230,0.4)">No clients scheduled today</div></div>`;
-    return;
-  }
+  if(!el)return;
   const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const today=dayNames[new Date().getDay()];
-  const logged=todayClients.filter(c=>{
-    const sess=c._sessions||[];
-    const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    return sess.some(s=>s.date===today);
-  });
-  const unlogged=todayClients.filter(c=>{
-    const sess=c._sessions||[];
-    const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    return !sess.some(s=>s.date===today);
-  });
+  const todayName=dayNames[new Date().getDay()];
+  const todayClients=getTodayClients();
+  if(todayClients.length===0){el.innerHTML='';return;}
+  const todayDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const loggedCount=todayClients.filter(c=>(c._sessions||[]).some(s=>s.date===todayDate)).length;
+  const allDone=loggedCount===todayClients.length;
 
-  let html=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div class="page-label" style="margin:0;color:#4fa3e8">Today — ${today}</div>
-    <span style="font-size:12px;color:var(--muted)">${logged.length}/${todayClients.length} logged</span>
-  </div>`;
+  // Build dots
+  const dots=todayClients.map(c=>{
+    const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
+    return `<div title="${c.first}" style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>`;
+  }).join('');
 
-  todayClients.forEach(c=>{
-    const todayDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  // Build expanded list
+  const list=todayClients.map(c=>{
     const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
     const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
-    const time=timeMatch?timeMatch[0]:`${c.duration||60} min`;
-    html+=`<div style="background:#0d1117;border:1px solid ${isLogged?'rgba(71,255,176,0.2)':'rgba(37,99,235,0.25)'};border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;opacity:${isLogged?'0.5':'1'}">
-      <div style="width:34px;height:34px;border-radius:9px;background:#2563eb;display:flex;align-items:center;justify-content:center;font-family:Syne,sans-serif;font-weight:800;font-size:13px;color:#fff;flex-shrink:0">${c.first[0]}${c.last?c.last[0]:''}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:14px;font-weight:600;color:#fff">${c.first} ${c.last||''}</div>
-        <div style="font-size:11px;color:rgba(100,160,255,0.7)">${time}</div>
-      </div>
-      ${isLogged
-        ?'<span style="font-size:10px;color:var(--success);font-weight:600">✓ Done</span>'
-        :`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:7px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">⚡ Log</button>`
-      }
+    const time=timeMatch?timeMatch[0]:'';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>
+      <div style="flex:1;font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
+      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">⚡ Log</button>`:''}
     </div>`;
-  });
+  }).join('');
 
-  el.innerHTML=html;
+  el.innerHTML=`<div style="background:#0d1117;border:1px solid rgba(37,99,235,0.25);border-radius:12px;margin-bottom:16px;overflow:hidden">
+    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4fa3e8;flex-shrink:0">TODAY</div>
+      <div style="display:flex;gap:4px;align-items:center;flex:1">${dots}</div>
+      <div style="font-size:11px;color:${allDone?'#43d9a2':'rgba(180,200,230,0.4)'};font-weight:600;flex-shrink:0">${loggedCount}/${todayClients.length}</div>
+      <div style="color:rgba(180,200,230,0.3);font-size:12px">▼</div>
+    </div>
+    <div id="todayExpanded" style="display:none;padding:0 16px 12px">${list}</div>
+  </div>`;
 }
 
 function quickLog(id){
