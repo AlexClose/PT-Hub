@@ -160,7 +160,10 @@ let client=null, sessions=[], activeDay=0;
 
 async function init(){
   // Get client name from URL path e.g. /alex or /kathryn
-  const path=window.location.pathname.replace('/','').toLowerCase().trim();
+  // Handle /alex, /alex.html, alex etc.
+  const rawPath=window.location.pathname.toLowerCase().trim();
+  const path=rawPath.replace(/^\/+/,'').replace(/\.html$/,'').trim();
+  console.log('Portal path:', path);
   const clientId=CLIENT_ROUTES[path];
 
   if(!clientId){
