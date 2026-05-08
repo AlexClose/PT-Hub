@@ -137,7 +137,13 @@ return map;
 }
 
 function init(){
+// Show error if nothing loads in 5 seconds
+var timeout=setTimeout(function(){
+document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">Timeout — could not connect to database.<br><br>CLIENT_ID: ‘+CLIENT_ID.substring(0,8)+’…</div>’;
+},5000);
+
 sbGet(‘clients’,‘id=eq.’+CLIENT_ID).then(function(clients){
+clearTimeout(timeout);
 if(!clients||!clients.length){document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">Profile not found.</div>’;return;}
 client=clients[0];
 return sbGet(‘sessions’,‘client_id=eq.’+CLIENT_ID+’&order=created_at.desc’).then(function(s){
@@ -150,7 +156,8 @@ activeDay=sm[todayIdx]!==undefined?sm[todayIdx]:null;
 render();
 });
 }).catch(function(e){
-document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">Connection error: ‘+e.message+’</div>’;
+clearTimeout(timeout);
+document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">Error: ‘+e.message+’<br><br>Check network connection.</div>’;
 });
 }
 
