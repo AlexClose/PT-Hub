@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 
+<!-- build:1778238376 -->
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -137,9 +139,9 @@ return map;
 }
 
 function init(){
-// Show error if nothing loads in 5 seconds
+document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">JS is running - fetching data…</div>’;
 var timeout=setTimeout(function(){
-document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">Timeout — could not connect to database.<br><br>CLIENT_ID: ‘+CLIENT_ID.substring(0,8)+’…</div>’;
+document.getElementById(‘appContent’).innerHTML=’<div class="empty-state">TIMEOUT after 5s<br>CLIENT_ID: ‘+CLIENT_ID.substring(0,8)+’…<br>Check network.</div>’;
 },5000);
 
 sbGet(‘clients’,‘id=eq.’+CLIENT_ID).then(function(clients){
