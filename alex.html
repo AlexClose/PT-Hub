@@ -6,10 +6,22 @@
 <title>Baymade Training</title>
 <style>
 body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}
+.week{display:flex;gap:6px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;scrollbar-width:none;}
+.week::-webkit-scrollbar{display:none;}
+.wd{flex-shrink:0;width:50px;background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:12px;padding:10px 0;text-align:center;cursor:pointer;}
+.wd.active{background:#2563eb;border-color:#2563eb;}
+.wd.workout{border-color:rgba(96,165,250,0.35);}
+.wd.done{background:rgba(52,211,153,0.06);border-color:rgba(52,211,153,0.35);}
+.rest{background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:16px;padding:32px 20px;text-align:center;}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<div id="out">Loading...</div>
+<div id="main">
+<div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
+<div style="width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite"></div>
+</div>
+</div>
 <script>
 var SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
@@ -51,8 +63,52 @@ var ti=new Date().getDay();
 aDay=(sm[ti]!==undefined)?sm[ti]:null;
 var prog=cli.structured_program;
 var days=(prog&&prog.days)?prog.days:[];
-var dayName=aDay!==null?days[aDay].name:'Rest Day';
-document.getElementById('out').textContent='Hello '+cli.first+' - Today: '+dayName;
+var now=new Date();
+var sow=new Date(now);
+sow.setDate(now.getDate()-now.getDay());
+
+var week='<div class="week">';
+for(var i=0;i<7;i++){
+var d=new Date(sow);
+d.setDate(sow.getDate()+i);
+var di=d.getDay();
+var isTod=(d.toDateString()===now.toDateString());
+var pdi=sm[di];
+var hasW=(pdi!==undefined);
+var cls='wd';
+if(isTod&&aDay!==null)cls+=' active';
+else if(hasW)cls+=' workout';
+var wn=(hasW&&days[pdi])?days[pdi].name.split(' ')[0]:'';
+var dlc=(isTod&&aDay!==null)?'rgba(255,255,255,0.8)':'rgba(180,200,235,0.4)';
+var dc=(isTod&&aDay!==null)?'#fff':'#eef2fa';
+var pf=(pdi!==undefined)?String(pdi):'null';
+week+='<div class="'+cls+'" onclick="selDay('+pf+')">';
+week+='<div style="font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:'+dlc+'">'+DN[di]+'</div>';
+week+='<div style="font-size:16px;font-weight:700;margin:2px 0;color:'+dc+'">'+d.getDate()+'</div>';
+if(wn)week+='<div style="font-size:7px;color:rgba(100,160,255,0.6);margin-top:2px">'+wn+'</div>';
+week+='</div>';
+}
+week+='</div>';
+
+var wc='';
+if(aDay===null){
+wc='<div class="rest"><div style="font-size:18px;font-weight:700;margin-bottom:8px">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45)">No workout today. Recovery is part of the program!</div></div>';
+} else {
+var day=days[aDay];
+wc='<div style="font-size:22px;font-weight:700;margin-bottom:12px">'+(day?day.name:'')+'</div>';
+}
+
+var html='<div style="font-size:26px;font-weight:700;margin-bottom:6px">Hello '+cli.first+'</div>';
+html+='<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px">'+(aDay!==null?'Here is your workout for today.':'Rest up - no workout today.')+'</div>';
+html+=week+wc;
+
+document.getElementById('main').innerHTML=html;
+}
+
+function selDay(idx){
+if(idx===null||idx===undefined)return;
+aDay=idx;
+render();
 }
 
 function init(){
@@ -66,7 +122,7 @@ sess=s;
 render();
 })
 .catch(function(e){
-document.getElementById('out').textContent='Error: '+e.message;
+document.getElementById('main').innerHTML='<p style="color:#f87171;padding:20px">Error: '+e.message+'</p>';
 });
 }
 
