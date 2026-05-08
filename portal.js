@@ -50,12 +50,7 @@ return map;
 function showError(msg){
 var main=document.getElementById(‘main’);
 if(!main)return;
-main.innerHTML=’<div style="padding:24px">’
-+’<div style="color:#f87171;font-family:monospace;font-size:13px;background:#1a0a0a;border:1px solid rgba(255,100,100,0.2);border-radius:10px;padding:16px;margin-bottom:12px">ERROR: ‘+msg+’</div>’
-+’<div style="color:rgba(180,200,235,0.4);font-size:11px">CLIENT_ID: ‘+CLIENT_ID+’</div>’
-+’<div style="color:rgba(180,200,235,0.4);font-size:11px;margin-top:4px">SB_URL: ‘+SB_URL+’</div>’
-+’<button onclick="init()" style="margin-top:16px;width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-size:13px;font-weight:700;cursor:pointer">Retry</button>’
-+’</div>’;
+main.innerHTML=’<div style="padding:24px"><div style="color:#f87171;font-size:13px;background:#1a0a0a;border:1px solid rgba(255,100,100,0.2);border-radius:10px;padding:16px;margin-bottom:12px">ERROR: ‘+msg+’</div><button onclick="init()" style="margin-top:16px;width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-size:13px;font-weight:700;cursor:pointer">Retry</button></div>’;
 }
 
 function init(){
@@ -73,14 +68,14 @@ sess=s;
 var cnEl=document.getElementById(‘cname’);
 var clEl=document.getElementById(‘clvl’);
 if(cnEl)cnEl.textContent=((cli.first||’’)+’ ‘+(cli.last||’’)).trim();
-if(clEl)clEl.textContent=(cli.level||’’)+’ · ‘+(cli.duration||60)+’ min’;
+if(clEl)clEl.textContent=(cli.level||’’)+’ - ‘+(cli.duration||60)+’ min’;
 var sm=getSM();
 var ti=new Date().getDay();
 aDay=sm[ti]!==undefined?sm[ti]:null;
 render();
 })
 .catch(function(e){
-showError(e.message||String(e));
+showError(e.message||‘Unknown error’);
 });
 }
 
@@ -121,7 +116,7 @@ week+=’</div>’;
 
 var wc=’’;
 if(aDay===null){
-wc=’<div class="rest"><div style="font-size:40px;margin-bottom:12px">😴</div><div style="font-size:18px;font-weight:700;margin-bottom:6px">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45)">No workout today.<br>Recovery is part of the program!</div></div>’;
+wc=’<div class="rest"><div style="font-size:18px;font-weight:700;margin-bottom:6px">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45)">No workout today. Recovery is part of the program!</div></div>’;
 } else {
 var day=days[aDay];
 var hist=cli.exercise_history||{};
@@ -135,11 +130,11 @@ var isSS=/^SS/i.test(ex.name);
 var nm=ex.name.replace(/^SS\w+:\s*/i,’’);
 var lastHtml=’’;
 if(last){
-lastHtml=’<div style="font-size:11px;color:#60a5fa;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:10px">Last: ‘+(last.reps||’—’)+’  ·  ‘+(last.weight||’—’)+’</div>’;
+lastHtml=’<div style="font-size:11px;color:#60a5fa;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:10px">Last: ‘+(last.reps||’-’)+’  /  ‘+(last.weight||’-’)+’</div>’;
 }
 var rph=last&&last.reps?last.reps:‘Sets x Reps’;
 var wph=last&&last.weight?last.weight:‘Weight / Load’;
-var loadStr=ex.load?’  ·  <span style="color:rgba(180,200,235,0.45)">’+ex.load+’</span>’:’’;
+var loadStr=ex.load?’  /  ‘+ex.load:’’;
 exs+=’<div class="ex'+(isSS?' ss':'')+'">’;
 if(isSS)exs+=’<span style="font-size:8px;font-weight:700;letter-spacing:2px;color:#fbbf24;background:rgba(251,191,36,0.1);border-radius:4px;padding:2px 6px;display:inline-block;margin-bottom:7px">SUPERSET</span>’;
 exs+=’<div style="font-size:15px;font-weight:600;margin-bottom:3px">’+nm+’</div>’;
@@ -152,7 +147,7 @@ exs+=’</div></div>’;
 }
 }
 var exCount=day&&day.exercises?day.exercises.length:0;
-var loggedNote=tL?’  ·  <span style="color:#34d399">✓ Logged today</span>’:’’;
+var loggedNote=tL?’ - <span style="color:#34d399">Logged today</span>’:’’;
 wc=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.18);border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden">’;
 wc+=’<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#60a5fa,#93c5fd)"></div>’;
 wc+=’<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px">Today's Workout</div>’;
@@ -161,7 +156,7 @@ wc+=’<div style="font-size:12px;color:rgba(180,200,235,0.45);margin-top:4px">�
 wc+=’</div>’;
 wc+=exs;
 wc+=’<textarea class="note" id="snote" placeholder="Add a note (optional)..."></textarea>’;
-wc+=’<button class="log-btn" id="lbtn" onclick="logIt()">⚡  Log This Workout</button>’;
+wc+=’<button class="log-btn" id="lbtn" onclick="logIt()">Log This Workout</button>’;
 }
 
 var hh=’’;
@@ -173,19 +168,19 @@ var sv=recent[si];
 var wnames=’’;
 if(sv.workout&&sv.workout.length){
 var sl=sv.workout.slice(0,3).map(function(w){return w.name.replace(/^SS\w+:\s*/i,’’);});
-wnames=’<div style="font-size:11px;color:rgba(180,200,235,0.45);margin-top:2px">’+sl.join(’ · ‘)+(sv.workout.length>3?’ +’+(sv.workout.length-3)+’ more’:’’)+’</div>’;
+wnames=’<div style="font-size:11px;color:rgba(180,200,235,0.45);margin-top:2px">’+sl.join(’ / ‘)+(sv.workout.length>3?’ +’+(sv.workout.length-3)+’ more’:’’)+’</div>’;
 }
 hh+=’<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(120,160,255,0.08)">’;
 hh+=’<div><div style="font-size:13px;font-weight:600">’+sv.date+’</div>’+wnames+’</div>’;
-hh+=’<span style="font-size:10px;color:#34d399;font-weight:700">✓ DONE</span>’;
+hh+=’<span style="font-size:10px;color:#34d399;font-weight:700">Done</span>’;
 hh+=’</div>’;
 }
 hh+=’</div>’;
 }
 
 var greeting=’<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px">Client Portal</div>’;
-greeting+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;font-family:\'Syne\',sans-serif">’+greet()+’,<br>’+cli.first+’ 👋</div>’;
-greeting+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px">’+(aDay!==null?‘Here's your workout for today.’:‘Rest up — no workout today.’)+’</div>’;
+greeting+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;font-family:\'Syne\',sans-serif">’+greet()+’,<br>’+cli.first+’</div>’;
+greeting+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px">’+(aDay!==null?‘Here's your workout for today.’:‘Rest up - no workout today.’)+’</div>’;
 
 var main=document.getElementById(‘main’);
 if(main)main.innerHTML=greeting+week+wc+hh;
@@ -234,7 +229,7 @@ return sb(‘GET’,‘sessions’,null,’?client_id=eq.’+CLIENT_ID+’&order
 sess=s;
 var ov=document.createElement(‘div’);
 ov.style.cssText=‘position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);pointer-events:none;’;
-ov.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0"><div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:44px">⚡</div><div style="font-size:24px;font-weight:700;letter-spacing:3px;color:#fff;font-family:\'Syne\',sans-serif">CRUSHED IT</div><div style="font-size:13px;color:rgba(52,211,153,0.8)">Workout saved ✓</div></div>’;
+ov.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0"><div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;font-weight:700">OK</div><div style="font-size:24px;font-weight:700;letter-spacing:3px;color:#fff;font-family:\'Syne\',sans-serif">CRUSHED IT</div><div style="font-size:13px;color:rgba(52,211,153,0.8)">Workout saved</div></div>’;
 document.body.appendChild(ov);
 setTimeout(function(){
 ov.style.transition=‘opacity .4s’;
@@ -244,8 +239,8 @@ setTimeout(function(){ov.remove();},400);
 render();
 })
 .catch(function(e){
-if(btn){btn.disabled=false;btn.textContent=‘⚡  Log This Workout’;}
-toast(‘Error saving — try again’);
+if(btn){btn.disabled=false;btn.textContent=‘Log This Workout’;}
+toast(‘Error saving - try again’);
 });
 }
 
