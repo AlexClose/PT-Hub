@@ -14,9 +14,11 @@ body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}
 var SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 var CLIENT_ID='06acdc81-5f0b-4481-917a-d27baf89bc51';
+var cli=null,sess=[],aDay=null;
+var DN=['Su','Mo','Tu','We','Th','Fr','Sa'];
 fetch(SB_URL+'/rest/v1/clients?id=eq.'+CLIENT_ID,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}})
 .then(function(r){return r.json();})
-.then(function(d){document.getElementById('out').textContent='Hello '+d[0].first;})
+.then(function(d){cli=d[0];document.getElementById('out').textContent='Hello '+cli.first;})
 .catch(function(e){document.getElementById('out').textContent='Error: '+e.message;});
 </script>
 </body>
