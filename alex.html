@@ -227,7 +227,7 @@ hh+=’</div>’;
 }
 
 var greeting=’<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px">Client Portal</div>’;
-greeting+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;font-family:\'Syne\',sans-serif">’+greet()+’,<br>’+cli.first+’</div>’;
+greeting+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;font-family:Syne,sans-serif">’+greet()+’,<br>’+cli.first+’</div>’;
 greeting+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px">’+(aDay!==null?‘Here is your workout for today.’:‘Rest up - no workout today.’)+’</div>’;
 
 var main=document.getElementById(‘main’);
@@ -277,7 +277,7 @@ return sb(‘GET’,‘sessions’,null,’?client_id=eq.’+CLIENT_ID+’&order
 sess=s;
 var ov=document.createElement(‘div’);
 ov.style.cssText=‘position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);pointer-events:none;’;
-ov.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0"><div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:800">OK</div><div style="font-size:24px;font-weight:700;letter-spacing:3px;color:#fff;font-family:\'Syne\',sans-serif">CRUSHED IT</div><div style="font-size:13px;color:rgba(52,211,153,0.8)">Workout saved</div></div>’;
+ov.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0"><div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:800">OK</div><div style="font-size:24px;font-weight:700;letter-spacing:3px;color:#fff;font-family:Syne,sans-serif">CRUSHED IT</div><div style="font-size:13px;color:rgba(52,211,153,0.8)">Workout saved</div></div>’;
 document.body.appendChild(ov);
 setTimeout(function(){
 ov.style.transition=‘opacity .4s’;
