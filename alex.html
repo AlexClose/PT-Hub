@@ -16,10 +16,36 @@ var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 var CLIENT_ID='06acdc81-5f0b-4481-917a-d27baf89bc51';
 var cli=null,sess=[],aDay=null;
 var DN=['Su','Mo','Tu','We','Th','Fr','Sa'];
-fetch(SB_URL+'/rest/v1/clients?id=eq.'+CLIENT_ID,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}})
-.then(function(r){return r.json();})
-.then(function(d){cli=d[0];document.getElementById('out').textContent='Hello '+cli.first;})
-.catch(function(e){document.getElementById('out').textContent='Error: '+e.message;});
+
+function sb(method,table,body,params){
+if(params===undefined)params='';
+var url=SB_URL+'/rest/v1/'+table+params;
+var opts={method:method,headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+if(body)opts.body=JSON.stringify(body);
+return fetch(url,opts).then(function(res){
+return res.text().then(function(t){
+if(!res.ok)throw new Error(t||'failed');
+return t?JSON.parse(t):[];
+});
+});
+}
+
+function init(){
+sb('GET','clients',null,'?id=eq.'+CLIENT_ID)
+.then(function(data){
+cli=data[0];
+return sb('GET','sessions',null,'?client_id=eq.'+CLIENT_ID+'&order=created_at.desc');
+})
+.then(function(s){
+sess=s;
+document.getElementById('out').textContent='Hello '+cli.first+' - '+sess.length+' sessions';
+})
+.catch(function(e){
+document.getElementById('out').textContent='Error: '+e.message;
+});
+}
+
+init();
 </script>
 </body>
 </html>
