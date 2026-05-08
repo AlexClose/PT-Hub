@@ -49,8 +49,11 @@ async function patch(table,params,body){
 }
 
 async function init(){
+  document.getElementById('clientSub').textContent='JS running...';
   try{
+    document.getElementById('clientSub').textContent='Fetching...';
     const c=await get('clients','id=eq.'+ID);
+    document.getElementById('clientSub').textContent='Got '+c.length+' results';
     if(!c||!c.length){document.getElementById('clientName').textContent='Not found';return;}
     client=c[0];
     sessions=await get('sessions','client_id=eq.'+ID+'&order=created_at.desc');
