@@ -1,73 +1,23 @@
 <!DOCTYPE html>
-
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Baymade Training</title>
-<style>
-body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}
-@keyframes spin{to{transform:rotate(360deg)}}
-</style>
+<style>body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}</style>
 </head>
 <body>
-<div id="main">
-<div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
-<div style="width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite"></div>
-</div>
-</div>
+<div id="out">Loading...</div>
 <script>
 var SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 var CLIENT_ID='06acdc81-5f0b-4481-917a-d27baf89bc51';
-var cli=null,sess=[],aDay=null;
-var DN=['Su','Mo','Tu','We','Th','Fr','Sa'];
 var HDRS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
 
-function getSM(){
-var prog=cli.structured_program;
-if(!prog||!prog.days)return{};
-var days=prog.days;
-var sc=(cli.schedule||’’).toLowerCase();
-var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
-var m=[],map={};
-Object.keys(dm).forEach(function(k){
-if(sc.indexOf(k)!==-1&&m.indexOf(dm[k])===-1)m.push(dm[k]);
-});
-m.sort(function(a,b){return a-b;});
-m.forEach(function(d,i){if(i<days.length)map[d]=i;});
-return map;
-}
-
-function render(){
-var sm=getSM();
-var ti=new Date().getDay();
-aDay=(sm[ti]!==undefined)?sm[ti]:null;
-var prog=cli.structured_program;
-var days=(prog&&prog.days)?prog.days:[];
-var dayName=aDay!==null?days[aDay].name:‘Rest Day’;
-document.getElementById(‘main’).innerHTML=’<p style="color:#34d399;padding:20px">Render OK - ‘+cli.first+’ - Today: ‘+dayName+’ - Sessions: ‘+sess.length+’</p>’;
-}
-
-fetch(SB_URL+’/rest/v1/clients?id=eq.’+CLIENT_ID,{headers:HDRS})
+fetch(SB_URL+'/rest/v1/clients?id=eq.'+CLIENT_ID,{headers:HDRS})
 .then(function(r){return r.json();})
-.then(function(d){
-cli=d[0];
-return fetch(SB_URL+’/rest/v1/sessions?client_id=eq.’+CLIENT_ID+’&order=created_at.desc’,{headers:HDRS});
-})
-.then(function(r){return r.json();})
-.then(function(s){
-sess=s;
-try{
-render();
-}catch(e){
-document.getElementById(‘main’).innerHTML=’<p style="color:#f87171;padding:20px">Render error: ‘+e.message+’</p>’;
-}
-})
-.catch(function(e){
-document.getElementById(‘main’).innerHTML=’<p style="color:#f87171;padding:20px">Fetch error: ‘+e.message+’</p>’;
-});
+.then(function(d){document.getElementById('out').textContent='Got: '+d[0].first;})
+.catch(function(e){document.getElementById('out').textContent='Error: '+e.message;});
 </script>
-
 </body>
 </html>
