@@ -278,7 +278,11 @@ return sb(‘GET’,‘sessions’,null,’?client_id=eq.’+CLIENT_ID+’&order
 })
 .then(function(s){
 sess=s;
+try{
 render();
+}catch(e){
+document.getElementById(‘main’).innerHTML=’<div style="padding:20px;color:#f87171">Render error: ‘+e.message+’</div>’;
+}
 })
 .catch(function(e){
 document.getElementById(‘main’).innerHTML=’<div style="padding:20px;color:#f87171">Error: ‘+e.message+’</div>’;
