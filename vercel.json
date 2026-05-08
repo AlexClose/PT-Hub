@@ -2,6 +2,7 @@
   "routes": [
     { "src": "/alex", "dest": "/alex.html" },
     { "src": "/kathryn", "dest": "/kathryn.html" },
+    { "src": "/test", "dest": "/test.html" },
     { "src": "/", "dest": "/index.html" }
   ]
 }
