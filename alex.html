@@ -30,6 +30,31 @@ return t?JSON.parse(t):[];
 });
 }
 
+function getSM(){
+var prog=cli.structured_program;
+if(!prog||!prog.days)return{};
+var days=prog.days;
+var sc=(cli.schedule||'').toLowerCase();
+var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+var m=[],map={};
+Object.keys(dm).forEach(function(k){
+if(sc.indexOf(k)!==-1&&m.indexOf(dm[k])===-1)m.push(dm[k]);
+});
+m.sort(function(a,b){return a-b;});
+m.forEach(function(d,i){if(i<days.length)map[d]=i;});
+return map;
+}
+
+function render(){
+var sm=getSM();
+var ti=new Date().getDay();
+aDay=(sm[ti]!==undefined)?sm[ti]:null;
+var prog=cli.structured_program;
+var days=(prog&&prog.days)?prog.days:[];
+var dayName=aDay!==null?days[aDay].name:'Rest Day';
+document.getElementById('out').textContent='Hello '+cli.first+' - Today: '+dayName;
+}
+
 function init(){
 sb('GET','clients',null,'?id=eq.'+CLIENT_ID)
 .then(function(data){
@@ -38,7 +63,7 @@ return sb('GET','sessions',null,'?client_id=eq.'+CLIENT_ID+'&order=created_at.de
 })
 .then(function(s){
 sess=s;
-document.getElementById('out').textContent='Hello '+cli.first+' - '+sess.length+' sessions';
+render();
 })
 .catch(function(e){
 document.getElementById('out').textContent='Error: '+e.message;
