@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Baymade Training">
+<title>Baymade Training</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c0f;--surface:#0f1317;--surface2:#141820;--surface3:#1a1f28;
+  --border:rgba(100,160,255,0.12);--border2:rgba(100,160,255,0.2);
+  --text:#e8edf5;--muted:rgba(180,200,230,0.45);
+  --accent:#2563eb;--accent-bright:#60a5fa;
+  --success:#43d9a2;--warn:#ffb347;--danger:#ff5c6a;
+  --radius:14px;--radius-sm:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+/* HEADER */
+.header{
+background:rgba(10,12,15,0.96);backdrop-filter:blur(16px);
+border-bottom:1px solid var(–border2);
+padding:16px 20px 14px;position:sticky;top:0;z-index:100;
+}
+.header-logo{font-family:‘Syne’,sans-serif;font-weight:800;font-size:13px;letter-spacing:1px;}
+.header-logo span{color:var(–accent-bright);}
+.header-name{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-top:2px;}
+.header-sub{font-size:12px;color:var(–muted);margin-top:2px;}
+
+/* MAIN */
+main{padding:20px 16px 80px;max-width:640px;margin:0 auto;}
+
+/* DAY SELECTOR */
+.day-tabs{display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+.day-tabs::-webkit-scrollbar{display:none;}
+.day-tab{
+font-family:‘Syne’,sans-serif;font-size:11px;font-weight:700;
+letter-spacing:.5px;text-transform:uppercase;
+padding:10px 18px;border-radius:20px;cursor:pointer;
+border:1px solid var(–border2);background:var(–surface);
+color:var(–muted);transition:all .2s;white-space:nowrap;flex-shrink:0;
+}
+.day-tab.active{background:var(–accent);color:#fff;border-color:var(–accent);box-shadow:0 2px 12px rgba(37,99,235,0.4);}
+
+/* EXERCISES */
+.section-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(–muted);margin-bottom:12px;}
+.ex-card{
+background:var(–surface);border:1px solid var(–border2);
+border-radius:var(–radius);padding:16px;margin-bottom:10px;
+}
+.ex-card.superset{border-left:3px solid var(–warn);padding-left:14px;}
+.ss-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(–warn);margin-bottom:6px;}
+.ex-name{font-size:16px;font-weight:600;color:var(–text);margin-bottom:3px;}
+.ex-prescription{font-size:12px;color:var(–accent-bright);margin-bottom:8px;}
+.ex-last{font-size:11px;color:var(–accent-bright);background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:4px 10px;display:inline-block;margin-bottom:10px;}
+.ex-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.ex-inputs input{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:8px;color:var(–text);font-family:‘Instrument Sans’,sans-serif;
+font-size:15px;font-weight:600;padding:12px;text-align:center;outline:none;
+transition:all .2s;-webkit-font-smoothing:antialiased;
+}
+.ex-inputs input:focus{border-color:var(–accent);background:var(–surface3);box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
+.ex-inputs input:not(:placeholder-shown){color:var(–success) !important;-webkit-text-fill-color:var(–success) !important;}
+.input-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(–muted);text-align:center;margin-top:3px;font-weight:600;}
+
+/* NOTE */
+.note-wrap{margin-bottom:16px;}
+.note-wrap textarea{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:var(–radius-sm);color:var(–text);
+font-family:‘Instrument Sans’,sans-serif;font-size:14px;
+padding:12px 14px;width:100%;outline:none;resize:none;height:72px;
+transition:border-color .2s;
+}
+.note-wrap textarea:focus{border-color:var(–accent);}
+
+/* LOG BUTTON */
+.log-btn{
+width:100%;background:var(–accent);color:#fff;border:none;
+border-radius:var(–radius-sm);padding:16px;
+font-family:‘Syne’,sans-serif;font-size:14px;font-weight:700;
+letter-spacing:1px;text-transform:uppercase;cursor:pointer;
+box-shadow:0 4px 20px rgba(37,99,235,0.4);transition:all .2s;
+}
+.log-btn:active{transform:scale(0.98);}
+.log-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* HISTORY */
+.history-item{
+padding:12px 0;border-bottom:1px solid var(–border);
+display:flex;align-items:flex-start;justify-content:space-between;
+}
+.history-date{font-size:13px;font-weight:600;}
+.history-detail{font-size:11px;color:var(–muted);margin-top:3px;}
+
+/* SUCCESS */
+.success-overlay{
+position:fixed;inset:0;z-index:500;
+display:flex;align-items:center;justify-content:center;
+background:rgba(0,0,0,0.75);pointer-events:none;
+}
+.success-burst{
+display:flex;flex-direction:column;align-items:center;gap:16px;
+animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards;
+opacity:0;
+}
+@keyframes burstIn{0%{opacity:0;transform:scale(0.3)}60%{opacity:1;transform:scale(1.1)}100%{opacity:1;transform:scale(1)}}
+.success-icon{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.5);}
+
+/* LOADING */
+.spinner{width:32px;height:32px;border:3px solid var(–border2);border-top-color:var(–accent);border-radius:50%;animation:spin .7s linear infinite;margin:40px auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(–surface2);border:1px solid var(–border2);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:500;z-index:300;transition:transform .3s;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+.empty{text-align:center;padding:40px 20px;color:var(–muted);}
+</style>
+
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo"><span>BAYMADE</span> TRAINING</div>
+  <div class="header-name" id="clientName">Loading...</div>
+  <div class="header-sub" id="clientSub"></div>
+</div>
+
+<main>
+  <div id="appContent"><div class="spinner"></div></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+const H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+
+// CLIENT ROUTING — add new clients here
+const CLIENT_ROUTES = {
+  'alex':    'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7',
+  'kathryn': 'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7',
+};
+
+async function sb(method,table,body=null,params=''){
+  const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
+  if(!res.ok)throw new Error(await res.text());
+  const t=await res.text();return t?JSON.parse(t):[];
+}
+
+let client=null, sessions=[], activeDay=0;
+
+async function init(){
+  // Get client name from URL path e.g. /alex or /kathryn
+  // Handle /alex, /alex.html, alex etc.
+  const rawPath=window.location.pathname.toLowerCase().trim();
+  const path=rawPath.replace(/^\/+/,'').replace(/\.html$/,'').trim();
+  console.log('Portal path:', path);
+  const clientId=CLIENT_ROUTES[path];
+
+  if(!clientId){
+    document.getElementById('clientName').textContent='Not Found';
+    document.getElementById('appContent').innerHTML=`<div class="empty">This page doesn't exist.<br>Check your link from your trainer.</div>`;
+    return;
+  }
+
+  try{
+    const clients=await sb('GET','clients',null,`?id=eq.${clientId}`);
+    if(!clients.length){throw new Error('Client not found');}
+    client=clients[0];
+    sessions=await sb('GET','sessions',null,`?client_id=eq.${clientId}&order=created_at.desc`);
+    document.getElementById('clientName').textContent=`${client.first} ${client.last||''}`.trim();
+    document.getElementById('clientSub').textContent=`${client.level} · ${client.duration||60} min sessions`;
+    render();
+  }catch(e){
+    console.error('Portal error:', e);
+    document.getElementById('appContent').innerHTML=`<div class="empty">Error: ${e.message}<br><br>Path: ${path}<br>ID: ${clientId||'not found'}</div>`;
+  }
+}
+
+function render(){
+  if(!client.structured_program){
+    document.getElementById('appContent').innerHTML=`<div class="empty">No program assigned yet.<br>Check back soon!</div>`;
+    return;
+  }
+  const prog=client.structured_program;
+  const days=prog.days;
+
+  // Day tabs
+  const tabs=days.map((d,i)=>`<div class="day-tab ${i===activeDay?'active':''}" onclick="setDay(${i})">${d.name}</div>`).join('');
+
+  // Exercises
+  const day=days[activeDay];
+  const history=client.exercise_history||{};
+  const exercises=day.exercises.map((ex,ei)=>{
+    const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+    const last=history[key];
+    const isSuperset=ex.name.match(/^SS/i);
+    const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+    return `<div class="ex-card ${isSuperset?'superset':''}">
+      ${isSuperset?`<div class="ss-label">Superset</div>`:''}
+      <div class="ex-name">${displayName}</div>
+      <div class="ex-prescription">${ex.prescription}${ex.load?' · <span style="color:var(--muted)">${ex.load}</span>':''}</div>
+      ${last?`<div class="ex-last">Last: ${last.reps||'—'} · ${last.weight||'—'} · ${last.date}</div>`:''}
+      <div class="ex-inputs">
+        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="input-label">Sets × Reps</div></div>
+        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="input-label">Weight / Load</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Recent sessions
+  const recentSess=sessions.slice(0,5).map(s=>`
+    <div class="history-item">
+      <div>
+        <div class="history-date">${s.date}</div>
+        ${s.note?`<div class="history-detail">${s.note}</div>`:''}
+        ${s.workout&&s.workout.length>0?`<div class="history-detail" style="color:var(--accent-bright)">${s.workout.slice(0,3).map(w=>w.name.replace(/^SS\w+:\s*/i,'')).join(' · ')}${s.workout.length>3?` +${s.workout.length-3} more`:''}</div>`:''}
+      </div>
+      <span style="font-size:10px;color:var(--success);font-weight:600">✓ Done</span>
+    </div>`).join('');
+
+  document.getElementById('appContent').innerHTML=`
+    <div class="day-tabs">${tabs}</div>
+
+    <div class="section-label">${day.name} — ${day.exercises.length} exercises</div>
+    ${exercises}
+
+    <div class="note-wrap" style="margin-top:16px">
+      <textarea id="sessionNote" placeholder="Add a note about today's session (optional)..."></textarea>
+
+```
+</div>
+
+<button class="log-btn" onclick="logSession()" id="logBtn">⚡ Log This Workout</button>
+
+${sessions.length>0?`
+  <div style="margin-top:28px">
+    <div class="section-label">Recent Sessions</div>
+    ${recentSess}
+    ${sessions.length>5?`<div style="font-size:12px;color:var(--muted);padding-top:8px">+${sessions.length-5} more sessions</div>`:''}
+  </div>
+`:''}
+```
+
+`;
+}
+
+function setDay(i){activeDay=i;render();}
+
+async function logSession(){
+const btn=document.getElementById(‘logBtn’);
+btn.disabled=true;btn.textContent=‘Saving…’;
+const dateStr=new Date().toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+const note=document.getElementById(‘sessionNote’)?.value.trim()||’’;
+const day=client.structured_program.days[activeDay];
+const newHistory={…(client.exercise_history||{})};
+const workout=[];
+const exLogs=[];
+
+day.exercises.forEach((ex,ei)=>{
+const wr=document.getElementById(‘wr-’+ei)?.value.trim();
+const wt=document.getElementById(‘wt-’+ei)?.value.trim();
+if(wr||wt){
+const key=ex.name.toLowerCase().replace(/\s+/g,’_’);
+newHistory[key]={reps:wr||’’,weight:wt||’’,date:dateStr};
+workout.push({name:ex.name,reps:wr||’’,weight:wt||’’});
+exLogs.push({client_id:client.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,’’),reps:wr||’’,weight:wt||’’,day_name:day.name});
+}
+});
+
+try{
+await sb(‘POST’,‘sessions’,{client_id:client.id,date:dateStr,note,workout});
+for(const log of exLogs) await sb(‘POST’,‘exercise_logs’,log);
+await sb(‘PATCH’,‘clients’,{exercise_history:newHistory},`?id=eq.${client.id}`);
+client.exercise_history=newHistory;
+sessions=await sb(‘GET’,‘sessions’,null,`?client_id=eq.${client.id}&order=created_at.desc`);
+
+```
+// Show success animation
+const overlay=document.createElement('div');
+overlay.className='success-overlay';
+overlay.innerHTML=`<div class="success-burst"><div class="success-icon">⚡</div><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:2px">DONE!</div><div style="font-size:13px;color:rgba(67,217,162,0.8)">Workout logged ✓</div></div>`;
+document.body.appendChild(overlay);
+setTimeout(()=>{overlay.style.transition='opacity .3s';overlay.style.opacity='0';setTimeout(()=>overlay.remove(),300);},1200);
+
+render();
+```
+
+}catch(e){
+toast(‘Error saving — check your connection’);
+btn.disabled=false;btn.textContent=‘⚡ Log This Workout’;
+}
+}
+
+function toast(msg){
+const t=document.getElementById(‘toast’);t.textContent=msg;t.classList.add(‘show’);
+setTimeout(()=>t.classList.remove(‘show’),3000);
+}
+
+init();
+</script>
+
+</body>
+</html>
