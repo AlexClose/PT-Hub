@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test</title>
+</head>
+<body style="background:#000;color:#fff;font-family:sans-serif;padding:20px;">
+<h2 id="status">Testing...</h2>
+<div id="output" style="font-size:12px;margin-top:20px;word-break:break-all;"></div>
+
+<script>
+const SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+const ID='06acdc81-5f0b-4481-917a-d27baf89bc51';
+
+document.getElementById('status').textContent='Fetching...';
+
+fetch(`${SB_URL}/rest/v1/clients?id=eq.${ID}`,{
+  headers:{
+    'apikey':SB_KEY,
+    'Authorization':'Bearer '+SB_KEY
+  }
+})
+.then(r=>r.json())
+.then(data=>{
+  document.getElementById('status').textContent='SUCCESS!';
+  document.getElementById('output').textContent=JSON.stringify(data[0]?.first||'no data');
+})
+.catch(e=>{
+  document.getElementById('status').textContent='ERROR';
+  document.getElementById('output').textContent=e.message;
+});
+</script>
+
+</body>
+</html>
