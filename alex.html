@@ -105,27 +105,15 @@ main.innerHTML=’<div style="padding:24px"><div style="color:#f87171;font-size:
 }
 
 function init(){
-sb(‘GET’,‘clients’,null,’?id=eq.’+CLIENT_ID)
-.then(function(clients){
-if(!clients||clients.length===0)throw new Error(‘Client not found’);
-cli=clients[0];
-return sb(‘GET’,‘sessions’,null,’?client_id=eq.’+CLIENT_ID+’&order=created_at.desc’);
-})
-.then(function(s){
-sess=s;
-var cnEl=document.getElementById(‘cname’);
-var clEl=document.getElementById(‘clvl’);
-if(cnEl)cnEl.textContent=((cli.first||’’)+’ ‘+(cli.last||’’)).trim();
-if(clEl)clEl.textContent=(cli.level||’’)+’ - ‘+(cli.duration||60)+’ min’;
-var sm=getSM();
-var ti=new Date().getDay();
-aDay=sm[ti]!==undefined?sm[ti]:null;
-render();
-})
-.catch(function(e){
-showError(e.message||‘Unknown error’);
-});
+  sb('GET','clients',null,'?id=eq.'+CLIENT_ID)
+    .then(function(clients){
+      document.getElementById('main').innerHTML='<p style="padding:20px;color:#34d399">Got '+clients.length+' clients</p>';
+    })
+    .catch(function(e){
+      document.getElementById('main').innerHTML='<p style="padding:20px;color:#f87171">FAIL: '+e.message+'</p>';
+    });
 }
+
 
 function render(){
 var prog=cli.structured_program;
