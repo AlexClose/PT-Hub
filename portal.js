@@ -94,7 +94,7 @@ btn.disabled=true;btn.textContent=‘Saving…’;
 const day=cli.structured_program.days[aDay];
 const ds=new Date().toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
 const note=document.getElementById(‘snote’)?.value.trim()||’’;
-const hist={…(cli.exercise_history||{})},wo=[];
+const hist=Object.assign({},cli.exercise_history||{}),wo=[];
 day.exercises.forEach((ex,i)=>{
 const r=document.getElementById(`r${i}`)?.value.trim();
 const w=document.getElementById(`w${i}`)?.value.trim();
