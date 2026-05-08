@@ -5,5 +5,11 @@
     { "src": "/portal.js", "dest": "/portal.js" },
     { "src": "/test", "dest": "/test.html" },
     { "src": "/", "dest": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/portal.js",
+      "headers": [{ "key": "Content-Type", "value": "application/javascript; charset=utf-8" }]
+    }
   ]
 }
