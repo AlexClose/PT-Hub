@@ -47,12 +47,28 @@ m.forEach(function(d,i){if(i<days.length)map[d]=i;});
 return map;
 }
 
+function showError(msg){
+var main=document.getElementById(‘main’);
+if(!main)return;
+main.innerHTML=’<div style="padding:24px">’
++’<div style="color:#f87171;font-family:monospace;font-size:13px;background:#1a0a0a;border:1px solid rgba(255,100,100,0.2);border-radius:10px;padding:16px;margin-bottom:12px">ERROR: ‘+msg+’</div>’
++’<div style="color:rgba(180,200,235,0.4);font-size:11px">CLIENT_ID: ‘+CLIENT_ID+’</div>’
++’<div style="color:rgba(180,200,235,0.4);font-size:11px;margin-top:4px">SB_URL: ‘+SB_URL+’</div>’
++’<button onclick="init()" style="margin-top:16px;width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-size:13px;font-weight:700;cursor:pointer">Retry</button>’
++’</div>’;
+}
+
 function init(){
-sb(‘GET’,‘clients’,null,’?id=eq.’+CLIENT_ID).then(function(clients){
+var main=document.getElementById(‘main’);
+if(main)main.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px"><div style="width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite"></div><div style="font-size:12px;color:rgba(180,200,235,0.45);letter-spacing:2px;text-transform:uppercase">Loading your workouts</div></div>’;
+
+sb(‘GET’,‘clients’,null,’?id=eq.’+CLIENT_ID)
+.then(function(clients){
+if(!clients||clients.length===0)throw new Error(‘No client found with ID: ‘+CLIENT_ID);
 cli=clients[0];
-if(!cli)throw new Error(‘Client not found’);
 return sb(‘GET’,‘sessions’,null,’?client_id=eq.’+CLIENT_ID+’&order=created_at.desc’);
-}).then(function(s){
+})
+.then(function(s){
 sess=s;
 var cnEl=document.getElementById(‘cname’);
 var clEl=document.getElementById(‘clvl’);
@@ -62,9 +78,9 @@ var sm=getSM();
 var ti=new Date().getDay();
 aDay=sm[ti]!==undefined?sm[ti]:null;
 render();
-}).catch(function(e){
-var main=document.getElementById(‘main’);
-if(main)main.innerHTML=’<p style="padding:20px;color:#f87171">Error loading data: ‘+e.message+’</p>’;
+})
+.catch(function(e){
+showError(e.message||String(e));
 });
 }
 
@@ -78,7 +94,6 @@ var tL=sess.some(function(s){return s.date===ds;});
 var sow=new Date(now);
 sow.setDate(now.getDate()-now.getDay());
 
-// WEEK STRIP
 var week=’<div class="week">’;
 for(var i=0;i<7;i++){
 var d=new Date(sow);
@@ -104,7 +119,6 @@ week+=’</div>’;
 }
 week+=’</div>’;
 
-// WORKOUT CONTENT
 var wc=’’;
 if(aDay===null){
 wc=’<div class="rest"><div style="font-size:40px;margin-bottom:12px">😴</div><div style="font-size:18px;font-weight:700;margin-bottom:6px">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45)">No workout today.<br>Recovery is part of the program!</div></div>’;
@@ -150,7 +164,6 @@ wc+=’<textarea class="note" id="snote" placeholder="Add a note (optional)...">
 wc+=’<button class="log-btn" id="lbtn" onclick="logIt()">⚡  Log This Workout</button>’;
 }
 
-// SESSION HISTORY
 var hh=’’;
 if(sess.length>0){
 hh=’<div style="margin-top:28px"><div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:12px">Recent Sessions</div>’;
@@ -170,7 +183,6 @@ hh+=’</div>’;
 hh+=’</div>’;
 }
 
-// ASSEMBLE
 var greeting=’<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px">Client Portal</div>’;
 greeting+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;font-family:\'Syne\',sans-serif">’+greet()+’,<br>’+cli.first+’ 👋</div>’;
 greeting+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px">’+(aDay!==null?‘Here's your workout for today.’:‘Rest up — no workout today.’)+’</div>’;
