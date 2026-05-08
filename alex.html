@@ -50,7 +50,13 @@ main{padding:20px 16px 80px;max-width:560px;margin:0 auto;}
 </main>
 <div class="toast" id="toast"></div>
 <script>document.getElementById('main').innerHTML='<p style="padding:20px;color:#34d399">Script reached</p>';</script>
-<script src="/portal.js"></script>
+<script>
+fetch('https://oneykldgivaqcrqmrqha.supabase.co/rest/v1/clients?id=eq.06acdc81-5f0b-4481-917a-d27baf89bc51',{headers:{'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw'}})
+.then(function(r){return r.json();})
+.then(function(d){document.getElementById('main').innerHTML='<p style="padding:20px;color:#34d399">SUCCESS: '+d[0].first+'</p>';})
+.catch(function(e){document.getElementById('main').innerHTML='<p style="padding:20px;color:#f87171">FETCH ERROR: '+e.message+'</p>';});
+</script>
 </body>
 </html>
+
 
