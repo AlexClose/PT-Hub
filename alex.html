@@ -1,23 +1,71 @@
 <!DOCTYPE html>
+
 <html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Baymade Training</title>
-<style>body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}</style>
+<style>body{background:#070910;color:#eef2fa;font-family:sans-serif;padding:20px;}
+@keyframes spin{to{transform:rotate(360deg)}}</style>
 </head>
 <body>
-<div id="out">Loading...</div>
+<div id="main">
+<div style="display:flex;align-items:center;justify-content:center;min-height:50vh">
+<div style="width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite"></div>
+</div>
+</div>
+<div id="log" style="padding:10px;font-size:11px;color:rgba(100,160,255,0.6)"></div>
 <script>
 var SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 var CLIENT_ID='06acdc81-5f0b-4481-917a-d27baf89bc51';
+var cli=null,sess=[],aDay=null;
 var HDRS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
 
-fetch(SB_URL+'/rest/v1/clients?id=eq.'+CLIENT_ID,{headers:HDRS})
-.then(function(r){return r.json();})
-.then(function(d){document.getElementById('out').textContent='Got: '+d[0].first;})
-.catch(function(e){document.getElementById('out').textContent='Error: '+e.message;});
+function log(msg){
+var el=document.getElementById(‘log’);
+if(el)el.innerHTML+=msg+’<br>’;
+}
+
+fetch(SB_URL+’/rest/v1/clients?id=eq.’+CLIENT_ID,{headers:HDRS})
+.then(function(r){log(‘fetch1 ok’);return r.json();})
+.then(function(d){
+log(’got client: ’+d[0].first);
+cli=d[0];
+log(‘has program: ‘+(cli.structured_program?‘yes’:‘no’));
+log(‘schedule: ‘+cli.schedule);
+return fetch(SB_URL+’/rest/v1/sessions?client_id=eq.’+CLIENT_ID+’&order=created_at.desc’,{headers:HDRS});
+})
+.then(function(r){log(‘fetch2 ok’);return r.json();})
+.then(function(s){
+sess=s;
+log(’got sessions: ’+sess.length);
+log(‘calling getSM…’);
+var prog=cli.structured_program;
+log(‘prog days: ‘+(prog&&prog.days?prog.days.length:‘none’));
+var sc=(cli.schedule||’’).toLowerCase();
+log(’schedule lower: ’+sc);
+var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+var m=[],map={};
+Object.keys(dm).forEach(function(k){
+if(sc.indexOf(k)!==-1&&m.indexOf(dm[k])===-1)m.push(dm[k]);
+});
+m.sort(function(a,b){return a-b;});
+if(prog&&prog.days){
+m.forEach(function(d,i){if(i<prog.days.length)map[d]=i;});
+}
+log(’schedule map: ’+JSON.stringify(map));
+var ti=new Date().getDay();
+log(’today index: ’+ti);
+aDay=(map[ti]!==undefined)?map[ti]:null;
+log(‘aDay: ‘+aDay);
+document.getElementById(‘main’).innerHTML=’<p style="color:#34d399;padding:20px">All good - check log below</p>’;
+})
+.catch(function(e){
+log(‘ERROR: ‘+e.message);
+document.getElementById(‘main’).innerHTML=’<p style="color:#f87171;padding:20px">Error: ‘+e.message+’</p>’;
+});
 </script>
+
 </body>
 </html>
