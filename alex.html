@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Baymade Training</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{background:#070910;color:#eef2fa;font-family:sans-serif;-webkit-font-smoothing:antialiased;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(37,99,235,0.15),transparent);pointer-events:none;z-index:0;}
+.hdr{position:sticky;top:0;z-index:10;background:rgba(7,9,16,0.95);backdrop-filter:blur(20px);border-bottom:1px solid rgba(120,160,255,0.18);padding:14px 20px;}
+.hdr-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.brand{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;background:linear-gradient(90deg,#60a5fa,#93c5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sub{font-size:9px;color:rgba(180,200,235,0.45);letter-spacing:1px;margin-top:2px;}
+.cname{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;text-align:right;}
+.clvl{font-size:10px;color:rgba(180,200,235,0.45);text-align:right;margin-top:1px;}
+main{position:relative;z-index:1;padding:20px 16px 80px;max-width:560px;margin:0 auto;}
+.greet-lbl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px;}
+.greet{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1.2;margin-bottom:6px;}
+.greet-sub{font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px;}
+.week{display:flex;gap:6px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;scrollbar-width:none;}
+.week::-webkit-scrollbar{display:none;}
+.wd{flex-shrink:0;width:50px;background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:12px;padding:10px 0;text-align:center;cursor:pointer;}
+.wd.active{background:#2563eb;border-color:#2563eb;box-shadow:0 4px 16px rgba(37,99,235,0.4);}
+.wd.workout{border-color:rgba(96,165,250,0.35);}
+.wd.done{background:rgba(52,211,153,0.06);border-color:rgba(52,211,153,0.35);}
+.wd-n{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(180,200,235,0.4);}
+.wd.active .wd-n{color:rgba(255,255,255,0.8);}
+.wd-d{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin:2px 0;}
+.wd.active .wd-d{color:#fff;}
+.wd-dot{width:5px;height:5px;border-radius:50%;margin:3px auto 0;}
+.wd.workout .wd-dot{background:#60a5fa;}
+.wd.active .wd-dot{background:rgba(255,255,255,0.6);}
+.wd.done .wd-dot{background:#34d399;}
+.wo-hdr{background:#0d1018;border:1px solid rgba(120,160,255,0.18);border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;}
+.wo-hdr::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#60a5fa,#93c5fd);}
+.wo-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px;}
+.wo-name{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;}
+.wo-meta{font-size:12px;color:rgba(180,200,235,0.45);margin-top:4px;}
+.ex{background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:11px;padding:14px;margin-bottom:10px;}
+.ex.ss{border-left:3px solid #fbbf24;}
+.ss-tag{font-size:8px;font-weight:700;letter-spacing:2px;color:#fbbf24;background:rgba(251,191,36,0.1);border-radius:4px;padding:2px 6px;display:inline-block;margin-bottom:7px;}
+.ex-nm{font-size:15px;font-weight:600;margin-bottom:3px;}
+.ex-rx{font-size:12px;color:#60a5fa;margin-bottom:8px;}
+.ex-last{font-size:11px;color:#60a5fa;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:10px;}
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.inputs input{width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:9px;color:#eef2fa;font-size:15px;font-weight:600;padding:13px 12px;text-align:center;outline:none;}
+.inputs input:focus{border-color:#2563eb;background:#181d28;}
+.inputs input:not(:placeholder-shown){color:#34d399!important;-webkit-text-fill-color:#34d399!important;}
+.inp-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,235,0.45);text-align:center;margin-top:4px;}
+.note{width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:11px;color:#eef2fa;font-size:14px;padding:14px;resize:none;height:75px;outline:none;margin-bottom:14px;font-family:sans-serif;}
+.note:focus{border-color:#2563eb;}
+.log-btn{width:100%;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:11px;padding:17px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;box-shadow:0 4px 24px rgba(37,99,235,0.4);}
+.log-btn:active{transform:scale(0.98);}
+.log-btn:disabled{opacity:0.5;}
+.rest{background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:16px;padding:32px 20px;text-align:center;}
+.rest-e{font-size:40px;margin-bottom:12px;}
+.rest-t{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;}
+.rest-s{font-size:13px;color:rgba(180,200,235,0.45);}
+.hist-sec{margin-top:28px;}
+.hist-lbl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:12px;}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(120,160,255,0.08);}
+.hist-d{font-size:13px;font-weight:600;}
+.hist-ex{font-size:11px;color:rgba(180,200,235,0.45);margin-top:2px;}
+.done-tag{font-size:10px;color:#34d399;font-weight:700;letter-spacing:1px;}
+.success-ov{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);pointer-events:none;}
+.success-in{display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0;}
+@keyframes pop{0%{opacity:0;transform:scale(0.3)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+.s-circle{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 60px rgba(52,211,153,0.4);}
+.s-word{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:3px;}
+.s-sub{font-size:13px;color:rgba(52,211,153,0.8);letter-spacing:1px;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:10px;padding:12px 20px;font-size:13px;z-index:400;transition:transform .3s;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px;}
+.spin{width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-lbl{font-size:12px;color:rgba(180,200,235,0.45);letter-spacing:2px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-top">
+    <div><div class="brand">BAYMADE TRAINING</div><div class="sub">CLIENT PORTAL</div></div>
+    <div><div class="cname" id="cname">—</div><div class="clvl" id="clvl">—</div></div>
+  </div>
+</div>
+<main id="main">
+  <div class="loader"><div class="spin"></div><div class="spin-lbl">Loading your workouts</div></div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+var SB='https://oneykldgivaqcrqmrqha.supabase.co';
+var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+var CID='06acdc81-5f0b-4481-917a-d27baf89bc51';
+var H={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+var cli=null,sess=[],aDay=null;
+var DN=['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function get(t,p){return fetch(SB+’/rest/v1/’+t+’?’+p,{headers:H}).then(function(r){return r.json();});}
+function post(t,b){return fetch(SB+’/rest/v1/’+t,{method:‘POST’,headers:H,body:JSON.stringify(b)}).then(function(r){return r.json();});}
+function pat(t,p,b){return fetch(SB+’/rest/v1/’+t+’?’+p,{method:‘PATCH’,headers:H,body:JSON.stringify(b)}).then(function(r){return r.text();});}
+function toast(m){var t=document.getElementById(‘toast’);t.textContent=m;t.classList.add(‘show’);setTimeout(function(){t.classList.remove(‘show’);},3000);}
+function greet(){var h=new Date().getHours();return h<12?‘Good morning’:h<17?‘Good afternoon’:‘Good evening’;}
+
+function getSM(){
+var prog=cli.structured_program;
+if(!prog||!prog.days)return{};
+var days=prog.days;
+var sc=(cli.schedule||’’).toLowerCase();
+var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+var m=[],map={};
+Object.keys(dm).forEach(function(k){if(sc.indexOf(k)>=0&&m.indexOf(dm[k])<0)m.push(dm[k]);});
+m.sort(function(a,b){return a-b;});
+m.forEach(function(d,i){if(i<days.length)map[d]=i;});
+return map;
+}
+
+function init(){
+get(‘clients’,‘id=eq.’+CID).then(function(d){
+cli=d[0];
+return get(‘sessions’,‘client_id=eq.’+CID+’&order=created_at.desc’);
+}).then(function(s){
+sess=s;
+document.getElementById(‘cname’).textContent=cli.first+(cli.last?’ ‘+cli.last:’’);
+document.getElementById(‘clvl’).textContent=(cli.level||’’)+’ · ‘+(cli.duration||60)+’ min’;
+var sm=getSM();
+var ti=new Date().getDay();
+aDay=sm[ti]!==undefined?sm[ti]:null;
+render();
+}).catch(function(e){
+document.getElementById(‘main’).innerHTML=’<p style="padding:20px;color:#f87171">Error: ‘+e.message+’</p>’;
+});
+}
+
+function render(){
+var prog=cli.structured_program;
+var days=prog?prog.days:[];
+var sm=getSM();
+var now=new Date();
+var ti=now.getDay();
+var ds=now.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var tLogged=sess.some(function(s){return s.date===ds;});
+var sow=new Date(now);sow.setDate(now.getDate()-now.getDay());
+var week=’’;
+for(var i=0;i<7;i++){
+var d=new Date(sow);d.setDate(sow.getDate()+i);
+var di=d.getDay();
+var isTod=d.toDateString()===now.toDateString();
+var hasW=sm[di]!==undefined;
+var dStr=d.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var isLog=sess.some(function(s){return s.date===dStr;});
+var pdi=sm[di];
+var cls=‘wd’+(isTod&&aDay!==null?’ active’:hasW?’ workout’:’’)+(isLog?’ done’:’’);
+var wn=hasW&&days[pdi]?days[pdi].name.split(’ ‘)[0]:’’;
+week+=’<div class="'+cls+'" onclick="selDay('+(pdi!==undefined?pdi:'null')+')"><div class="wd-n">’+DN[di]+’</div><div class="wd-d">’+d.getDate()+’</div><div class="wd-dot"></div>’+(wn?’<div style="font-size:7px;color:rgba(100,160,255,0.6);margin-top:2px">’+wn+’</div>’:’’)+’</div>’;
+}
+
+var wc=’’;
+if(aDay===null){
+wc=’<div class="rest"><div class="rest-e">😴</div><div class="rest-t">Rest Day</div><div class="rest-s">No workout today.<br>Recovery is part of the program!</div></div>’;
+} else {
+var day=days[aDay];
+var hist=cli.exercise_history||{};
+var exs=day.exercises.map(function(ex,i){
+var key=ex.name.toLowerCase().replace(/\s+/g,’_’);
+var last=hist[key];
+var isSS=/^SS/i.test(ex.name);
+var nm=ex.name.replace(/^SS\w+:\s*/i,’’);
+return ‘<div class="ex'+(isSS?' ss':'')+'">’+
+(isSS?’<span class="ss-tag">SUPERSET</span>’:’’)+
+‘<div class="ex-nm">’+nm+’</div>’+
+‘<div class="ex-rx">’+ex.prescription+(ex.load?’  ·  <span style="color:rgba(180,200,235,0.45)">’+ex.load+’</span>’:’’)+’</div>’+
+(last?’<div class="ex-last">Last: ‘+(last.reps||’—’)+’  ·  ‘+(last.weight||’—’)+’</div>’:’’)+
+‘<div class="inputs">’+
+‘<div><input id="r'+i+'" placeholder="'+(last&&last.reps?last.reps:'Sets × Reps')+'"><div class="inp-lbl">Sets × Reps</div></div>’+
+‘<div><input id="w'+i+'" placeholder="'+(last&&last.weight?last.weight:'Weight / Load')+'"><div class="inp-lbl">Weight / Load</div></div>’+
+‘</div></div>’;
+}).join(’’);
+wc=’<div class="wo-hdr"><div class="wo-lbl">Today's Workout</div><div class="wo-name">’+day.name+’</div><div class="wo-meta">’+day.exercises.length+’ exercises’+(tLogged?’  ·  <span style="color:#34d399">✓ Logged today</span>’:’’)+’</div></div>’+
+exs+
+‘<textarea class="note" id="snote" placeholder="Add a note (optional)..."></textarea>’+
+‘<button class="log-btn" id="lbtn" onclick="logIt()">⚡  Log This Workout</button>’;
+}
+
+var hh=’’;
+if(sess.length>0){
+hh=’<div class="hist-sec"><div class="hist-lbl">Recent Sessions</div>’+
+sess.slice(0,5).map(function(s){
+return ‘<div class="hist-row"><div><div class="hist-d">’+s.date+’</div>’+(s.workout&&s.workout.length?’<div class="hist-ex">’+s.workout.slice(0,3).map(function(w){return w.name.replace(/^SS\w+:\s*/i,’’);}).join(’ · ‘)+(s.workout.length>3?’ +’+(s.workout.length-3)+’ more’:’’)+’</div>’:’’)+’</div><span class="done-tag">✓ DONE</span></div>’;
+}).join(’’)+’</div>’;
+}
+
+document.getElementById(‘main’).innerHTML=
+‘<div class="greet-lbl">Client Portal</div>’+
+‘<div class="greet">’+greet()+’,<br>’+cli.first+’ 👋</div>’+
+‘<div class="greet-sub">’+(aDay!==null?‘Here's your workout for today.’:‘Rest up — no workout today.’)+’</div>’+
+‘<div class="week">’+week+’</div>’+
+wc+hh;
+}
+
+function selDay(idx){if(idx===null||idx===undefined)return;aDay=idx;render();}
+
+function logIt(){
+var btn=document.getElementById(‘lbtn’);
+if(!btn)return;
+btn.disabled=true;btn.textContent=‘Saving…’;
+var day=cli.structured_program.days[aDay];
+var ds=new Date().toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var note=document.getElementById(‘snote’)?document.getElementById(‘snote’).value.trim():’’;
+var hist=Object.assign({},cli.exercise_history||{});
+var wo=[];
+day.exercises.forEach(function(ex,i){
+var r=document.getElementById(‘r’+i)?document.getElementById(‘r’+i).value.trim():’’;
+var w=document.getElementById(‘w’+i)?document.getElementById(‘w’+i).value.trim():’’;
+if(r||w){hist[ex.name.toLowerCase().replace(/\s+/g,’_’)]={reps:r,weight:w,date:ds};wo.push({name:ex.name,reps:r,weight:w});}
+});
+post(‘sessions’,{client_id:CID,date:ds,note:note,workout:wo})
+.then(function(){return pat(‘clients’,‘id=eq.’+CID,{exercise_history:hist});})
+.then(function(){
+cli.exercise_history=hist;
+return get(‘sessions’,‘client_id=eq.’+CID+’&order=created_at.desc’);
+})
+.then(function(s){
+sess=s;
+var ov=document.createElement(‘div’);
+ov.className=‘success-ov’;
+ov.innerHTML=’<div class="success-in"><div class="s-circle">⚡</div><div class="s-word">CRUSHED IT</div><div class="s-sub">Workout saved ✓</div></div>’;
+document.body.appendChild(ov);
+setTimeout(function(){ov.style.transition=‘opacity .4s’;ov.style.opacity=‘0’;setTimeout(function(){ov.remove();},400);},1400);
+render();
+})
+.catch(function(e){btn.disabled=false;btn.textContent=‘⚡  Log This Workout’;toast(‘Error — try again’);});
+}
+
+init();
+</script>
+
+</body>
+</html>
