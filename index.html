@@ -1443,8 +1443,18 @@ function renderAIProgramHtml(text){
 }
 
 var cpParam=window.location.search.indexOf('client=');
-if(cpParam!==-1){var cpName=window.location.search.split('client=')[1].split('&')[0];document.body.style.background='#070910';document.body.innerHTML='<p style="color:#34d399;padding:20px;font-family:sans-serif;">Detected: '+cpName+'</p>';}
+if(cpParam!==-1){
+var cpName=window.location.search.split('client=')[1].split('&')[0];
+var CP_IDS={alex:'06acdc81-5f0b-4481-917a-d27baf89bc51',kathryn:'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7'};
+var CP_ID=CP_IDS[cpName];
+var CP_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+fetch(SB_URL+'/rest/v1/clients?id=eq.'+CP_ID,{headers:CP_H})
+.then(function(r){return r.json();})
+.then(function(d){document.body.style.background='#070910';document.body.innerHTML='<p style="color:#34d399;padding:20px;font-family:sans-serif;">Got client: '+d[0].first+'</p>';})
+.catch(function(e){document.body.innerHTML='<p style="color:#f87171;padding:20px;">Error: '+e.message+'</p>';});
+}
 if(cpParam===-1){init();}
+
 
 </script>
 
