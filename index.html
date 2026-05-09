@@ -1588,7 +1588,8 @@ fetch(SB_URL+’/rest/v1/clients?id=eq.’+CP_ID,{headers:CP_H})
 .then(function(s){cp_sess=s;cpRender();})
 .catch(function(e){var m=document.getElementById(‘cp-main’);if(m)m.innerHTML=’<div style="padding:20px;color:#f87171;">Error: ‘+e.message+’</div>’;});
 }
-if(cpParam===-1){init();}
+init();
+
 
 
 </script>
