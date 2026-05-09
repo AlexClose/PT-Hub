@@ -1442,13 +1442,10 @@ function renderAIProgramHtml(text){
   }).join('');
 }
 
-var cpParam = window.location.search.indexOf('client=');
-if(cpParam !== -1) {
-  var cpName = window.location.search.split('client=')[1].split('&')[0];
-  document.querySelector('nav').style.display='none';
-  document.querySelector('main').style.display='none';
-}
+var cpParam=window.location.search.indexOf('client=');
+if(cpParam!==-1){var cpName=window.location.search.split('client=')[1].split('&')[0];document.body.style.background='#070910';document.body.innerHTML='<p style="color:#34d399;padding:20px;font-family:sans-serif;">Detected: '+cpName+'</p>';}
 if(cpParam===-1){init();}
+
 
 </script>
 
