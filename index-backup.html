@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Baymade Training">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" id="appIcon" href="">
+<script>
+(function(){
+  var c=document.createElement('canvas');
+  c.width=512;c.height=512;
+  var ctx=c.getContext('2d');
+
+// Background
+var grad=ctx.createLinearGradient(0,0,512,512);
+grad.addColorStop(0,’#0a1628’);
+grad.addColorStop(1,’#0f2044’);
+ctx.fillStyle=grad;
+ctx.beginPath();
+ctx.roundRect(0,0,512,512,80);
+ctx.fill();
+
+// Dumbbell color
+ctx.fillStyle=’#4fa3e8’;
+ctx.shadowColor=‘rgba(79,163,232,0.6)’;
+ctx.shadowBlur=20;
+
+// Left plate outer
+ctx.beginPath();ctx.roundRect(40,180,100,152,18);ctx.fill();
+// Left plate inner
+ctx.beginPath();ctx.roundRect(80,200,60,112,12);ctx.fill();
+
+// Right plate outer
+ctx.beginPath();ctx.roundRect(372,180,100,152,18);ctx.fill();
+// Right plate inner
+ctx.beginPath();ctx.roundRect(372,200,60,112,12);ctx.fill();
+
+// Bar
+ctx.beginPath();ctx.roundRect(140,228,232,56,10);ctx.fill();
+
+// Center knurl lines
+ctx.fillStyle=‘rgba(10,22,40,0.4)’;
+for(var i=0;i<5;i++){
+ctx.fillRect(200+i*24,228,10,56);
+}
+
+var dataURL=c.toDataURL(‘image/png’);
+var link=document.getElementById(‘appIcon’);
+if(link)link.href=dataURL;
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Baymade Training</title>
+<!-- v-fix-regen-2 -->
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080a0d;
+  --surface:#0f1317;
+  --surface2:#141820;
+  --surface3:#1a1f28;
+  --border:rgba(100,160,255,0.12);
+  --border2:rgba(100,160,255,0.2);
+  --text:#e8edf5;
+  --muted:rgba(180,200,230,0.45);
+  --accent:#4fa3e8;
+  --accent-bright:#7ec8ff;
+  --accent-glow:rgba(79,163,232,0.15);
+  --danger:#ff5c6a;
+  --warn:#ffb347;
+  --success:#43d9a2;
+  --radius:14px;
+  --radius-sm:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+
+/* ── NAV ── */
+nav{
+position:fixed;top:0;left:0;right:0;z-index:100;
+background:rgba(10,12,15,0.96);
+backdrop-filter:blur(20px);
+border-bottom:1px solid var(–border2);
+height:64px;
+display:flex;align-items:center;
+padding:0 16px;gap:6px;
+}
+.nav-logo{
+font-family:‘Syne’,sans-serif;font-weight:800;font-size:15px;
+letter-spacing:-0.3px;
+margin-right:auto;
+line-height:1.1;
+color:#ffffff !important;
+}
+.nav-logo span{color:#7ec8ff !important;font-family:‘Syne’,sans-serif;font-weight:800;}
+.nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;}
+.nav-tabs{display:flex;gap:4px;background:rgba(20,24,32,0.9);border:1px solid rgba(37,99,235,0.35);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 0 0 1px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.05);}
+.nav-tabs::-webkit-scrollbar{display:none;}
+.nav-tab{
+font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
+letter-spacing:.5px;text-transform:uppercase;
+padding:10px 14px;border-radius:9px;
+cursor:pointer;color:rgba(180,200,230,0.6);border:none;background:transparent;
+transition:all .2s;white-space:nowrap;
+display:flex;align-items:center;gap:5px;
+}
+.nav-tab:hover{color:#e8edf5;background:#1e232b;}
+.nav-tab.active{color:#ffffff !important;background:#2563eb !important;box-shadow:0 2px 14px rgba(37,99,235,0.6);}
+.nav-tab.active span{color:#ffffff !important;}
+.nav-tab .tab-icon{font-size:14px;}
+
+/* ── MAIN ── */
+main{padding-top:64px;}
+.view{display:none;padding:24px 16px 100px;max-width:720px;margin:0 auto;}
+.view.active{display:block;}
+
+/* ── TYPOGRAPHY ── */
+.page-header{margin-bottom:24px;}
+.page-label{font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(–accent);margin-bottom:4px;}
+h2{font-family:‘Syne’,sans-serif;font-size:28px;font-weight:800;color:var(–text);letter-spacing:-0.5px;}
+.muted{color:var(–muted);font-size:13px;}
+
+/* ── BADGES ── */
+.badge{font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.badge-green{background:rgba(67,217,162,0.12);color:var(–success);}
+.badge-yellow{background:rgba(255,179,71,0.12);color:var(–warn);}
+.badge-red{background:rgba(255,92,106,0.12);color:var(–danger);}
+.badge-blue{background:rgba(79,163,232,0.12);color:var(–accent-bright);}
+.badge-summer{background:rgba(255,179,71,0.15);color:#ffd47e;}
+
+/* ── BUTTONS ── */
+.btn{
+font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
+letter-spacing:.5px;padding:11px 20px;border-radius:var(–radius-sm);
+cursor:pointer;border:none;transition:all .2s;
+display:inline-flex;align-items:center;gap:6px;
+}
+.btn-primary{background:#2563eb;color:#ffffff;box-shadow:0 2px 16px rgba(37,99,235,0.35);}
+.btn-primary:hover{background:#1d4ed8;box-shadow:0 4px 20px rgba(37,99,235,0.5);}
+.btn-secondary{background:rgba(255,255,255,0.05);color:rgba(200,215,235,0.75);border:1px solid rgba(100,160,255,0.15);}
+.btn-secondary:hover{background:rgba(255,255,255,0.08);border-color:rgba(100,160,255,0.25);}
+.btn-danger{background:rgba(255,92,106,0.07);color:rgba(255,100,115,0.8);border:1px solid rgba(255,92,106,0.15);}
+.btn-danger:hover{background:rgba(255,92,106,0.18);}
+.btn-sm{padding:7px 14px;font-size:11px;}
+.btn-full{width:100%;justify-content:center;}
+
+/* ── INPUTS ── */
+input,select,textarea{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:var(–radius-sm);color:var(–text);
+font-family:‘Instrument Sans’,sans-serif;font-size:14px;
+padding:11px 14px;width:100%;transition:all .2s;outline:none;
+}
+input:focus,select:focus,textarea:focus{
+border-color:var(–accent);
+background:var(–surface3);
+box-shadow:0 0 0 3px rgba(79,163,232,0.1);
+}
+select option{background:var(–surface2);}
+textarea{resize:vertical;min-height:70px;}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(–muted);margin-bottom:6px;display:block;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── CARDS ── */
+.card{
+background:var(–surface);border:1px solid var(–border2);
+border-radius:var(–radius);padding:18px;margin-bottom:14px;
+}
+.card-glow{box-shadow:0 0 30px rgba(79,163,232,0.06);}
+.divider{height:1px;background:var(–border);margin:16px 0;}
+
+/* ── ALERTS ── */
+.alert{border-radius:var(–radius);padding:14px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;}
+.alert-warn{background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.2);}
+.alert-danger{background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.2);}
+.alert-icon{font-size:20px;flex-shrink:0;}
+
+/* ── PROGRESS ── */
+.prog-wrap{background:var(–surface2);border-radius:20px;height:5px;overflow:hidden;margin-top:10px;}
+.prog-fill{height:100%;border-radius:20px;transition:width .5s;}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.stat-card{
+background:var(–surface);border:1px solid var(–border2);
+border-radius:var(–radius);padding:16px 18px;
+position:relative;overflow:hidden;
+}
+.stat-card::before{
+content:’’;position:absolute;top:0;left:0;right:0;height:2px;
+background:linear-gradient(90deg,var(–accent),transparent);
+}
+.stat-num{font-family:‘Syne’,sans-serif;font-size:38px;font-weight:800;line-height:1;color:#ffffff !important;-webkit-font-smoothing:antialiased;}
+.stat-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:6px;}
+
+/* ── CLIENT CARDS ── */
+.client-card{
+background:var(–surface);border:1px solid var(–border2);
+border-radius:var(–radius);padding:16px;margin-bottom:10px;
+cursor:pointer;transition:all .2s;position:relative;
+}
+.client-card:hover{border-color:var(–accent);box-shadow:0 4px 20px rgba(79,163,232,0.1);transform:translateY(-1px);}
+.client-card:active{transform:translateY(0);}
+.client-avatar{
+width:42px;height:42px;border-radius:12px;
+background:#2563eb;
+display:flex;align-items:center;justify-content:center;
+font-family:‘Syne’,sans-serif;font-weight:800;font-size:15px;
+flex-shrink:0;color:#ffffff !important;letter-spacing:0;
+}
+
+/* ── MODALS ── */
+.modal-overlay{
+position:fixed;inset:0;
+z-index:200;
+display:flex;
+align-items:flex-start;
+justify-content:center;
+background:rgba(0,0,0,0);
+backdrop-filter:blur(0px);
+transition:background .3s ease, backdrop-filter .3s ease;
+pointer-events:none;
+}
+.modal-overlay.open{
+background:rgba(0,0,0,0.78);
+backdrop-filter:blur(6px);
+pointer-events:all;
+}
+.modal{
+background:var(–surface);
+border:1px solid var(–border2);
+border-top:1px solid rgba(100,160,255,0.2);
+border-radius:0 0 24px 24px;
+padding:28px 20px 0;
+width:100%;max-width:640px;
+height:100vh;
+overflow-y:scroll;
+-webkit-overflow-scrolling:touch;
+overscroll-behavior:contain;
+transform:translateY(-100%);
+transition:transform .38s cubic-bezier(.25,1.2,.5,1);
+will-change:transform;
+}
+.modal-overlay.open .modal{
+transform:translateY(0);
+}
+.modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
+.modal-title{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;color:var(–text);}
+
+/* ── PROGRAM BLOCKS ── */
+.prog-day-block{
+border:1px solid var(–border2);border-radius:var(–radius);
+margin-bottom:10px;overflow:hidden;
+}
+.prog-day-header{
+padding:14px 16px;cursor:pointer;
+display:flex;align-items:center;justify-content:space-between;
+background:var(–surface2);transition:background .2s;
+}
+.prog-day-header:hover{background:var(–surface3);}
+.prog-day-title{font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.prog-day-body{display:none;}
+.prog-day-body.open{display:block;}
+.ex-row{padding:12px 16px;border-top:1px solid var(–border);display:flex;align-items:flex-start;gap:10px;transition:background .15s;}
+.ex-row:hover{background:rgba(79,163,232,0.03);}
+.ex-row-content{flex:1;}
+.ex-name{font-size:14px;font-weight:500;margin-bottom:3px;color:var(–text);}
+.ex-prescription{font-size:12px;color:var(–accent-bright);margin-bottom:4px;}
+.ex-last{font-size:11px;color:var(–muted);background:rgba(79,163,232,0.06);border:1px solid var(–border);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:3px;}
+.ex-last.has-data{color:var(–accent-bright);background:rgba(79,163,232,0.1);border-color:rgba(79,163,232,0.2);}
+.ex-edit-btn{background:none;border:1px solid var(–border2);border-radius:6px;color:var(–muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;font-family:‘Instrument Sans’,sans-serif;flex-shrink:0;margin-top:2px;transition:all .15s;}
+.ex-edit-btn:hover{color:var(–accent-bright);border-color:var(–accent);}
+.ss-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(–warn);margin-bottom:4px;display:flex;align-items:center;gap:4px;}
+.ss-label::before{content:’’;width:12px;height:1px;background:var(–warn);display:inline-block;}
+
+/* ── LOG SESSION ── */
+.workout-ex-row{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:var(–radius-sm);padding:16px;margin-bottom:12px;
+transition:border-color .15s;
+}
+.workout-ex-row:focus-within{border-color:var(–accent);}
+.workout-ex-name{font-size:18px;font-weight:700;margin-bottom:4px;color:#ffffff;font-family:‘Syne’,sans-serif;}
+.workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.workout-inputs input{font-size:16px;padding:14px 12px;text-align:center;font-weight:600;color:#ffffff !important;background:#1e232b !important;border:1px solid rgba(100,160,255,0.2);-webkit-text-fill-color:#ffffff !important;}
+.wi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(–muted);text-align:center;margin-top:4px;font-weight:600;}
+
+/* ── LIBRARY ── */
+.muscle-group{margin-bottom:12px;}
+.muscle-header{
+font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
+letter-spacing:1px;text-transform:uppercase;
+padding:12px 16px;background:var(–surface2);
+border:1px solid var(–border2);border-radius:var(–radius-sm) var(–radius-sm) 0 0;
+cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+transition:background .2s;
+}
+.muscle-header:hover{background:var(–surface3);}
+.muscle-body{border:1px solid var(–border2);border-top:none;border-radius:0 0 var(–radius-sm) var(–radius-sm);display:none;}
+.muscle-body.open{display:block;}
+.lib-exercise{
+padding:11px 16px;border-bottom:1px solid var(–border);
+display:flex;align-items:center;justify-content:space-between;
+transition:background .15s;
+}
+.lib-exercise:hover{background:rgba(79,163,232,0.03);}
+.lib-exercise:last-child{border-bottom:none;}
+.lib-ex-name{font-size:13px;font-weight:500;color:var(–text);}
+.lib-ex-equip{font-size:11px;color:var(–muted);margin-top:2px;}
+.lib-ex-actions{display:flex;gap:6px;}
+.lib-btn{background:none;border:1px solid var(–border2);border-radius:6px;color:var(–muted);font-size:10px;padding:4px 10px;cursor:pointer;font-family:‘Instrument Sans’,sans-serif;font-weight:500;transition:all .15s;}
+.lib-btn:hover{color:var(–text);border-color:rgba(100,160,255,0.3);}
+.lib-btn.danger{color:var(–danger);border-color:rgba(255,92,106,0.2);}
+.lib-btn.danger:hover{background:rgba(255,92,106,0.08);}
+.equip-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.equip-item{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:var(–radius-sm);padding:11px 14px;font-size:13px;
+display:flex;align-items:center;justify-content:space-between;
+}
+.equip-item .remove{color:var(–danger);cursor:pointer;font-size:20px;line-height:1;opacity:.7;transition:opacity .15s;}
+.equip-item .remove:hover{opacity:1;}
+.muscle-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.muscle-count{font-size:10px;color:var(–muted);font-weight:400;margin-left:6px;}
+
+/* ── EDIT PROGRAM ── */
+.edit-ex-row{
+background:var(–surface2);border:1px solid var(–border2);
+border-radius:var(–radius-sm);padding:12px;margin-bottom:8px;
+}
+.edit-ex-fields{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-bottom:8px;}
+.edit-ex-fields input{font-size:12px;padding:7px 10px;}
+.edit-ex-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ── LOADING ── */
+.loading{text-align:center;padding:48px 20px;color:var(–muted);}
+.spinner{
+width:36px;height:36px;
+border:3px solid var(–border2);
+border-top-color:var(–accent);
+border-radius:50%;animation:spin .7s linear infinite;
+margin:0 auto 14px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ── */
+.toast{
+position:fixed;bottom:28px;left:50%;
+transform:translateX(-50%) translateY(100px);
+background:var(–surface2);
+border:1px solid var(–border2);
+border-radius:12px;padding:13px 20px;font-size:13px;font-weight:500;
+z-index:300;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+white-space:nowrap;
+box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:48px 20px;color:var(–muted);}
+.empty-icon{font-size:44px;margin-bottom:14px;filter:grayscale(.3);}
+.empty p{font-size:14px;line-height:1.6;}
+
+/* ── AI OUTPUT ── */
+.ai-output{background:var(–surface2);border:1px solid var(–border2);border-radius:var(–radius);padding:18px;font-size:13px;line-height:1.8;color:var(–text);white-space:pre-wrap;}
+.ai-thinking{color:var(–muted);font-style:italic;}
+.cursor-blink{animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── SEARCH ── */
+.search-wrap{position:relative;margin-bottom:16px;}
+.search-wrap input{padding-left:38px;}
+.search-wrap::before{content:‘🔍’;position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;z-index:1;}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(–border2);border-radius:2px;}
+
+/* Session logged success animation */
+.success-overlay{
+position:fixed;inset:0;z-index:500;
+display:flex;align-items:center;justify-content:center;
+pointer-events:none;
+background:rgba(0,0,0,0.5);
+animation:overlayFade .45s ease forwards, overlayFadeOut .35s ease 1s forwards;
+}
+@keyframes overlayFade{from{opacity:0}to{opacity:1}}
+@keyframes overlayFadeOut{from{opacity:1}to{opacity:0}}
+.success-burst{
+display:flex;flex-direction:column;align-items:center;gap:16px;
+animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards, burstOut .35s ease 1s forwards;
+opacity:0;
+}
+@keyframes burstIn{0%{opacity:0;transform:scale(0.2)}50%{opacity:1;transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
+@keyframes burstOut{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0.8)}}
+.success-icon{
+width:100px;height:100px;border-radius:50%;
+background:linear-gradient(135deg,#1d4ed8,#43d9a2);
+display:flex;align-items:center;justify-content:center;
+font-size:46px;
+box-shadow:0 0 60px rgba(67,217,162,0.6),0 0 120px rgba(37,99,235,0.3);
+}
+.success-label{
+font-family:‘Syne’,sans-serif;font-weight:800;font-size:20px;
+color:#ffffff;letter-spacing:2px;text-transform:uppercase;
+text-shadow:0 0 20px rgba(67,217,162,0.5);
+}
+
+/* Green text when input has value */
+.workout-inputs input:not(:placeholder-shown){color:#43d9a2 !important;-webkit-text-fill-color:#43d9a2 !important;}
+
+/* ── ANIMATIONS ── */
+.btn:active{transform:scale(0.97);transition:transform .1s;}
+.btn-primary:active{transform:scale(0.96);}
+.client-card:active{transform:scale(0.99);transition:transform .1s;}
+.stat-num{transition:color .3s ease;}
+
+/* Tab transitions */
+.view{
+opacity:0;
+pointer-events:none;
+position:absolute;
+top:56px;left:0;right:0;
+}
+.view.active{
+opacity:1;
+pointer-events:all;
+position:relative;
+top:auto;
+animation:tabFadeIn .22s ease forwards;
+}
+@keyframes tabFadeIn{
+from{opacity:0;transform:translateY(10px);}
+to{opacity:1;transform:translateY(0);}
+}
+</style>
+
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span style="color:#7ec8ff !important;font-family:'Syne',sans-serif;font-weight:800;">BAYMADE</span><span style="color:#ffffff !important;"> TRAINING</span>
+    <small style="color:rgba(180,200,230,0.5);">Coach Portal</small>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('dashboard',this)">
+      <span class="tab-icon">⚡</span> Dashboard
+    </button>
+    <button class="nav-tab" onclick="showView('clients',this)">
+      <span class="tab-icon">👤</span> Clients
+    </button>
+    <button class="nav-tab" onclick="showView('library',this)">
+      <span class="tab-icon">📋</span> Library
+    </button>
+  </div>
+</nav>
+
+<main>
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <div class="page-header">
+      <div class="page-label">Overview</div>
+      <h2 id="greetingText">Good to see you 👋</h2>
+    </div>
+    <div id="todaySessions" style="margin-bottom:16px"></div>
+    <div class="stats-grid" id="dashStats"></div>
+    <div id="dashAlerts"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="page-label" style="margin:0">All Clients</div>
+    </div>
+    <div id="dashClients"></div>
+  </div>
+
+  <!-- CLIENTS -->
+
+  <div class="view" id="view-clients">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="page-header" style="margin:0">
+        <div class="page-label">Roster</div>
+        <h2>Clients</h2>
+      </div>
+      <button class="btn btn-primary" onclick="openAddClient()">+ Add Client</button>
+    </div>
+    <div class="search-wrap"><input type="text" placeholder="Search clients..." id="clientSearch" oninput="renderClientList()"></div>
+    <div id="clientList"></div>
+  </div>
+
+  <!-- LIBRARY -->
+
+  <div class="view" id="view-library">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="page-header" style="margin:0">
+        <div class="page-label">Exercise & Equipment</div>
+        <h2>Library</h2>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
+    </div>
+    <div class="search-wrap"><input type="text" placeholder="Search exercises..." id="libSearch" oninput="renderLibrary()"></div>
+    <div id="libraryList"></div>
+    <div style="margin-top:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="page-label" style="margin:0">Equipment</div>
+        <button class="btn btn-secondary btn-sm" onclick="openAddEquip()">+ Add</button>
+      </div>
+      <p class="muted" style="margin-bottom:14px;font-size:12px">Used when generating AI programs for clients.</p>
+      <div class="equip-grid" id="equipList"></div>
+    </div>
+  </div>
+</main>
+
+<!-- CLIENT DETAIL -->
+
+<div class="modal-overlay" id="clientModal"><div class="modal" id="clientModalBody"></div></div>
+
+<!-- ADD CLIENT -->
+
+<div class="modal-overlay" id="addClientModal">
+  <div class="modal">
+    <div class="modal-handle"></div><div class="modal-title">New Client</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">First Name</label><input id="acFirst" placeholder="First"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input id="acLast" placeholder="Last"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Age</label><input id="acAge" type="number"></div>
+      <div class="form-group"><label class="form-label">Level</label><select id="acLevel"><option value="Beginner">Beginner</option><option value="Intermediate" selected>Intermediate</option><option value="Advanced">Advanced</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Package Size</label><select id="acPackage"><option value="0">TBD / Pay per session</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option></select></div>
+      <div class="form-group"><label class="form-label">Remaining</label><input id="acRemaining" type="number" placeholder="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Schedule</label><input id="acSchedule"></div>
+    <div class="form-group"><label class="form-label">Session Length</label><select id="acDuration"><option value="60">60 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="90">90 min</option></select></div>
+    <div class="form-group"><label class="form-label">Goals</label><input id="acGoals"></div>
+    <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="acInjuries"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="acNotes"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('addClientModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveClient()">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CLIENT -->
+
+<div class="modal-overlay" id="editClientModal">
+  <div class="modal">
+    <div class="modal-handle"></div><div class="modal-title">Edit Client</div>
+    <input type="hidden" id="ecId">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">First Name</label><input id="ecFirst"></div>
+      <div class="form-group"><label class="form-label">Last Name</label><input id="ecLast"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Age</label><input id="ecAge" type="number"></div>
+      <div class="form-group"><label class="form-label">Level</label><select id="ecLevel"><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Package Size</label><select id="ecPackage"><option value="0">TBD / Pay per session</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option><option value="25">25</option><option value="30">30</option></select></div>
+      <div class="form-group"><label class="form-label">Remaining</label><input id="ecRemaining" type="number"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Schedule</label><input id="ecSchedule"></div>
+    <div class="form-group"><label class="form-label">Session Length</label><select id="ecDuration"><option value="60">60 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="90">90 min</option></select></div>
+    <div class="form-group"><label class="form-label">Goals</label><input id="ecGoals"></div>
+    <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="ecInjuries"></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea id="ecNotes"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('editClientModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveEditClient()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EQUIPMENT -->
+
+<div class="modal-overlay" id="addEquipModal">
+  <div class="modal">
+    <div class="modal-handle"></div><div class="modal-title">Add Equipment</div>
+    <div class="form-group"><label class="form-label">Equipment Name</label><input id="equipName" placeholder="e.g. Cable Machine, Barbell, Leg Press..."></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('addEquipModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveEquip()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT LIBRARY EXERCISE -->
+
+<div class="modal-overlay" id="addExerciseModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="addExerciseTitle">Add Exercise</div>
+    <input type="hidden" id="libExId">
+    <div class="form-group"><label class="form-label">Exercise Name</label><input id="libExName" placeholder="e.g. Barbell Back Squat"></div>
+    <div class="form-group"><label class="form-label">Muscle Group</label>
+      <select id="libExMuscle">
+        <option value="Chest">Chest</option>
+        <option value="Back">Back</option>
+        <option value="Legs">Legs</option>
+        <option value="Shoulders">Shoulders</option>
+        <option value="Arms">Arms</option>
+        <option value="Core">Core</option>
+        <option value="Glutes">Glutes</option>
+        <option value="Cardio">Cardio</option>
+        <option value="Full Body">Full Body</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Equipment Needed</label><input id="libExEquip" placeholder="e.g. Barbell, Cable Machine"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('addExerciseModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveLibraryExercise()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT PROGRAM DAY -->
+
+<div class="modal-overlay" id="editProgramModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="editProgTitle">Edit Program Day</div>
+    <p class="muted" style="margin-bottom:16px;font-size:12px">Tap ↑↓ to reorder · Edit any field · Add or remove exercises</p>
+    <div id="editExerciseList"></div>
+    <button class="btn btn-secondary btn-full btn-sm" onclick="addExerciseToDay()" style="margin-top:6px">+ Add Exercise</button>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('editProgramModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveProgramDay()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOG SESSION -->
+
+<div class="modal-overlay" id="logModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="logModalTitle">Log Session</div>
+    <div id="logWorkoutSection"></div>
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label">Session Note (optional)</label>
+      <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('logModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="confirmLogSession()">✓ Mark Complete</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENEW -->
+
+<div class="modal-overlay" id="renewModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="renewTitle">Renew Package</div>
+    <div class="form-group"><label class="form-label">New Package Size</label>
+      <select id="renewPkg"><option value="5">5 sessions</option><option value="10" selected>10 sessions</option><option value="15">15 sessions</option><option value="20">20 sessions</option><option value="25">25 sessions</option><option value="30">30 sessions</option></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('renewModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="confirmRenew()">Renew</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+const H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+
+async function sb(method,table,body=null,params=''){
+  const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
+  if(!res.ok)throw new Error(await res.text());
+  const t=await res.text();return t?JSON.parse(t):[];
+}
+
+const db={
+  getClients:   ()      => sb('GET','clients',null,'?order=first.asc'),
+  addClient:    (d)     => sb('POST','clients',d),
+  updateClient: (id,d)  => sb('PATCH','clients',d,`?id=eq.${id}`),
+  deleteClient: (id)    => sb('DELETE','clients',null,`?id=eq.${id}`),
+  getSessions:  (cid)   => sb('GET','sessions',null,`?client_id=eq.${cid}&order=created_at.desc`),
+  addSession:   (d)     => sb('POST','sessions',d),
+  getEquipment: ()      => sb('GET','equipment',null,'?order=name.asc'),
+  addEquipment: (name)  => sb('POST','equipment',{name}),
+  delEquipment: (id)    => sb('DELETE','equipment',null,`?id=eq.${id}`),
+  addExLog:     (d)     => sb('POST','exercise_logs',d),
+  getLibrary:   ()      => sb('GET','exercise_library',null,'?order=muscle_group.asc,name.asc'),
+  getSharedPkgs: ()     => sb('GET','shared_packages',null,'?order=name.asc'),
+  updateSharedPkg:(id,d)=> sb('PATCH','shared_packages',d,`?id=eq.${id}`),
+  addLibEx:     (d)     => sb('POST','exercise_library',d),
+  updateLibEx:  (id,d)  => sb('PATCH','exercise_library',d,`?id=eq.${id}`),
+  delLibEx:     (id)    => sb('DELETE','exercise_library',null,`?id=eq.${id}`),
+};
+
+const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
+
+let clients=[],equipment=[],library=[],sharedPackages=[],pendingLogId=null,pendingRenewId=null;
+let editingClientId=null,editingDayIndex=null,editingExercises=[];
+
+// ── GREETING ──
+function getGreeting(){
+  const h=new Date().getHours();
+  if(h<12)return'Good morning';if(h<17)return'Good afternoon';return'Good evening';
+}
+
+async function init(){
+  showLoading('dashClients');
+  try{
+    [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
+    document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
+    renderDashboard();
+    // Load all sessions then re-render
+    await Promise.all(clients.map(c=>db.getSessions(c.id).then(s=>{c._sessions=s;}).catch(()=>{c._sessions=[];})));
+    renderDashboard();
+  }catch(e){
+    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
+  }
+}
+
+function showLoading(id){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="loading"><div class="spinner"></div><div>Loading...</div></div>`;}
+function showView(name,el){
+  if(!el) el=event.currentTarget;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='dashboard')renderDashboard();
+  if(name==='clients')renderClientList();
+  if(name==='library'){renderLibrary();renderEquipList();}
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow='';
+}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+// ── DASHBOARD ──
+function getTodayClients(){
+  const dayPatterns=[
+    ['sun','sunday'],
+    ['mon','monday'],
+    ['tue','tuesday','tues'],
+    ['wed','wednesday'],
+    ['thu','thursday','thur','thurs'],
+    ['fri','friday'],
+    ['sat','saturday']
+  ];
+  const todayIdx=new Date().getDay();
+  const patterns=dayPatterns[todayIdx];
+  return clients.filter(c=>{
+    if(!c.schedule)return false;
+    if(c.paused)return false;
+    const sched=c.schedule.toLowerCase();
+    return patterns.some(p=>sched.includes(p));
+  });
+}
+
+function renderTodaySessions(){
+  const el=document.getElementById('todaySessions');
+  if(!el)return;
+  const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const todayName=dayNames[new Date().getDay()];
+  const todayClients=getTodayClients();
+  if(todayClients.length===0){el.innerHTML='';return;}
+  const todayDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const loggedCount=todayClients.filter(c=>(c._sessions||[]).some(s=>s.date===todayDate)).length;
+  const allDone=loggedCount===todayClients.length;
+
+  // Build dots
+  const dots=todayClients.map(c=>{
+    const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
+    return `<div title="${c.first}" style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>`;
+  }).join('');
+
+  // Build expanded list
+  const list=todayClients.map(c=>{
+    const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
+    const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
+    const time=timeMatch?timeMatch[0]:'';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>
+      <div style="flex:1;font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
+      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">⚡ Log</button>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div style="background:#0d1117;border:1px solid rgba(37,99,235,0.25);border-radius:12px;margin-bottom:16px;overflow:hidden">
+    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4fa3e8;flex-shrink:0">TODAY</div>
+      <div style="display:flex;gap:4px;align-items:center;flex:1">${dots}</div>
+      <div style="font-size:11px;color:${allDone?'#43d9a2':'rgba(180,200,230,0.4)'};font-weight:600;flex-shrink:0">${loggedCount}/${todayClients.length}</div>
+      <div style="color:rgba(180,200,230,0.3);font-size:12px">▼</div>
+    </div>
+    <div id="todayExpanded" style="display:none;padding:0 16px 12px">${list}</div>
+  </div>`;
+}
+
+function quickLog(id){
+  openLogSession(id);
+  // After logging, refresh today's view
+  const orig=confirmLogSession;
+}
+
+function renderDashboard(){
+  const withPkg=clients.filter(c=>c.package_size>0&&!c.paused);
+  const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
+  const out=withPkg.filter(c=>c.remaining<=0);
+  const now=new Date();
+  const currentMonth=now.getMonth();
+  const currentYear=now.getFullYear();
+  const totalSess=clients.filter(c=>!c.is_test).reduce((a,c)=>a+(c._sessions||[]).filter(s=>{
+    if(!s.date)return false;
+    const d=new Date(s.date);
+    return d.getMonth()===currentMonth && d.getFullYear()===currentYear;
+  }).length,0);
+  const statStyle='font-family:Syne,sans-serif;font-size:42px;font-weight:800;line-height:1;letter-spacing:-2px';
+  document.getElementById('dashStats').innerHTML=`
+    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions This Month</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="${statStyle};color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
+    <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="${statStyle};color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
+  let alerts='';
+  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
+  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
+  // Shared package alerts
+  sharedPackages.forEach(pkg=>{
+    const linked=clients.filter(c=>c.shared_package_id===pkg.id).map(c=>c.first).join(' & ');
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
+    else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
+  });
+  document.getElementById('dashAlerts').innerHTML=alerts;
+  const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
+  document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:sorted.map(clientRowHtml).join('');
+  renderTodaySessions();
+}
+
+function clientRowHtml(c){
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const hasPkg = c.package_size>0 || !!sharedPkg;
+  const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
+  const effectivePct = hasPkg ? Math.max(0, displayRemaining/displayTotal*100) : 0;
+  const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
+  const badge = c.paused
+    ? '<span class="badge badge-paused">⏸ Paused</span>'
+    : sharedPkg
+    ? displayRemaining<=0?'<span class="badge badge-red">OUT</span>'
+      :displayRemaining<=2?`<span class="badge badge-yellow">${displayRemaining} shared</span>`
+      :`<span class="badge badge-green">${displayRemaining} shared</span>`
+    : !hasPkg?'<span class="badge badge-blue">Pay per session</span>'
+      :c.remaining<0?`<span class="badge badge-red">${c.remaining} sessions</span>`
+      :c.remaining===0?'<span class="badge badge-red">0 remaining</span>'
+      :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
+      :`<span class="badge badge-green">${c.remaining} left</span>`;
+  const isSummer=c.first.toLowerCase().includes('summer');
+  return `<div class="client-card" onclick="openClientDetail('${c.id}')">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
+      <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:15px">${c.first} ${c.last||''}</span>
+          ${isSummer?'<span class="badge badge-summer" style="font-size:9px">☀️ Summer</span>':''}
+          ${c.structured_program?'<span class="badge badge-blue" style="font-size:9px">📋 Program</span>':''}
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.schedule||'No schedule set'}</div>
+      </div>
+      ${badge}
+    </div>
+    ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
+  </div>`;
+}
+
+function renderClientList(){
+  const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
+  const filtered=clients.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
+  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+}
+
+// ── ADD/EDIT CLIENT ──
+function openAddClient(){
+  ['acFirst','acLast','acAge','acGoals','acInjuries','acNotes','acSchedule'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('acLevel').value='Intermediate';document.getElementById('acPackage').value='0';
+  document.getElementById('acRemaining').value='';document.getElementById('acDuration').value='60';
+  openModal('addClientModal');
+}
+async function saveClient(){
+  const first=document.getElementById('acFirst').value.trim();if(!first){toast('Please enter a name');return;}
+  const pkg=parseInt(document.getElementById('acPackage').value)||0;
+  try{
+    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{}});
+    if(created&&created[0])clients.push(created[0]);
+    closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
+  }catch(e){toast('Error saving — check connection');}
+}
+function openEditClient(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';
+  closeModal('clientModal');openModal('editClientModal');
+}
+async function saveEditClient(){
+  const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim()};
+  try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
+  catch(e){toast('Error updating');}
+}
+
+// ── CLIENT DETAIL ──
+async function togglePause(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const newPaused=!c.paused;
+  try{
+    await db.updateClient(id,{paused:newPaused});
+    c.paused=newPaused;
+    renderClientModal(c);
+    renderDashboard();
+    toast(newPaused?`⏸ ${c.first} paused — won't show in alerts`:`▶ ${c.first} resumed`);
+  }catch(e){toast('Error updating');}
+}
+
+async function openClientDetail(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  // Render immediately with cached sessions so there is no black flash
+  if(!c._sessions) c._sessions=[];
+  renderClientModal(c);
+  openModal('clientModal');
+  // Then load sessions in background and refresh
+  try{
+    const fresh=await db.getSessions(id);
+    if(JSON.stringify(fresh)!==JSON.stringify(c._sessions)){
+      c._sessions=fresh;
+      renderClientModal(c);
+    }
+  }catch(e){}
+}
+
+function renderClientModal(c){
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const hasPkg=c.package_size>0 || !!sharedPkg;
+  const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
+  const pct=hasPkg?Math.max(0,displayRem/displayTotal*100):0;
+  const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
+  const sessions=c._sessions||[];
+  const isSummer=c.first.toLowerCase().includes('summer');
+
+  const sessHtml=sessions.length===0
+    ?'<div class="muted" style="padding:12px 0;font-size:13px">No sessions logged yet.</div>'
+    :sessions.slice(0,10).map(s=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:600">${s.date}</div>
+          ${s.workout&&s.workout.length>0?`<div class="muted" style="font-size:12px;margin-top:2px">${s.workout[0]?.day||s.note||''}</div>`:''}
+          ${s.note&&(!s.workout||s.workout.length===0)?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}
+        </div>
+        <span class="badge badge-green" style="flex-shrink:0;margin-left:8px">✓ Done</span>
+      </div>`).join('')
+    +(sessions.length>10?`<div class="muted" style="font-size:12px;padding-top:10px">+${sessions.length-10} more sessions</div>`:'');
+
+  let progSection='';
+  if(c.structured_program)progSection=renderStructuredProgram(c);
+  else if(c.program)progSection=renderAIProgramHtml(c.program);
+  else progSection=`<div style="text-align:center;padding:28px 0">
+    <div class="muted" style="margin-bottom:16px;font-size:13px">No program built yet</div>
+    <button onclick="generateProgram('${c.id}')" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.25);border-radius:10px;padding:13px 20px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;width:100%">✦ Generate 6-Week Program</button>
+  </div>`;
+
+  document.getElementById('clientModalBody').innerHTML=`
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div class="client-avatar" style="width:52px;height:52px;font-size:19px;border-radius:14px">${c.first[0]}${c.last?c.last[0]:''}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">${c.first} ${c.last||''}</span>
+          ${isSummer?'<span class="badge badge-summer">☀️ Summer</span>':''}
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:2px">${c.level}${c.age?' · Age '+c.age:''} · ${c.duration||60} min sessions</div>
+      </div>
+      <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    ${c.schedule?`<div style="margin-bottom:16px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm)">
+      <div class="page-label" style="margin-bottom:4px">Schedule</div>
+      <div style="font-size:13px;color:var(--accent-bright)">${c.schedule}</div>
+      ${c.notes?`<div class="muted" style="font-size:12px;margin-top:4px">${c.notes}</div>`:''}
+    </div>`:''}
+
+    <div class="card card-glow" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
+        <div>
+          <div class="page-label" style="margin-bottom:6px">Package Status</div>
+          ${sharedPkg
+            ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:16px;color:rgba(180,200,230,0.4);font-weight:400"> / ${sharedPkg.total_sessions} shared</span></div><div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
+            :c.package_size>0
+            ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${c.package_size} sessions</span></div>`
+            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session — no package tracking</div>`}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
+          ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.05);color:rgba(200,215,235,0.65);border:1px solid rgba(100,160,255,0.12);border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Renew Package</button>`:''}
+        </div>
+      </div>
+      ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
+    </div>
+
+    ${c.goals||c.injuries?`<div class="card" style="margin-bottom:14px">
+      ${c.goals?`<div class="page-label" style="margin-bottom:6px">Goals</div><div style="font-size:13px;line-height:1.6">${c.goals}</div>`:''}
+      ${c.goals&&c.injuries?'<div class="divider"></div>':''}
+      ${c.injuries?`<div class="page-label" style="margin-bottom:6px">Injuries / Limitations</div><div style="font-size:13px;color:var(--warn);line-height:1.6">${c.injuries}</div>`:''}
+    </div>`:''}
+
+    <div style="margin-bottom:18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="page-label" style="margin:0">Session History</div>
+        <span class="muted" style="font-size:12px">${sessions.length} total</span>
+      </div>
+      ${sessHtml}
+    </div>
+
+    <div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="page-label" style="margin:0">Training Program</div>
+      
+    </div>
+    <div id="prog-${c.id}">${progSection}</div>
+
+    <div class="divider"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit Client</button>
+      <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.05)'};color:${c.paused?'var(--success)':'rgba(200,215,235,0.6)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(255,255,255,0.1)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume Client':'⏸ Pause Client'}</button>
+    </div>
+    <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
+    <div style="padding:40px 20px 56px;text-align:center;margin-top:24px">
+      <svg viewBox="0 0 400 300" width="260" xmlns="http://www.w3.org/2000/svg" style="opacity:0.28">
+        <defs>
+          <linearGradient id="wmL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#1d4ed8"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>
+          <linearGradient id="wmR" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/></linearGradient>
+          <linearGradient id="wmW" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#60a5fa"/><stop offset="100%" style="stop-color:#1e3a8a"/></linearGradient>
+        </defs>
+        <text x="200" y="68" font-family="'Syne',sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">BAY</text>
+        <rect x="20" y="106" width="9" height="22" rx="2" fill="#60a5fa"/>
+        <rect x="33" y="96" width="13" height="42" rx="3" fill="url(#wmL)"/>
+        <rect x="50" y="90" width="13" height="54" rx="3" fill="url(#wmL)"/>
+        <rect x="67" y="84" width="13" height="66" rx="3" fill="url(#wmL)"/>
+        <rect x="84" y="78" width="13" height="78" rx="3" fill="url(#wmL)"/>
+        <rect x="371" y="106" width="9" height="22" rx="2" fill="#60a5fa"/>
+        <rect x="354" y="96" width="13" height="42" rx="3" fill="url(#wmR)"/>
+        <rect x="337" y="90" width="13" height="54" rx="3" fill="url(#wmR)"/>
+        <rect x="320" y="84" width="13" height="66" rx="3" fill="url(#wmR)"/>
+        <rect x="303" y="78" width="13" height="78" rx="3" fill="url(#wmR)"/>
+        <path d="M97,100 Q115,85 132,95 Q150,106 168,96 Q186,85 204,95 Q222,106 240,94 Q258,82 276,94 Q288,102 303,100 L303,134 Q288,134 276,122 Q258,110 240,122 Q222,134 204,123 Q186,113 168,124 Q150,135 132,123 Q115,113 97,134 Z" fill="url(#wmW)"/>
+        <path d="M228,94 C230,82 233,69 237,57 C241,46 245,36 250,26" stroke="#93c5fd" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M250,26 C261,15 275,11 285,14 C274,18 263,24 255,34" fill="#60a5fa"/>
+        <path d="M250,26 C257,13 263,5 268,1 C263,12 257,21 252,32" fill="#7ec8ff"/>
+        <path d="M250,26 C249,12 250,2 252,-4 C250,8 249,18 250,30" fill="#93c5fd"/>
+        <path d="M250,26 C243,12 238,4 234,0 C238,11 243,20 248,31" fill="#7ec8ff"/>
+        <path d="M250,26 C240,15 229,11 220,14 C230,17 241,22 247,33" fill="#60a5fa"/>
+        <path d="M250,26 C261,29 270,35 272,43 C263,38 254,33 252,36" fill="#3b82f6"/>
+        <path d="M250,26 C239,30 230,37 228,45 C237,40 247,35 249,37" fill="#3b82f6"/>
+        <circle cx="249" cy="33" r="4" fill="#1d4ed8"/>
+        <circle cx="255" cy="31" r="3.5" fill="#1e3a8a"/>
+        <circle cx="243" cy="32" r="3.5" fill="#1d4ed8"/>
+        <text x="200" y="195" font-family="'Syne',sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">MADE</text>
+        <text x="200" y="234" font-family="'Syne',sans-serif" font-weight="600" font-size="20" fill="#60a5fa" text-anchor="middle" letter-spacing="12">TRAINING</text>
+        <path d="M12,12 L12,34 M12,12 L34,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M388,12 L388,34 M388,12 L366,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M12,288 L12,266 M12,288 L34,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M388,288 L388,266 M388,288 L366,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>`;
+}
+
+// ── STRUCTURED PROGRAM ──
+function toggleDay(el){
+  const body = el.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  if(isOpen){
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.style.overflow = 'hidden';
+    requestAnimationFrame(()=>{
+      body.style.transition = 'max-height 0.3s ease';
+      body.style.maxHeight = '0';
+      setTimeout(()=>{
+        body.classList.remove('open');
+        body.style.maxHeight = '';
+        body.style.overflow = '';
+        body.style.transition = '';
+      }, 300);
+    });
+  } else {
+    body.classList.add('open');
+    const h = body.scrollHeight;
+    body.style.maxHeight = '0';
+    body.style.overflow = 'hidden';
+    body.style.transition = 'max-height 0.3s ease';
+    requestAnimationFrame(()=>{
+      body.style.maxHeight = h + 'px';
+      setTimeout(()=>{
+        body.style.maxHeight = '';
+        body.style.overflow = '';
+        body.style.transition = '';
+      }, 300);
+    });
+  }
+}
+
+function renderStructuredProgram(c){
+  const prog=c.structured_program;const history=c.exercise_history||{};
+  return prog.days.map((day,di)=>{
+    const exRows=day.exercises.map(ex=>{
+      const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+      const last=history[key];
+      const isSuperset=ex.name.match(/^SS/i);
+      const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+      const lastHtml=last
+        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'—'}</b> · <b>${last.weight||'—'}</b> · <span style="opacity:.6">${last.date}</span></div>`
+        :`<div class="ex-last">No data yet — log first session to track</div>`;
+      return `<div class="ex-row" ${isSuperset?'style="padding-left:22px;border-left:2px solid var(--warn)"':''}>
+        <div class="ex-row-content">
+          ${isSuperset?`<div class="ss-label">Superset</div>`:''}
+          <div class="ex-name">${displayName}</div>
+          <div class="ex-prescription">${ex.prescription}${ex.load?' · <span style="color:var(--muted)">'+ex.load+'</span>':''}</div>
+          ${lastHtml}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="prog-day-block">
+      <div class="prog-day-header" onclick="toggleDay(this)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${day.color};flex-shrink:0"></div>
+          <span class="prog-day-title" style="color:${day.color}">${day.name}</span>
+          <span class="muted" style="font-size:11px">${day.exercises.length} exercises</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="ex-edit-btn" onclick="event.stopPropagation();openEditProgramDay('${c.id}',${di})" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.12);color:rgba(200,215,235,0.5);">✎ Edit</button>
+          <span style="color:var(--muted);font-size:12px">▼</span>
+        </div>
+      </div>
+      <div class="prog-day-body">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(37,99,235,0.06)">
+          <button onclick="event.stopPropagation();openLogSession('${c.id}',${di})" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.4)">⚡ LOG THIS WORKOUT</button>
+        </div>
+        ${exRows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── EDIT PROGRAM DAY ──
+function openEditProgramDay(clientId,dayIndex){
+  const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
+  editingClientId=clientId;editingDayIndex=dayIndex;
+  const day=c.structured_program.days[dayIndex];
+  editingExercises=JSON.parse(JSON.stringify(day.exercises));
+  document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
+  renderEditExerciseList();openModal('editProgramModal');
+}
+function renderEditExerciseList(){
+  document.getElementById('editExerciseList').innerHTML=editingExercises.map((ex,i)=>`
+    <div class="edit-ex-row">
+      <div class="edit-ex-fields">
+        <input value="${ex.name||''}" onchange="editingExercises[${i}].name=this.value" placeholder="Exercise name">
+        <input value="${ex.prescription||''}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
+        <input value="${ex.load||''}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
+      </div>
+      <div class="edit-ex-actions">
+        ${i>0?`<button class="lib-btn" onclick="moveEx(${i},-1)">↑ Up</button>`:''}
+        ${i<editingExercises.length-1?`<button class="lib-btn" onclick="moveEx(${i},1)">↓ Down</button>`:''}
+        <button class="lib-btn danger" onclick="removeEx(${i})">Remove</button>
+      </div>
+    </div>`).join('');
+}
+function moveEx(i,dir){const j=i+dir;if(j<0||j>=editingExercises.length)return;[editingExercises[i],editingExercises[j]]=[editingExercises[j],editingExercises[i]];renderEditExerciseList();}
+function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
+function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:''});renderEditExerciseList();}
+async function saveProgramDay(){
+  const c=clients.find(x=>x.id===editingClientId);if(!c||!c.structured_program)return;
+  const prog=JSON.parse(JSON.stringify(c.structured_program));
+  prog.days[editingDayIndex].exercises=editingExercises;
+  try{
+    await db.updateClient(editingClientId,{structured_program:prog});
+    c.structured_program=prog;closeModal('editProgramModal');
+    renderClientModal(c);toast('Program updated ✓');
+  }catch(e){toast('Error saving program');}
+}
+
+// ── LOG SESSION ──
+function openLogSession(id, preselectedDay){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  // Allow negative sessions for clients like Ali who go on extended breaks
+  pendingLogId=id;
+  document.getElementById('logModalTitle').textContent=`Log Session — ${c.first}`;
+  document.getElementById('logNote').value='';
+  let workoutHtml='';
+  if(c.structured_program){
+    workoutHtml=`<div class="form-group"><label class="form-label">Today's Workout</label>
+      <select id="logDaySelect" onchange="updateLogWorkout('${id}')">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}</select></div>
+      <div id="logExercises"></div>`;
+  }
+  document.getElementById('logWorkoutSection').innerHTML=workoutHtml;
+  if(c.structured_program){
+    if(preselectedDay !== undefined){
+      setTimeout(()=>{
+        const sel = document.getElementById('logDaySelect');
+        if(sel){ sel.value = preselectedDay; }
+        updateLogWorkout(id);
+      },50);
+    } else {
+      setTimeout(()=>updateLogWorkout(id),50);
+    }
+  }
+  openModal('logModal');
+}
+function updateLogWorkout(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
+  const di=parseInt(document.getElementById('logDaySelect').value)||0;
+  const day=c.structured_program.days[di];const history=c.exercise_history||{};
+  document.getElementById('logExercises').innerHTML=day.exercises.map((ex,ei)=>{
+    const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+    const last=history[key];
+    const isSuperset=ex.name.match(/^SS/i);
+    const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+    return `<div class="workout-ex-row" ${isSuperset?'style="border-left:3px solid var(--warn)"':''}>
+      ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
+      <div class="workout-ex-name">${displayName}</div>
+      <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
+      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
+      <div class="workout-inputs">
+        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
+        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function showSuccessAnimation(name){
+  // Remove any existing
+  document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
+  overlay.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards">
+      <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.6);">⚡</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} — Done!</div>
+      <div style="font-size:13px;color:rgba(67,217,162,0.8);letter-spacing:1px;">Session Logged ✓</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  // Fade out after 1s
+  setTimeout(()=>{
+    overlay.style.transition='opacity .3s ease';
+    overlay.style.opacity='0';
+    setTimeout(()=>overlay.remove(), 300);
+  }, 1000);
+}
+
+async function confirmLogSession(){
+  const c=clients.find(x=>x.id===pendingLogId);if(!c)return;
+  const note=document.getElementById('logNote').value.trim();
+  const dateStr=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  let workout=[];const newHistory={...(c.exercise_history||{})};const exLogs=[];
+  if(c.structured_program){
+    const di=parseInt(document.getElementById('logDaySelect')?.value)||0;
+    const day=c.structured_program.days[di];
+    day.exercises.forEach((ex,ei)=>{
+      const wr=document.getElementById('wr-'+ei)?.value.trim();
+      const wt=document.getElementById('wt-'+ei)?.value.trim();
+      if(wr||wt){
+        const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+        newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr};
+        workout.push({name:ex.name,reps:wr||'',weight:wt||''});
+        exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
+      }
+    });
+  }
+  try{
+    await db.addSession({client_id:c.id,date:dateStr,note,workout});
+    for(const log of exLogs)await db.addExLog(log);
+    let newRemaining=c.package_size>0?c.remaining-1:c.remaining;
+    await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
+    c.remaining=newRemaining;c.exercise_history=newHistory;
+    // Deduct from shared package if linked
+    if(c.package_size>0&&c.remaining<0){
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
+    } else if(c.shared_package_id){
+      const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
+      if(sharedPkg&&sharedPkg.remaining_sessions>0){
+        const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
+        await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
+        sharedPkg.remaining_sessions=newShared;
+      }
+    }
+    c._sessions=await db.getSessions(c.id);
+    closeModal('logModal');renderClientModal(c);renderDashboard();
+    if(c.package_size>0&&c.remaining<0){
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
+    } else if(c.shared_package_id){
+      const sp=sharedPackages.find(p=>p.id===c.shared_package_id);
+      if(sp){
+        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out — invoice via Square!`),300);
+        else if(sp.remaining_sessions<=2)setTimeout(()=>toast(`🟡 Shared package: ${sp.remaining_sessions} left`),300);
+        else toast(`Session logged ✓ — ${sp.remaining_sessions} shared remaining`);
+      }
+    } else if(c.package_size>0){
+      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions — invoice via Square!`),300);
+      else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
+      else toast(`Session logged ✓ — ${c.remaining} remaining`);
+    }else toast('Session logged ✓');
+  }catch(e){toast('Error saving — check connection');console.error(e);}
+}
+
+// ── RENEW ──
+function openRenew(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
+  document.getElementById('renewPkg').value=c.package_size||10;openModal('renewModal');
+}
+async function confirmRenew(){
+  const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
+  const pkg=parseInt(document.getElementById('renewPkg').value);
+  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed — ${pkg} sessions ✓`);}
+  catch(e){toast('Error renewing package');}
+}
+async function deleteClient(id){
+  if(!confirm('Remove this client? This cannot be undone.'))return;
+  try{await db.deleteClient(id);clients=clients.filter(x=>x.id!==id);closeModal('clientModal');renderClientList();renderDashboard();toast('Client removed');}
+  catch(e){toast('Error removing client');}
+}
+
+// ── LIBRARY ──
+function renderLibrary(){
+  const q=(document.getElementById('libSearch')?.value||'').toLowerCase();
+  const filtered=library.filter(e=>e.name.toLowerCase().includes(q)||(e.muscle_group||'').toLowerCase().includes(q));
+  const groups={};
+  filtered.forEach(e=>{if(!groups[e.muscle_group])groups[e.muscle_group]=[];groups[e.muscle_group].push(e);});
+  if(Object.keys(groups).length===0){
+    document.getElementById('libraryList').innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>${library.length===0?'No exercises yet<br>Tap + Exercise to start building your library':'No exercises match your search'}</p></div>`;
+    return;
+  }
+  document.getElementById('libraryList').innerHTML=Object.entries(groups).map(([group,exes],gi)=>`
+    <div class="muscle-group">
+      <div class="muscle-header" onclick="this.nextElementSibling.classList.toggle('open')" style="border-left:3px solid ${MUSCLE_COLORS[group]||'var(--accent)'}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="muscle-dot" style="background:${MUSCLE_COLORS[group]||'var(--accent)'}"></div>
+          <span style="color:${MUSCLE_COLORS[group]||'var(--accent)'}">${group}</span>
+          <span class="muscle-count">${exes.length} exercise${exes.length===1?'':'s'}</span>
+        </div>
+        <span style="color:var(--muted);font-size:12px">▼</span>
+      </div>
+      <div class="muscle-body ${gi===0?'open':''}">
+        ${exes.map(e=>`<div class="lib-exercise">
+          <div>
+            <div class="lib-ex-name">${e.name}</div>
+            ${e.equipment?`<div class="lib-ex-equip">${e.equipment}</div>`:''}
+          </div>
+          <div class="lib-ex-actions">
+            <button class="lib-btn" onclick="openEditLibEx('${e.id}')">Edit</button>
+            <button class="lib-btn danger" onclick="deleteLibEx('${e.id}')">×</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function openAddExercise(){
+  document.getElementById('libExId').value='';document.getElementById('libExName').value='';
+  document.getElementById('libExMuscle').value='Chest';document.getElementById('libExEquip').value='';
+  document.getElementById('addExerciseTitle').textContent='Add Exercise';openModal('addExerciseModal');
+}
+function openEditLibEx(id){
+  const ex=library.find(e=>e.id===id);if(!ex)return;
+  document.getElementById('libExId').value=id;document.getElementById('libExName').value=ex.name;
+  document.getElementById('libExMuscle').value=ex.muscle_group;document.getElementById('libExEquip').value=ex.equipment||'';
+  document.getElementById('addExerciseTitle').textContent='Edit Exercise';openModal('addExerciseModal');
+}
+async function saveLibraryExercise(){
+  const id=document.getElementById('libExId').value;
+  const name=document.getElementById('libExName').value.trim();if(!name)return;
+  const data={name,muscle_group:document.getElementById('libExMuscle').value,equipment:document.getElementById('libExEquip').value.trim()};
+  try{
+    if(id){await db.updateLibEx(id,data);const i=library.findIndex(e=>e.id===id);if(i>=0)library[i]={...library[i],...data};toast('Exercise updated ✓');}
+    else{const created=await db.addLibEx(data);if(created&&created[0])library.push(created[0]);toast(`${name} added ✓`);}
+    closeModal('addExerciseModal');renderLibrary();
+  }catch(e){toast('Error saving exercise');}
+}
+async function deleteLibEx(id){
+  if(!confirm('Remove this exercise?'))return;
+  try{await db.delLibEx(id);library=library.filter(e=>e.id!==id);renderLibrary();toast('Removed');}
+  catch(e){toast('Error removing');}
+}
+
+// ── EQUIPMENT ──
+function renderEquipList(){
+  const el=document.getElementById('equipList');
+  el.innerHTML=equipment.length===0
+    ?`<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:28px">🏋️</div><p style="font-size:12px">No equipment added yet</p></div>`
+    :equipment.map(e=>`<div class="equip-item"><span>${e.name}</span><span class="remove" onclick="removeEquip('${e.id}')">×</span></div>`).join('');
+}
+function openAddEquip(){document.getElementById('equipName').value='';openModal('addEquipModal');}
+async function saveEquip(){
+  const name=document.getElementById('equipName').value.trim();if(!name)return;
+  try{const created=await db.addEquipment(name);if(created&&created[0])equipment.push(created[0]);closeModal('addEquipModal');renderEquipList();toast(`${name} added ✓`);}
+  catch(e){toast('Error adding equipment');}
+}
+async function removeEquip(id){
+  try{await db.delEquipment(id);equipment=equipment.filter(e=>e.id!==id);renderEquipList();}
+  catch(e){toast('Error removing equipment');}
+}
+
+// ── AI PROGRAM ──
+async function generateProgram(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const section=document.getElementById('prog-'+id);if(!section)return;
+  section.innerHTML=`<div class="ai-output"><span class="ai-thinking">✦ Building a 6-week program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
+  const equip=equipment.length>0?equipment.map(e=>e.name).join(', '):'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Resistance bands';
+  const days=(c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
+  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Could not generate program.';
+    await db.updateClient(c.id,{program:text});c.program=text;
+    if(section)section.innerHTML=renderAIProgramHtml(text);
+  }catch(e){if(section)section.innerHTML=`<div class="ai-output" style="color:var(--danger)">Failed to generate. Check connection and try again.</div>`;}
+}
+function renderAIProgramHtml(text){
+  const lines=text.split('\n');let weeks=[],cur=null;
+  lines.forEach(line=>{const t=line.trim();if(!t)return;if(/^WEEK\s+\d/i.test(t)){if(cur)weeks.push(cur);cur={title:t,days:[],coach:''};}else if(cur){if(/^Coach'?s?\s+Note/i.test(t))cur.coach=t.replace(/^Coach'?s?\s+Note:?\s*/i,'');else if(/^Day\s+\d/i.test(t)){const m=t.match(/\(([^)]+)\)/);cur.days.push({label:t.split('(')[0].trim(),type:m?m[1]:'',exercises:[]});}else if((t.startsWith('•')||t.startsWith('-'))&&cur.days.length>0)cur.days[cur.days.length-1].exercises.push(t.replace(/^[•\-]\s*/,''));}});
+  if(cur)weeks.push(cur);if(!weeks.length)return`<div class="ai-output">${text}</div>`;
+  return weeks.map((w,wi)=>{
+    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('—');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">— '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
+    return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
+  }).join('');
+}
+
+init();
+</script>
+
+</body>
+</html>
