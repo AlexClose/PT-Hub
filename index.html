@@ -1699,7 +1699,8 @@ var cpMain=document.getElementById(‘cp-main’);
 if(cpMain)cpMain.innerHTML=’<div style="padding:20px;color:#f87171;">Error: ‘+e.message+’</div>’;
 });
 
-throw new Error(‘cp-mode’);
+return;
+
 })();
 
 init();
