@@ -1442,6 +1442,12 @@ function renderAIProgramHtml(text){
   }).join('');
 }
 
+var cpParam = window.location.search.indexOf('client=');
+if(cpParam !== -1) {
+  var cpName = window.location.search.split('client=')[1].split('&')[0];
+  document.querySelector('nav').style.display='none';
+  document.querySelector('main').style.display='none';
+}
 init();
 </script>
 
