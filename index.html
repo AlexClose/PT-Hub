@@ -958,18 +958,10 @@ function renderClientModal(c){
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
 
+  const sessionRowHtml=s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;font-weight:600">${s.date}</div>${s.workout&&s.workout.length>0?`<div class="muted" style="font-size:12px;margin-top:2px">${s.workout[0]?.day||s.note||''}</div>`:''} ${s.note&&(!s.workout||s.workout.length===0)?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}</div><span class="badge badge-green" style="flex-shrink:0;margin-left:8px">Done</span></div>`;
   const sessHtml=sessions.length===0
     ?'<div class="muted" style="padding:12px 0;font-size:13px">No sessions logged yet.</div>'
-    :sessions.slice(0,10).map(s=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <div style="font-size:14px;font-weight:600">${s.date}</div>
-          ${s.workout&&s.workout.length>0?`<div class="muted" style="font-size:12px;margin-top:2px">${s.workout[0]?.day||s.note||''}</div>`:''}
-          ${s.note&&(!s.workout||s.workout.length===0)?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}
-        </div>
-        <span class="badge badge-green" style="flex-shrink:0;margin-left:8px">✓ Done</span>
-      </div>`).join('')
-    +(sessions.length>10?`<div class="muted" style="font-size:12px;padding-top:10px">+${sessions.length-10} more sessions</div>`:'');
+    :sessions.slice(0,3).map(sessionRowHtml).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(sessionRowHtml).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
 
   let progSection='';
   if(c.structured_program)progSection=renderStructuredProgram(c);
