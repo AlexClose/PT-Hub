@@ -1537,7 +1537,8 @@ function renderAIProgramHtml(text){
       var bgColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.15)' : type === 'run' ? 'rgba(255,140,71,0.15)' : 'rgba(255,255,255,0.05)') : 'transparent';
       var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
-      html += '<div style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';">' +
+      var cursor = type !== 'rest' ? 'cursor:pointer;' : '';
+      html += '<div onclick="window._calendarDayTap(' + i + ')" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';' + cursor + '">' +
         '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + days[i] + '</div>' +
         '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin:0 auto;"></div>' +
       '</div>';
@@ -1552,6 +1553,74 @@ function renderAIProgramHtml(text){
         '</div>' +
       '</div>';
     el.innerHTML = html;
+
+    window._calendarDayTap = function(dayIdx) {
+      // dayIdx: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
+      var typeMap2 = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
+      var type = typeMap2[dayIdx];
+      var dayNames2 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      var dayName = dayNames2[dayIdx];
+
+      if (type === 'rest') return;
+
+      var portalBody = document.getElementById('portal-body');
+      var todayJS2 = new Date().getDay();
+      var todayIdx2 = todayJS2 === 0 ? 6 : todayJS2 - 1;
+      var isToday = (dayIdx === todayIdx2);
+      var label = isToday ? 'Today' : dayName;
+
+      if (type === 'run') {
+        var isTue = (dayIdx === 1);
+        var rd = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
+        // Show a preview card with option to go to full run view
+        var html =
+          '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+          '<div style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:20px;margin-bottom:12px;">' +
+            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.6);margin-bottom:4px;">' + label + '</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;margin-bottom:4px;">' + rd.name + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + rd.description + '</div>';
+        for (var i = 0; i < rd.intervals.length; i++) {
+          var interval = rd.intervals[i];
+          html +=
+            '<div style="border-top:1px solid rgba(255,140,71,0.1);padding:10px 0;display:flex;gap:12px;align-items:flex-start;">' +
+              '<div style="width:6px;height:6px;border-radius:50%;background:rgba(255,140,71,0.4);flex-shrink:0;margin-top:5px;"></div>' +
+              '<div>' +
+                '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px;">' + interval.name + ' <span style="color:#ff8c47;">- ' + interval.detail + '</span></div>' +
+                '<div style="font-size:12px;color:rgba(180,200,230,0.4);line-height:1.5;">' + interval.pace + '</div>' +
+              '</div>' +
+            '</div>';
+        }
+        html += '</div>';
+        if (isToday) {
+          html += '<button onclick="renderRunCard(window._currentRunDay)" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 20px rgba(255,140,71,0.3);">Start This Run</button>';
+          window._currentRunDay = rd;
+        }
+        portalBody.innerHTML = html;
+
+      } else {
+        // Lift day - show the workout list
+        if (!window._portalDays) return;
+        var html2 =
+          '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(100,160,255,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+          '<div style="background:#0f1317;border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:20px;margin-bottom:12px;">' +
+            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:8px;">' + label + ' - Lift Day</div>' +
+            '<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:16px;">Choose your workout:</div>';
+        var colors2 = ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'];
+        for (var j = 0; j < window._portalDays.length; j++) {
+          var d = window._portalDays[j];
+          var col2 = colors2[j % colors2.length];
+          html2 += '<div onclick="window._showPortalDay(' + j + ')" style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:8px;height:8px;border-radius:50%;background:' + col2 + ';"></div>' +
+              '<div style="font-weight:600;font-size:14px;color:#fff;">' + d.name + '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.4);">' + (d.exercises ? d.exercises.length : 0) + ' exercises &#8250;</div>' +
+          '</div>';
+        }
+        html2 += '</div>';
+        portalBody.innerHTML = html2;
+      }
+    };
   }
 
   var RUN_PROGRAM = {
