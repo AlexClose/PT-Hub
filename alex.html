@@ -1,4 +1,209 @@
 <!DOCTYPE html>
+
 <html>
-<head><meta http-equiv="refresh" content="0;url=/?client=alex"></head>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Baymade Training</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#070910;color:#eef2fa;font-family:sans-serif;min-height:100vh;}
+.hdr{position:sticky;top:0;z-index:10;background:rgba(7,9,16,0.95);border-bottom:1px solid rgba(120,160,255,0.18);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;}
+.brand{font-size:10px;color:#60a5fa;letter-spacing:3px;font-weight:700;}
+.sub{font-size:9px;color:rgba(180,200,235,0.45);letter-spacing:1px;margin-top:2px;}
+main{padding:20px 16px 80px;max-width:560px;margin:0 auto;}
+.wd{flex-shrink:0;width:50px;border-radius:12px;padding:10px 0;text-align:center;cursor:pointer;border:1px solid rgba(120,160,255,0.1);}
+.ex{background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:11px;padding:14px;margin-bottom:10px;}
+.inp{width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:9px;color:#eef2fa;font-size:15px;font-weight:600;padding:13px 12px;text-align:center;outline:none;}
+.log-btn{width:100%;background:#2563eb;color:#fff;border:none;border-radius:11px;padding:17px;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:14px;}
+.log-btn:disabled{opacity:0.5;}
+.note{width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:11px;color:#eef2fa;font-size:14px;padding:14px;resize:none;height:75px;outline:none;margin-bottom:0;font-family:sans-serif;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(100px);background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:10px;padding:12px 20px;font-size:13px;z-index:400;transition:transform .3s;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pop{0%{opacity:0;transform:scale(0.3)}70%{opacity:1;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+<div class="hdr">
+<div><div class="brand">BAYMADE TRAINING</div><div class="sub">CLIENT PORTAL</div></div>
+<div style="text-align:right"><div id="nm" style="font-size:13px;font-weight:700;">--</div><div id="lv" style="font-size:10px;color:rgba(180,200,235,0.45);margin-top:1px;">--</div></div>
+</div>
+<main id="main">
+<div style="display:flex;align-items:center;justify-content:center;min-height:50vh;">
+<div style="width:36px;height:36px;border:3px solid rgba(120,160,255,0.18);border-top-color:#2563eb;border-radius:50%;animation:spin .7s linear infinite;"></div>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+var SB='https://oneykldgivaqcrqmrqha.supabase.co';
+var SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+var CID='06acdc81-5f0b-4481-917a-d27baf89bc51';
+var H={'apikey':SK,'Authorization':'Bearer '+SK,'Content-Type':'application/json','Prefer':'return=representation'};
+var DN=['Su','Mo','Tu','We','Th','Fr','Sa'];
+var cli=null,sess=[],aDay=null;
+
+function toast(m){var t=document.getElementById(‘toast’);t.textContent=m;t.classList.add(‘show’);setTimeout(function(){t.classList.remove(‘show’);},3000);}
+
+function greet(){var h=new Date().getHours();if(h<12)return ‘Good morning’;if(h<17)return ‘Good afternoon’;return ‘Good evening’;}
+
+function getSM(){
+var prog=cli.structured_program;
+if(!prog||!prog.days)return {};
+var sc=(cli.schedule||’’).toLowerCase();
+var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+var m=[],map={};
+Object.keys(dm).forEach(function(k){if(sc.indexOf(k)!==-1&&m.indexOf(dm[k])===-1)m.push(dm[k]);});
+m.sort(function(a,b){return a-b;});
+m.forEach(function(d,i){if(i<prog.days.length)map[d]=i;});
+return map;
+}
+
+function render(){
+var sm=getSM();
+var ti=new Date().getDay();
+aDay=(sm[ti]!==undefined)?sm[ti]:null;
+var days=cli.structured_program?cli.structured_program.days:[];
+var now=new Date();
+var ds=now.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var sow=new Date(now);sow.setDate(now.getDate()-now.getDay());
+var tL=false;
+for(var i=0;i<sess.length;i++){if(sess[i].date===ds){tL=true;break;}}
+
+var week=’<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;">’;
+for(var i=0;i<7;i++){
+var d=new Date(sow);d.setDate(sow.getDate()+i);
+var di=d.getDay();
+var isTod=d.toDateString()===now.toDateString();
+var pdi=sm[di];
+var hasW=pdi!==undefined;
+var dStr=d.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var isLog=false;for(var j=0;j<sess.length;j++){if(sess[j].date===dStr){isLog=true;break;}}
+var bg=isTod&&aDay!==null?’#2563eb’:isLog?‘rgba(52,211,153,0.06)’:’#0d1018’;
+var bc=isTod&&aDay!==null?’#2563eb’:isLog?‘rgba(52,211,153,0.35)’:hasW?‘rgba(96,165,250,0.35)’:‘rgba(120,160,255,0.1)’;
+var wn=hasW&&days[pdi]?days[pdi].name.split(’ ‘)[0]:’’;
+var dlc=isTod&&aDay!==null?‘rgba(255,255,255,0.8)’:‘rgba(180,200,235,0.4)’;
+var dc=isTod&&aDay!==null?’#fff’:’#eef2fa’;
+var dot=isTod&&aDay!==null?‘rgba(255,255,255,0.6)’:isLog?’#34d399’:hasW?’#60a5fa’:‘transparent’;
+var pf=pdi!==undefined?String(pdi):‘null’;
+week+=’<div class="wd" onclick="sel('+pf+')" style="background:'+bg+';border-color:'+bc+';">’;
+week+=’<div style="font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:'+dlc+';">’+DN[di]+’</div>’;
+week+=’<div style="font-size:16px;font-weight:700;margin:2px 0;color:'+dc+';">’+d.getDate()+’</div>’;
+week+=’<div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:'+dot+';"></div>’;
+if(wn)week+=’<div style="font-size:7px;color:rgba(100,160,255,0.6);margin-top:2px;">’+wn+’</div>’;
+week+=’</div>’;
+}
+week+=’</div>’;
+
+var wc=’’;
+if(aDay===null){
+wc=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:16px;padding:32px 20px;text-align:center;"><div style="font-size:18px;font-weight:700;margin-bottom:8px;">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45);">No workout today. Recovery is part of the program!</div></div>’;
+}else{
+var day=days[aDay];
+var hist=cli.exercise_history||{};
+var exs=’’;
+if(day&&day.exercises){
+for(var ei=0;ei<day.exercises.length;ei++){
+var ex=day.exercises[ei];
+var key=ex.name.toLowerCase().replace(/\s+/g,’_’);
+var last=hist[key]||null;
+var isSS=/^SS/i.test(ex.name);
+var nm=ex.name.replace(/^SS\w+:\s*/i,’’);
+var lh=’’;
+if(last)lh=’<div style="font-size:11px;color:#60a5fa;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:8px;">Last: ‘+(last.reps||’-’)+’ / ‘+(last.weight||’-’)+’</div>’;
+var rph=last&&last.reps?last.reps:‘Sets x Reps’;
+var wph=last&&last.weight?last.weight:‘Weight / Load’;
+var ls=ex.load?’ / ‘+ex.load:’’;
+exs+=’<div class=“ex”’+(isSS?’ style=“border-left:3px solid #fbbf24;”’:’’)+’>’;
+if(isSS)exs+=’<div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#fbbf24;margin-bottom:6px;">SUPERSET</div>’;
+exs+=’<div style="font-size:15px;font-weight:600;margin-bottom:3px;">’+nm+’</div>’;
+exs+=’<div style="font-size:12px;color:#60a5fa;margin-bottom:6px;">’+ex.prescription+ls+’</div>’;
+exs+=lh;
+exs+=’<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">’;
+exs+=’<div><input class="inp" id="r'+ei+'" placeholder="'+rph+'"><div style="font-size:9px;text-transform:uppercase;color:rgba(180,200,235,0.45);text-align:center;margin-top:4px;">Sets x Reps</div></div>’;
+exs+=’<div><input class="inp" id="w'+ei+'" placeholder="'+wph+'"><div style="font-size:9px;text-transform:uppercase;color:rgba(180,200,235,0.45);text-align:center;margin-top:4px;">Weight / Load</div></div>’;
+exs+=’</div></div>’;
+}
+}
+var ec=day&&day.exercises?day.exercises.length:0;
+var lb=tL?’<span style="color:#34d399;"> - Logged today</span>’:’’;
+wc=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.18);border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;">’;
+wc+=’<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#60a5fa);"></div>’;
+wc+=’<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px;">Todays Workout</div>’;
+wc+=’<div style="font-size:22px;font-weight:700;">’+(day?day.name:’’)+’</div>’;
+wc+=’<div style="font-size:12px;color:rgba(180,200,235,0.45);margin-top:4px;">’+ec+’ exercises’+lb+’</div>’;
+wc+=’</div>’+exs;
+wc+=’<textarea class="note" id="note" placeholder="Add a note (optional)..."></textarea>’;
+wc+=’<button class="log-btn" id="lbtn" onclick="logIt()">LOG THIS WORKOUT</button>’;
+}
+
+var hh=’’;
+if(sess.length>0){
+hh=’<div style="margin-top:28px;"><div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:12px;">Recent Sessions</div>’;
+for(var ri=0;ri<Math.min(sess.length,5);ri++){
+var sv=sess[ri];
+hh+=’<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(120,160,255,0.08);"><div style="font-size:13px;font-weight:600;">’+sv.date+’</div><span style="font-size:10px;color:#34d399;font-weight:700;">Done</span></div>’;
+}
+hh+=’</div>’;
+}
+
+var html=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;">’+greet()+’, ‘+cli.first+’</div>’;
+html+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px;">’+(aDay!==null?‘Here is your workout for today.’:‘Rest up - no workout today.’)+’</div>’;
+html+=week+wc+hh;
+document.getElementById(‘main’).innerHTML=html;
+document.getElementById(‘nm’).textContent=((cli.first||’’)+’ ‘+(cli.last||’’)).trim();
+document.getElementById(‘lv’).textContent=(cli.level||’’)+’ - ‘+(cli.duration||60)+’ min’;
+}
+
+function sel(idx){if(idx===null||idx===undefined)return;aDay=idx;render();}
+
+function logIt(){
+var btn=document.getElementById(‘lbtn’);
+if(!btn)return;
+btn.disabled=true;btn.textContent=‘Saving…’;
+var day=cli.structured_program.days[aDay];
+var ds=new Date().toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var note=document.getElementById(‘note’)?document.getElementById(‘note’).value.trim():’’;
+var hist=Object.assign({},cli.exercise_history||{});
+var wo=[];
+for(var i=0;i<day.exercises.length;i++){
+var ex=day.exercises[i];
+var r=document.getElementById(‘r’+i)?document.getElementById(‘r’+i).value.trim():’’;
+var w=document.getElementById(‘w’+i)?document.getElementById(‘w’+i).value.trim():’’;
+if(r||w){hist[ex.name.toLowerCase().replace(/\s+/g,’_’)]={reps:r,weight:w,date:ds};wo.push({name:ex.name,reps:r,weight:w});}
+}
+fetch(SB+’/rest/v1/sessions’,{method:‘POST’,headers:H,body:JSON.stringify({client_id:CID,date:ds,note:note,workout:wo})})
+.then(function(r){return r.json();})
+.then(function(){return fetch(SB+’/rest/v1/clients?id=eq.’+CID,{method:‘PATCH’,headers:H,body:JSON.stringify({exercise_history:hist})});})
+.then(function(r){return r.json();})
+.then(function(){
+cli.exercise_history=hist;
+return fetch(SB+’/rest/v1/sessions?client_id=eq.’+CID+’&order=created_at.desc’,{headers:H});
+})
+.then(function(r){return r.json();})
+.then(function(s){
+sess=s;
+var ov=document.createElement(‘div’);
+ov.style.cssText=‘position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);pointer-events:none;’;
+ov.innerHTML=’<div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:pop .5s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0;"><div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#34d399);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:800;">OK</div><div style="font-size:24px;font-weight:700;letter-spacing:3px;color:#fff;">CRUSHED IT</div><div style="font-size:13px;color:rgba(52,211,153,0.8);">Workout saved</div></div>’;
+document.body.appendChild(ov);
+setTimeout(function(){ov.style.transition=‘opacity .4s’;ov.style.opacity=‘0’;setTimeout(function(){ov.remove();},400);},1400);
+render();
+})
+.catch(function(e){if(btn){btn.disabled=false;btn.textContent=‘LOG THIS WORKOUT’;}toast(‘Error - try again’);});
+}
+
+fetch(SB+’/rest/v1/clients?id=eq.’+CID,{headers:H})
+.then(function(r){return r.json();})
+.then(function(d){
+cli=d[0];
+return fetch(SB+’/rest/v1/sessions?client_id=eq.’+CID+’&order=created_at.desc’,{headers:H});
+})
+.then(function(r){return r.json();})
+.then(function(s){sess=s;render();})
+.catch(function(e){document.getElementById(‘main’).innerHTML=’<p style="padding:20px;color:#f87171;">Error: ‘+e.message+’</p>’;});
+</script>
+
+</body>
 </html>
