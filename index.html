@@ -1556,12 +1556,25 @@ function renderAIProgramHtml(text){
 
     window._calendarDayTap = function(dayIdx) {
       // dayIdx: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
+      // Workout mapping: Mon=Push(0), Wed=Pull(1), Fri=Leg(2)
+      var liftMap = {0: 0, 2: 1, 4: 2}; // dayIdx -> portalDays index
       var typeMap2 = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
       var type = typeMap2[dayIdx];
       var dayNames2 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
       var dayName = dayNames2[dayIdx];
 
       if (type === 'rest') return;
+
+      // Highlight the tapped day in the calendar
+      var allDayCells = document.querySelectorAll('#calendar-strip [onclick]');
+      allDayCells.forEach(function(cell) {
+        cell.style.outline = 'none';
+        cell.style.boxShadow = 'none';
+      });
+      if (allDayCells[dayIdx]) {
+        allDayCells[dayIdx].style.outline = '2px solid ' + (type === 'run' ? '#ff8c47' : '#4fa3e8');
+        allDayCells[dayIdx].style.outlineOffset = '2px';
+      }
 
       var portalBody = document.getElementById('portal-body');
       var todayJS2 = new Date().getDay();
@@ -1572,11 +1585,10 @@ function renderAIProgramHtml(text){
       if (type === 'run') {
         var isTue = (dayIdx === 1);
         var rd = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
-        // Show a preview card with option to go to full run view
+        window._currentRunDay = rd;
         var html =
-          '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.6);margin-bottom:12px;">' + label + '</div>' +
           '<div style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:20px;margin-bottom:12px;">' +
-            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.6);margin-bottom:4px;">' + label + '</div>' +
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;margin-bottom:4px;">' + rd.name + '</div>' +
             '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + rd.description + '</div>';
         for (var i = 0; i < rd.intervals.length; i++) {
@@ -1593,32 +1605,24 @@ function renderAIProgramHtml(text){
         html += '</div>';
         if (isToday) {
           html += '<button onclick="renderRunCard(window._currentRunDay)" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 20px rgba(255,140,71,0.3);">Start This Run</button>';
-          window._currentRunDay = rd;
         }
         portalBody.innerHTML = html;
 
       } else {
-        // Lift day - show the workout list
+        // Lift day - go directly to the mapped workout
         if (!window._portalDays) return;
+        var workoutIdx = liftMap[dayIdx];
+        var day = window._portalDays[workoutIdx];
+        if (!day) return;
+
         var html2 =
-          '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(100,160,255,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
-          '<div style="background:#0f1317;border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:20px;margin-bottom:12px;">' +
-            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:8px;">' + label + ' - Lift Day</div>' +
-            '<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:16px;">Choose your workout:</div>';
-        var colors2 = ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'];
-        for (var j = 0; j < window._portalDays.length; j++) {
-          var d = window._portalDays[j];
-          var col2 = colors2[j % colors2.length];
-          html2 += '<div onclick="window._showPortalDay(' + j + ')" style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:10px;margin-bottom:8px;cursor:pointer;">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<div style="width:8px;height:8px;border-radius:50%;background:' + col2 + ';"></div>' +
-              '<div style="font-weight:600;font-size:14px;color:#fff;">' + d.name + '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.4);">' + (d.exercises ? d.exercises.length : 0) + ' exercises &#8250;</div>' +
-          '</div>';
-        }
-        html2 += '</div>';
+          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:12px;">' + label + '</div>';
+
         portalBody.innerHTML = html2;
+        renderWorkoutCard(day, day.name);
+        // prepend the day label above what renderWorkoutCard set
+        var existing = portalBody.innerHTML;
+        portalBody.innerHTML = html2 + existing;
       }
     };
   }
