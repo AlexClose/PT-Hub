@@ -379,6 +379,7 @@ box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 .search-wrap::before{content:‘🔍’;position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;z-index:1;}
 
 ::-webkit-scrollbar{width:4px;}
+@keyframes portalPop{0%{opacity:0;transform:scale(0.3)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 ::-webkit-scrollbar-thumb{background:var(–border2);border-radius:2px;}
 
 /* Session logged success animation */
@@ -1476,6 +1477,7 @@ function renderAIProgramHtml(text){
     .then(function(data) {
       var client = data[0];
       window._portalClientId = client.id;
+      window._portalClientName = client.first || 'there';
       window._portalHistory = client.exercise_history || {};
       window._portalPackageSize = client.package_size || 0;
       window._portalRemaining = client.remaining || 0;
@@ -1513,7 +1515,8 @@ function renderAIProgramHtml(text){
       '</div>' +
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
         '<div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);">Loading your workouts...</div>' +
-      '</div>';
+      '</div>' +
+      '<div style="text-align:center;padding:24px;font-family:Syne,sans-serif;font-size:9px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:rgba(180,200,230,0.12);">Baymade Training</div>';
     setTimeout(function() { renderCalendarStrip(); }, 0);
   }
 
@@ -1724,7 +1727,43 @@ function renderAIProgramHtml(text){
     var isTuesday = (todayJS === 2);
     var runData = isTuesday ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
 
-    var html = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
+    // Greeting
+    var hour = new Date().getHours();
+    var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    var clientFirstName = window._portalClientName || 'there';
+
+    // Week progress - count sessions this week
+    var sessionsThisWeek = 0;
+    if (window._portalRecentSessions) {
+      var now = new Date();
+      var dayOfWeek = now.getDay();
+      var monday = new Date(now);
+      monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      monday.setHours(0,0,0,0);
+      window._portalRecentSessions.forEach(function(s) {
+        var d = new Date(s.created_at || s.date);
+        if (d >= monday) sessionsThisWeek++;
+      });
+    }
+    var weekTarget = 3;
+    var weekPct = Math.min(100, (sessionsThisWeek / weekTarget) * 100);
+    var weekColor = sessionsThisWeek >= weekTarget ? '#43d9a2' : '#4fa3e8';
+
+    var html =
+      '<div style="margin-bottom:24px;">' +
+        '<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:4px;">' + greeting + ',</div>' +
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:16px;">' + clientFirstName + ' &#128170;</div>' +
+        '<div style="background:#0f1317;border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:14px 16px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">This Week</div>' +
+            '<div style="font-size:12px;font-weight:700;color:' + weekColor + ';">' + sessionsThisWeek + ' / ' + weekTarget + ' sessions</div>' +
+          '</div>' +
+          '<div style="background:rgba(255,255,255,0.06);border-radius:20px;height:5px;overflow:hidden;">' +
+            '<div style="width:' + weekPct + '%;height:100%;border-radius:20px;background:' + weekColor + ';transition:width .6s ease;"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
 
     // Show run card first if it's a run day
     if (isRunDay) {
@@ -1814,6 +1853,7 @@ function renderAIProgramHtml(text){
         el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet.</p>';
         return;
       }
+      window._portalRecentSessions = sessions;
       var html2 = '';
       for (var i = 0; i < sessions.length; i++) {
         var s = sessions[i];
@@ -1926,7 +1966,7 @@ function renderAIProgramHtml(text){
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
-              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
+              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" oninput="window._checkExRow(' + i + ')" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:4px;letter-spacing:1px;">SETS x REPS</div>' +
             '</div>' +
             '<div>' +
@@ -1997,11 +2037,13 @@ function renderAIProgramHtml(text){
       .then(function() {
         var portalBody = document.getElementById('portal-body');
         portalBody.innerHTML =
-          '<div style="text-align:center;padding:60px 20px;">' +
-            '<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px;box-shadow:0 0 50px rgba(67,217,162,0.4);">&#9889;</div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Session Logged!</div>' +
-            '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:40px;">' + day.name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
-            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
+          '<div style="text-align:center;padding:48px 20px 60px;">' +
+            '<div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 20px;box-shadow:0 0 60px rgba(67,217,162,0.5),0 0 120px rgba(37,99,235,0.2);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Crushed it!</div>' +
+            '<div style="font-family:Syne,sans-serif;font-size:14px;color:#43d9a2;font-weight:600;margin-bottom:6px;">' + day.name + ' complete</div>' +
+            '<div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:40px;">' + dateStr + '</div>' +
+            '<div onclick="window._calendarHome()" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px 28px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Dashboard</div>' +
+            '<div style="margin-top:48px;opacity:0.2;font-family:Syne,sans-serif;font-size:10px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#fff;">Baymade Training</div>' +
           '</div>';
       })
       .catch(function(err) {
@@ -2010,6 +2052,20 @@ function renderAIProgramHtml(text){
       });
     };
   }
+  window._checkExRow = function(idx) {
+    var wr = document.getElementById('wr-' + idx);
+    var wt = document.getElementById('wt-' + idx);
+    var row = wr ? wr.closest('.ex-input-row') : null;
+    if (!row) {
+      // traverse up to the workout-ex-row div
+      row = wr ? wr.parentElement.parentElement.parentElement.parentElement : null;
+    }
+    var hasBoth = wr && wt && wr.value.trim() && wt.value.trim();
+    if (row) {
+      row.style.borderColor = hasBoth ? 'rgba(67,217,162,0.4)' : 'rgba(100,160,255,0.2)';
+      row.style.background = hasBoth ? 'rgba(67,217,162,0.04)' : '#0f1317';
+    }
+  };
 })();
 
 init();
