@@ -1441,6 +1441,61 @@ function renderAIProgramHtml(text){
     return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
   }).join('');
 }
+// CLIENT PORTAL
+(function() {
+  var hash = window.location.hash;
+  var clientSlug = null;
+  var clientId = null;
+
+  if (hash === '#alex') {
+    clientSlug = 'alex';
+    clientId = '06acdc81-5f0b-4481-917a-d27baf89bc51';
+  } else if (hash === '#kathryn') {
+    clientSlug = 'kathryn';
+    clientId = 'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7';
+  }
+
+  if (!clientSlug) return;
+
+  // Stop the coach portal from loading
+  document.addEventListener('DOMContentLoaded', function() {
+    startClientPortal(clientId);
+  });
+
+  function startClientPortal(id) {
+    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+
+    fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + id + '&select=*', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      var client = data[0];
+      renderClientShell(client);
+    })
+    .catch(function(err) {
+      document.body.innerHTML = '<p style="color:red;padding:20px;">Error: ' + err.message + '</p>';
+    });
+  }
+
+  function renderClientShell(client) {
+    document.body.style.margin = '0';
+    document.body.style.fontFamily = 'sans-serif';
+    document.body.style.background = '#f4f4f4';
+    document.body.innerHTML =
+      '<div style="background:#111;color:#fff;padding:16px 20px;">' +
+        '<div style="font-size:20px;font-weight:bold;">Baymade Training</div>' +
+        '<div style="font-size:14px;color:#aaa;margin-top:4px;">' + (client ? client.name : 'Client') + '</div>' +
+      '</div>' +
+      '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
+        '<p style="color:#333;">Loading your workouts...</p>' +
+      '</div>';
+  }
+})();
 
 init();
   
