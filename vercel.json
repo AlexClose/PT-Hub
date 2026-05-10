@@ -4,6 +4,6 @@
     { "src": "/kathryn", "dest": "/kathryn.html" },
     { "src": "/portal.js", "dest": "/portal.js" },
     { "src": "/test", "dest": "/test.html" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/", "dest": "/index.html" }
   ]
 }
