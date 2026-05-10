@@ -1539,7 +1539,7 @@ function renderAIProgramHtml(text){
       var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
       var cursor = type !== 'rest' ? 'cursor:pointer;' : '';
-      html += '<div onclick="window._calendarDayTap(' + i + ')" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';' + cursor + '">' +
+      html += '<div onclick="window._calendarDayTap(' + i + ')" data-dayidx="' + i + '" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';' + cursor + '">' +
         '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + days[i] + '</div>' +
         '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin:0 auto;"></div>' +
       '</div>';
@@ -1567,14 +1567,14 @@ function renderAIProgramHtml(text){
       if (type === 'rest') return;
 
       // Highlight the tapped day in the calendar
-      var allDayCells = document.querySelectorAll('#calendar-strip [onclick]');
+      var allDayCells = document.querySelectorAll('#calendar-strip [data-dayidx]');
       allDayCells.forEach(function(cell) {
         cell.style.outline = 'none';
-        cell.style.boxShadow = 'none';
       });
-      if (allDayCells[dayIdx]) {
-        allDayCells[dayIdx].style.outline = '2px solid ' + (type === 'run' ? '#ff8c47' : '#4fa3e8');
-        allDayCells[dayIdx].style.outlineOffset = '2px';
+      var tappedCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
+      if (tappedCell) {
+        tappedCell.style.outline = '2px solid ' + (type === 'run' ? '#ff8c47' : '#4fa3e8');
+        tappedCell.style.outlineOffset = '2px';
       }
 
       var portalBody = document.getElementById('portal-body');
