@@ -1508,10 +1508,80 @@ function renderAIProgramHtml(text){
           '</div>' +
         '</div>' +
       '</div>' +
+      '<div style="border-bottom:1px solid rgba(100,160,255,0.08);padding:12px 20px;">' +
+        '<div style="max-width:480px;margin:0 auto;" id="calendar-strip">Loading calendar...</div>' +
+      '</div>' +
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
         '<div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);">Loading your workouts...</div>' +
       '</div>';
+    renderCalendarStrip();
   }
+
+  function renderCalendarStrip() {
+    var el = document.getElementById('calendar-strip');
+    if (!el) return;
+    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    // 0=Sun,1=Mon...6=Sat — remap to Mon-first
+    var todayJS = new Date().getDay(); // 0=Sun
+    var todayIdx = todayJS === 0 ? 6 : todayJS - 1; // Mon=0 ... Sun=6
+
+    // Lift days = Mon(0), Wed(2), Fri(4)
+    // Run days  = Tue(1), Thu(3)
+    var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
+
+    var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">';
+    for (var i = 0; i < 7; i++) {
+      var isToday = (i === todayIdx);
+      var type = typeMap[i];
+      var dotColor = type === 'lift' ? '#4fa3e8' : type === 'run' ? '#ff8c47' : 'transparent';
+      var bgColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.15)' : type === 'run' ? 'rgba(255,140,71,0.15)' : 'rgba(255,255,255,0.05)') : 'transparent';
+      var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
+      var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
+      html += '<div style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';">' +
+        '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + days[i] + '</div>' +
+        '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin:0 auto;"></div>' +
+      '</div>';
+    }
+    html += '</div>' +
+      '<div style="display:flex;gap:14px;margin-top:10px;justify-content:center;">' +
+        '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(180,200,230,0.4);">' +
+          '<div style="width:6px;height:6px;border-radius:50%;background:#4fa3e8;"></div> Lift' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(180,200,230,0.4);">' +
+          '<div style="width:6px;height:6px;border-radius:50%;background:#ff8c47;"></div> Run' +
+        '</div>' +
+      '</div>';
+    el.innerHTML = html;
+  }
+
+  var RUN_PROGRAM = {
+    tuesday: {
+      name: 'Speed Work',
+      type: 'run',
+      description: 'Track / interval session to build speed and lactate threshold',
+      intervals: [
+        {name: 'Warmup', detail: '5 min easy jog', pace: 'Conversational pace'},
+        {name: 'Dynamic stretches', detail: '2-3 min', pace: 'Hip circles, leg swings, high knees'},
+        {name: 'Interval 1', detail: '4 x 400m', pace: 'Hard effort — about 5k race pace, 90 sec rest between each'},
+        {name: 'Recovery jog', detail: '2 min', pace: 'Easy'},
+        {name: 'Interval 2', detail: '2 x 800m', pace: 'Comfortably hard — 10k pace, 2 min rest between'},
+        {name: 'Cooldown', detail: '5 min easy jog', pace: 'Easy, let heart rate come down'},
+        {name: 'Stretch', detail: '3-5 min', pace: 'Calves, quads, hamstrings, hip flexors'}
+      ]
+    },
+    thursday: {
+      name: 'Long Run',
+      type: 'run',
+      description: 'Easy aerobic effort to build endurance base for 10k',
+      intervals: [
+        {name: 'Warmup walk', detail: '3 min', pace: 'Brisk walk to get blood moving'},
+        {name: 'Easy run', detail: '4.5 - 5.5 miles', pace: 'Conversational pace — you should be able to hold a sentence. This builds over time as fitness improves.'},
+        {name: 'Final push', detail: 'Last 0.5 mile', pace: 'Pick up to a comfortable tempo — not all out, just a gear up'},
+        {name: 'Cooldown walk', detail: '3-5 min', pace: 'Slow walk, shake out the legs'},
+        {name: 'Stretch', detail: '5 min', pace: 'Focus on calves, IT band, and hip flexors'}
+      ]
+    }
+  };
 
   function loadTodayWorkout(client) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
@@ -1554,7 +1624,27 @@ function renderAIProgramHtml(text){
       }
     };
     var portalBody = document.getElementById('portal-body');
+    var todayJS = new Date().getDay();
+    var isRunDay = (todayJS === 2 || todayJS === 4); // Tue=2, Thu=4
+    var isTuesday = (todayJS === 2);
+    var runData = isTuesday ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
+
     var html = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
+
+    // Show run card first if it's a run day
+    if (isRunDay) {
+      html += '<div onclick="window._showRunDay()" style="background:#0f1317;border:1px solid rgba(255,140,71,0.25);border-radius:14px;padding:16px 20px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:#ff8c47;flex-shrink:0;"></div>' +
+          '<div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#ff8c47;letter-spacing:0.5px;">' + runData.name + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:2px;">' + runData.description + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:20px;color:rgba(255,140,71,0.4);">&#8250;</div>' +
+      '</div>';
+    }
+
     for (var i = 0; i < days.length; i++) {
       var day = days[i];
       var colors = ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'];
@@ -1570,6 +1660,12 @@ function renderAIProgramHtml(text){
         '<div style="font-size:20px;color:rgba(100,160,255,0.4);">&#8250;</div>' +
       '</div>';
     }
+
+    window._showRunDay = function() {
+      var todayJS2 = new Date().getDay();
+      var rd = (todayJS2 === 2) ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
+      renderRunCard(rd);
+    };
 
     // Recent sessions
     html += '<div style="margin-top:28px;">' +
@@ -1611,6 +1707,71 @@ function renderAIProgramHtml(text){
       var el = document.getElementById('recent-sessions-list');
       if (el) el.innerHTML = '';
     });
+  }
+
+  function renderRunCard(runDay) {
+    var portalBody = document.getElementById('portal-body');
+    var html =
+      '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+      '<div style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:20px;margin-bottom:12px;">' +
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;margin-bottom:4px;">' + runDay.name + '</div>' +
+        '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + runDay.description + '</div>';
+
+    for (var i = 0; i < runDay.intervals.length; i++) {
+      var interval = runDay.intervals[i];
+      var isMain = (i > 1 && i < runDay.intervals.length - 2);
+      html +=
+        '<div style="border-top:1px solid rgba(255,140,71,0.1);padding:12px 0;display:flex;gap:12px;align-items:flex-start;">' +
+          '<div style="width:6px;height:6px;border-radius:50%;background:' + (isMain ? '#ff8c47' : 'rgba(255,140,71,0.3)') + ';flex-shrink:0;margin-top:5px;"></div>' +
+          '<div>' +
+            '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px;">' + interval.name + ' <span style="color:#ff8c47;font-size:13px;">— ' + interval.detail + '</span></div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.45);line-height:1.5;">' + interval.pace + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    html += '</div>' +
+      '<button onclick="window._logRunSession('' + runDay.name + '')" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 20px rgba(255,140,71,0.3);">LOG RUN</button>';
+
+    portalBody.innerHTML = html;
+
+    window._logRunSession = function(name) {
+      var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+      var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+      var H = {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'};
+      var dateStr = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+
+      var btn = document.querySelector('button[onclick*="_logRunSession"]');
+      if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+
+      fetch(SUPABASE_URL + '/rest/v1/sessions', {
+        method: 'POST',
+        headers: H,
+        body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: name, workout: [{name: name, reps: '', weight: ''}]})
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('Failed');
+        var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+        window._portalRemaining = newRemaining;
+        return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
+          method: 'PATCH', headers: H,
+          body: JSON.stringify({remaining: newRemaining})
+        });
+      })
+      .then(function() {
+        portalBody.innerHTML =
+          '<div style="text-align:center;padding:60px 20px;">' +
+            '<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#c2410c,#ff8c47);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px;box-shadow:0 0 50px rgba(255,140,71,0.4);">&#127939;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Run Logged!</div>' +
+            '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:40px;">' + name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
+            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
+          '</div>';
+      })
+      .catch(function(err) {
+        if (btn) { btn.textContent = 'LOG RUN'; btn.disabled = false; }
+        alert('Error: ' + err.message);
+      });
+    };
   }
 
   function renderWorkoutCard(day, todayName) {
