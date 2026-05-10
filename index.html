@@ -1476,6 +1476,9 @@ function renderAIProgramHtml(text){
     .then(function(data) {
       var client = data[0];
       window._portalClientId = client.id;
+      window._portalHistory = client.exercise_history || {};
+      window._portalPackageSize = client.package_size || 0;
+      window._portalRemaining = client.remaining || 0;
       renderClientShell(client);
       loadTodayWorkout(client);
     })
@@ -1531,8 +1534,12 @@ function renderAIProgramHtml(text){
   function renderDayPicker(days) {
     window._portalDays = days;
     window._showPortalDay = function(index) {
-      var day = window._portalDays[index];
-      renderWorkoutCard(day, day.name);
+      if (index === -1) {
+        renderDayPicker(window._portalDays);
+      } else {
+        var day = window._portalDays[index];
+        renderWorkoutCard(day, day.name);
+      }
     };
     var portalBody = document.getElementById('portal-body');
     var html = '<p style="color:#555;font-size:14px;margin-bottom:12px;">What are you training today?</p>';
@@ -1546,7 +1553,47 @@ function renderAIProgramHtml(text){
         '<div style="font-size:20px;color:#4fa3e8;">&#8250;</div>' +
       '</div>';
     }
+
+    // Recent sessions
+    html += '<div style="margin-top:24px;">' +
+      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:10px;">Recent Sessions</div>';
+
+    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+
+    html += '<div id="recent-sessions-list"><p style="color:#aaa;font-size:13px;">Loading...</p></div>';
+    html += '</div>';
+
     portalBody.innerHTML = html;
+
+    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=5', {
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(sessions) {
+      var el = document.getElementById('recent-sessions-list');
+      if (!el) return;
+      if (!sessions || sessions.length === 0) {
+        el.innerHTML = '<p style="color:#aaa;font-size:13px;">No sessions yet.</p>';
+        return;
+      }
+      var html2 = '';
+      for (var i = 0; i < sessions.length; i++) {
+        var s = sessions[i];
+        html2 += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;">' +
+          '<div>' +
+            '<div style="font-size:14px;font-weight:600;color:#111;">' + (s.note || 'Workout') + '</div>' +
+            '<div style="font-size:12px;color:#aaa;margin-top:2px;">' + s.date + '</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:#43d9a2;font-weight:600;">Done</div>' +
+        '</div>';
+      }
+      el.innerHTML = html2;
+    })
+    .catch(function() {
+      var el = document.getElementById('recent-sessions-list');
+      if (el) el.innerHTML = '';
+    });
   }
 
   function renderWorkoutCard(day, todayName) {
@@ -1569,7 +1616,12 @@ function renderAIProgramHtml(text){
       html +=
         '<div style="border-top:1px solid #eee;padding:14px 0;">' +
           '<div style="font-weight:600;font-size:15px;margin-bottom:2px;">' + name + '</div>' +
-          '<div style="font-size:13px;color:#4fa3e8;margin-bottom:10px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+          '<div style="font-size:13px;color:#4fa3e8;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+          (window._portalHistory && window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')] ?
+            '<div style="font-size:12px;color:#888;background:#f0f4ff;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">Last: ' +
+              window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].reps + ' &nbsp;·&nbsp; ' +
+              window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].weight +
+            '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
               '<input id="wr-' + i + '" type="text" placeholder="Sets x Reps" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box;">' +
@@ -1630,10 +1682,14 @@ function renderAIProgramHtml(text){
       })
       .then(function(res) {
         if (!res.ok) throw new Error('Failed to save session');
+        var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
+        window._portalHistory = updatedHistory;
+        var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+        window._portalRemaining = newRemaining;
         return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
           method: 'PATCH',
           headers: H,
-          body: JSON.stringify({exercise_history: newHistory})
+          body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
         });
       })
       .then(function() {
