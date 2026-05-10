@@ -946,6 +946,7 @@ async function openClientDetail(id){
       renderClientModal(c);
     }
   }catch(e){}
+  renderMonthlyReport(c);
 }
 
 function renderClientModal(c){
@@ -1021,6 +1022,15 @@ function renderClientModal(c){
         <span class="muted" style="font-size:12px">${sessions.length} total</span>
       </div>
       ${sessHtml}
+    </div>
+
+    <div class="divider"></div>
+    <div style="margin-bottom:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="page-label" style="margin:0">Monthly Report</div>
+        <span class="muted" style="font-size:11px">${new Date().toLocaleString('default',{month:'long',year:'numeric'})}</span>
+      </div>
+      <div id="monthly-${c.id}"><div class="muted" style="font-size:13px;padding:8px 0">Loading...</div></div>
     </div>
 
     <div class="divider"></div>
@@ -1238,15 +1248,22 @@ function updateLogWorkout(clientId){
     </div>`;
   }).join('');
 }
-function showSuccessAnimation(name){
+function showSuccessAnimation(name,pbs){
   document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
+  const pbHtml=pbs&&pbs.length>0
+    ?`<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-top:4px;text-align:left;width:100%;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>
+        ${pbs.map(n=>`<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; ${n}</div>`).join('')}
+      </div>`
+    :'';
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);';
   overlay.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:0 32px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:0 32px;max-width:340px;width:100%;">
       <div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:50px;box-shadow:0 0 80px rgba(67,217,162,0.5);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Crushed it!</div>
       <div style="font-family:'Syne',sans-serif;font-size:15px;color:#43d9a2;font-weight:600;">${name} - session logged</div>
+      ${pbHtml}
       <div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:4px;">Coach Portal</div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1254,7 +1271,7 @@ function showSuccessAnimation(name){
     overlay.style.transition='opacity .4s ease';
     overlay.style.opacity='0';
     setTimeout(()=>overlay.remove(), 400);
-  }, 1800);
+  }, 2400);
 }
 
 async function confirmLogSession(){
@@ -1262,6 +1279,7 @@ async function confirmLogSession(){
   const note=document.getElementById('logNote').value.trim();
   const dateStr=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   let workout=[];const newHistory={...(c.exercise_history||{})};const exLogs=[];
+  const coachPBs=[];
   if(c.structured_program){
     const di=parseInt(document.getElementById('logDaySelect')?.value)||0;
     const day=c.structured_program.days[di];
@@ -1270,8 +1288,12 @@ async function confirmLogSession(){
       const wt=document.getElementById('wt-'+ei)?.value.trim();
       if(wr||wt){
         const key=ex.name.toLowerCase().replace(/\s+/g,'_');
-        newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr};
-        workout.push({name:ex.name,reps:wr||'',weight:wt||''});
+        const prev=c.exercise_history&&c.exercise_history[key]?parseFloat(c.exercise_history[key].weight):0;
+        const newW=parseFloat(wt)||0;
+        const isPB=newW>0&&newW>prev;
+        if(isPB)coachPBs.push(ex.name.replace(/^SS\w+:\s*/i,''));
+        newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?wt:(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
+        workout.push({name:ex.name,reps:wr||'',weight:wt||'',pb:isPB});
         exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
       }
     });
@@ -1295,7 +1317,7 @@ async function confirmLogSession(){
     }
     c._sessions=await db.getSessions(c.id);
     closeModal('logModal');renderClientModal(c);renderDashboard();
-    showSuccessAnimation(c.first);
+    showSuccessAnimation(c.first,coachPBs);
     if(c.package_size>0&&c.remaining<0){
       setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions - balance owed`),300);
     } else if(c.shared_package_id){
@@ -2003,8 +2025,9 @@ function renderAIProgramHtml(text){
           '<div style="font-weight:600;font-size:15px;color:#fff;margin-bottom:2px;">' + name + '</div>' +
           '<div style="font-size:13px;color:#7ec8ff;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
           (lastData ?
-            '<div style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.2);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">Last: ' +
+            '<div style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.2);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-flex;align-items:center;gap:8px;">Last: ' +
               lastData.reps + ' &nbsp;·&nbsp; ' + lastData.weight +
+              (lastData.pb ? ' &nbsp;<span style="background:#f59e0b;color:#000;font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:4px;">PB</span>' : '') +
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
@@ -2044,6 +2067,7 @@ function renderAIProgramHtml(text){
       var workout = [];
       var newHistory = {};
 
+      var newPBs = [];
       for (var i = 0; i < exercises.length; i++) {
         var wr = document.getElementById('wr-' + i);
         var wt = document.getElementById('wt-' + i);
@@ -2051,10 +2075,15 @@ function renderAIProgramHtml(text){
         var weight = wt ? wt.value.trim() : '';
         if (reps || weight) {
           var key = exercises[i].name.toLowerCase().replace(/\s+/g, '_');
-          workout.push({name: exercises[i].name, reps: reps, weight: weight});
-          newHistory[key] = {reps: reps, weight: weight, date: dateStr};
+          var prev = window._portalHistory && window._portalHistory[key] ? parseFloat(window._portalHistory[key].weight) : 0;
+          var newW = parseFloat(weight) || 0;
+          var isPB = newW > 0 && newW > prev;
+          if (isPB) newPBs.push(exercises[i].name.replace(/^SS\w+:\s*/i, ''));
+          workout.push({name: exercises[i].name, reps: reps, weight: weight, pb: isPB});
+          newHistory[key] = {reps: reps, weight: weight, date: dateStr, pb: isPB ? weight : (window._portalHistory && window._portalHistory[key] && window._portalHistory[key].pb ? window._portalHistory[key].pb : '')};
         }
       }
+      window._newPBs = newPBs;
 
       var btn = document.querySelector('button[onclick="window._logPortalSession()"]');
       if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
@@ -2078,16 +2107,23 @@ function renderAIProgramHtml(text){
       })
       .then(function() {
         var portalBody = document.getElementById('portal-body');
+        var pbHtml = '';
+        if (window._newPBs && window._newPBs.length > 0) {
+          pbHtml = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;">' +
+            '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>' +
+            window._newPBs.map(function(n){ return '<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; ' + n + '</div>'; }).join('') +
+          '</div>';
+        }
         portalBody.innerHTML =
           '<div style="text-align:center;padding:48px 20px 60px;">' +
             '<div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 20px;box-shadow:0 0 60px rgba(67,217,162,0.5),0 0 120px rgba(37,99,235,0.2);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>' +
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Crushed it!</div>' +
             '<div style="font-family:Syne,sans-serif;font-size:14px;color:#43d9a2;font-weight:600;margin-bottom:6px;">' + day.name + ' complete</div>' +
-            '<div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:40px;">' + dateStr + '</div>' +
+            '<div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:24px;">' + dateStr + '</div>' +
+            pbHtml +
             '<div onclick="window._calendarHome()" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px 28px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Dashboard</div>' +
             '<div style="margin-top:48px;opacity:0.25;">' +
-            '<svg viewBox="0 0 400 300" width="180" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
-              '<defs>' +
+            '<defs>' +
                 '<linearGradient id="spL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#1d4ed8"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>' +
                 '<linearGradient id="spR" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/></linearGradient>' +
                 '<linearGradient id="swg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#60a5fa"/><stop offset="100%" style="stop-color:#1e3a8a"/></linearGradient>' +
@@ -2146,6 +2182,120 @@ function renderAIProgramHtml(text){
     }
   };
 })();
+
+async function renderMonthlyReport(c) {
+  const el = document.getElementById('monthly-' + c.id);
+  if (!el) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  // Get exercise logs from Supabase for this client
+  let logs = [];
+  let lastMonthLogs = [];
+  try {
+    const monthStr = monthStart.toISOString().split('T')[0];
+    const lastStr = lastMonthStart.toISOString().split('T')[0];
+    const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
+    logs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`);
+    lastMonthLogs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`);
+  } catch(e) { logs = []; lastMonthLogs = []; }
+
+  const sessions = c._sessions || [];
+  const monthlySessions = sessions.filter(s => {
+    if (!s.date) return false;
+    const d = new Date(s.date);
+    return d >= monthStart;
+  });
+
+  // Calculate total volume from logs
+  let totalVolume = 0;
+  const exVolume = {};
+  const exMaxWeight = {};
+  logs.forEach(l => {
+    const sets = parseInt((l.reps||'').split('x')[0]) || 0;
+    const reps = parseInt((l.reps||'').split('x')[1]) || 0;
+    const weight = parseFloat(l.weight) || 0;
+    const vol = sets * reps * weight;
+    totalVolume += vol;
+    if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
+    exVolume[l.exercise_name] += vol;
+    if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) {
+      exMaxWeight[l.exercise_name] = weight;
+    }
+  });
+
+  // Find most improved vs last month
+  const lastMonthMax = {};
+  lastMonthLogs.forEach(l => {
+    const weight = parseFloat(l.weight) || 0;
+    if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) {
+      lastMonthMax[l.exercise_name] = weight;
+    }
+  });
+
+  let mostImproved = null;
+  let biggestGain = 0;
+  Object.keys(exMaxWeight).forEach(ex => {
+    if (lastMonthMax[ex]) {
+      const gain = exMaxWeight[ex] - lastMonthMax[ex];
+      if (gain > biggestGain) { biggestGain = gain; mostImproved = ex; }
+    }
+  });
+
+  // Top exercises by volume
+  const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,4);
+
+  const monthName = now.toLocaleString('default',{month:'long'});
+
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
+      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Sessions</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${monthlySessions.length}</div>
+      <div class="muted" style="font-size:11px;margin-top:2px">${monthName}</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
+      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Volume</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : '--'}</div>
+      <div class="muted" style="font-size:11px;margin-top:2px">${totalVolume > 0 ? 'lbs lifted' : 'Log weights to track'}</div>
+    </div>
+  </div>`;
+
+  if (mostImproved) {
+    html += `<div style="background:rgba(67,217,162,0.07);border:1px solid rgba(67,217,162,0.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">&#127942;</div>
+      <div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#43d9a2;margin-bottom:3px">Most Improved</div>
+        <div style="font-size:14px;font-weight:600;color:#fff">${mostImproved}</div>
+        <div class="muted" style="font-size:12px">+${biggestGain} lbs vs last month</div>
+      </div>
+    </div>`;
+  }
+
+  if (topEx.length > 0) {
+    html += `<div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Top Exercises by Volume</div>`;
+    topEx.forEach(([name, vol]) => {
+      const pct = Math.round((vol / totalVolume) * 100);
+      html += `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:13px;color:var(--text)">${name}</div>
+          <div style="font-size:12px;color:var(--muted)">${Math.round(vol).toLocaleString()} lbs</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:20px;height:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;border-radius:20px;background:var(--accent)"></div>
+        </div>
+      </div>`;
+    });
+  }
+
+  if (monthlySessions.length === 0 && logs.length === 0) {
+    html = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
+  }
+
+  el.innerHTML = html;
+}
 
 init();
 </script>
