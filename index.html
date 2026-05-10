@@ -1501,9 +1501,6 @@ function renderAIProgramHtml(text){
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 
-    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    var todayName = days[new Date().getDay()];
-
     fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + client.id + '&select=structured_program', {
       headers: {
         'apikey': SUPABASE_KEY,
@@ -1520,25 +1517,7 @@ function renderAIProgramHtml(text){
         return;
       }
 
-      var todayDay = null;
-      for (var i = 0; i < prog.days.length; i++) {
-        var d = prog.days[i];
-        if (d.name && d.name.toLowerCase().indexOf(todayName.toLowerCase()) !== -1) {
-          todayDay = d;
-          break;
-        }
-      }
-
-      if (!todayDay) {
-        portalBody.innerHTML =
-          '<div style="background:#fff;border-radius:12px;padding:24px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
-            '<div style="font-size:40px;margin-bottom:8px;">Rest Day</div>' +
-            '<div style="color:#888;font-size:14px;">' + todayName + ' - Recovery</div>' +
-          '</div>';
-        return;
-      }
-
-      renderWorkoutCard(todayDay, todayName);
+      renderDayPicker(prog.days);
     })
     .catch(function(err) {
       var portalBody = document.getElementById('portal-body');
@@ -1546,6 +1525,28 @@ function renderAIProgramHtml(text){
         portalBody.innerHTML = '<p style="color:red;">Error loading workout: ' + err.message + '</p>';
       }
     });
+  }
+
+  function renderDayPicker(days) {
+    var portalBody = document.getElementById('portal-body');
+    var html = '<p style="color:#555;font-size:14px;margin-bottom:12px;">What are you training today?</p>';
+    for (var i = 0; i < days.length; i++) {
+      var day = days[i];
+      html += '<div onclick="showDay(' + i + ')" style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
+        '<div>' +
+          '<div style="font-weight:700;font-size:16px;color:#111;">' + day.name + '</div>' +
+          '<div style="font-size:13px;color:#888;margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>' +
+        '</div>' +
+        '<div style="font-size:20px;color:#4fa3e8;">&#8250;</div>' +
+      '</div>';
+    }
+    portalBody.innerHTML = html;
+    window._portalDays = days;
+  }
+
+  function showDay(index) {
+    var day = window._portalDays[index];
+    renderWorkoutCard(day, day.name);
   }
 
   function renderWorkoutCard(day, todayName) {
