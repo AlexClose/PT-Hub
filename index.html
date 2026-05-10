@@ -1530,7 +1530,7 @@ function renderAIProgramHtml(text){
     var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
 
     var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;align-items:center;">' +
-      '<div onclick="renderDayPicker(window._portalDays)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;" title="Home">&#8962;</div>';
+      '<div onclick="window._showPortalDay(-1)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
       var type = typeMap[i];
@@ -1538,7 +1538,7 @@ function renderAIProgramHtml(text){
       var bgColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.15)' : type === 'run' ? 'rgba(255,140,71,0.15)' : 'rgba(255,255,255,0.05)') : 'transparent';
       var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
-      var cursor = type !== 'rest' ? 'cursor:pointer;' : '';
+      var cursor = 'cursor:pointer;';
       html += '<div onclick="window._calendarDayTap(' + i + ')" data-dayidx="' + i + '" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';' + cursor + '">' +
         '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + days[i] + '</div>' +
         '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin:0 auto;"></div>' +
@@ -1564,7 +1564,21 @@ function renderAIProgramHtml(text){
       var dayNames2 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
       var dayName = dayNames2[dayIdx];
 
-      if (type === 'rest') return;
+      if (type === 'rest') {
+        var allDayCells2 = document.querySelectorAll('#calendar-strip [data-dayidx]');
+        allDayCells2.forEach(function(cell) { cell.style.outline = 'none'; });
+        var restCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
+        if (restCell) { restCell.style.outline = '2px solid rgba(180,200,230,0.2)'; restCell.style.outlineOffset = '2px'; }
+        var portalBody2 = document.getElementById('portal-body');
+        var dayNames3 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        portalBody2.innerHTML =
+          '<div style="text-align:center;padding:48px 20px;">' +
+            '<div style="font-size:52px;margin-bottom:16px;">&#128564;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;margin-bottom:8px;">Rest Day</div>' +
+            '<div style="font-size:14px;color:rgba(180,200,230,0.4);">' + dayNames3[dayIdx] + ' - Recovery &amp; Recharge</div>' +
+          '</div>';
+        return;
+      }
 
       // Highlight the tapped day in the calendar
       var allDayCells = document.querySelectorAll('#calendar-strip [data-dayidx]');
