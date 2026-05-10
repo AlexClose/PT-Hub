@@ -1843,7 +1843,7 @@ function renderAIProgramHtml(text){
     ];
     for (var r = 0; r < runCards.length; r++) {
       var rc = runCards[r];
-      html += '<div owindow._showRunDayByIdx(" style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
+      html += '<div onclick="window._showRunDayByIdx(' + r + ')" style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
         '<div style="display:flex;align-items:center;gap:12px;">' +
           '<div style="width:10px;height:10px;border-radius:50%;background:#ff8c47;flex-shrink:0;"></div>' +
           '<div>' +
