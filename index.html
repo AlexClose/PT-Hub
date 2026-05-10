@@ -1476,6 +1476,7 @@ function renderAIProgramHtml(text){
     .then(function(data) {
       var client = data[0];
       renderClientShell(client);
+      loadTodayWorkout(client);
     })
     .catch(function(err) {
       document.body.innerHTML = '<p style="color:red;padding:20px;">Error: ' + err.message + '</p>';
@@ -1489,28 +1490,89 @@ function renderAIProgramHtml(text){
     document.body.innerHTML =
       '<div style="background:#111;color:#fff;padding:16px 20px;">' +
         '<div style="font-size:20px;font-weight:bold;">Baymade Training</div>' +
-        '<div style="font-size:14px;color:#aaa;margin-top:4px;">' + (client ? client.name : 'Client') + '</div>' +
+        '<div style="font-size:14px;color:#aaa;margin-top:4px;">' + (client ? client.first : 'Client') + '</div>' +
       '</div>' +
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
         '<p style="color:#333;">Loading your workouts...</p>' +
       '</div>';
   }
+
+  function loadTodayWorkout(client) {
+    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+
+    var days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    var todayName = days[new Date().getDay()];
+
+    fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + client.id + '&select=structured_program', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(rows) {
+      var portalBody = document.getElementById('portal-body');
+      var prog = rows && rows[0] && rows[0].structured_program;
+
+      if (!prog || !prog.days || prog.days.length === 0) {
+        portalBody.innerHTML = '<p style="color:#555;font-size:15px;">No program set up yet. Ask your coach!</p>';
+        return;
+      }
+
+      var todayDay = null;
+      for (var i = 0; i < prog.days.length; i++) {
+        var d = prog.days[i];
+        if (d.name && d.name.toLowerCase().indexOf(todayName.toLowerCase()) !== -1) {
+          todayDay = d;
+          break;
+        }
+      }
+
+      if (!todayDay) {
+        portalBody.innerHTML =
+          '<div style="background:#fff;border-radius:12px;padding:24px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
+            '<div style="font-size:40px;margin-bottom:8px;">Rest Day</div>' +
+            '<div style="color:#888;font-size:14px;">' + todayName + ' - Recovery</div>' +
+          '</div>';
+        return;
+      }
+
+      renderWorkoutCard(todayDay, todayName);
+    })
+    .catch(function(err) {
+      var portalBody = document.getElementById('portal-body');
+      if (portalBody) {
+        portalBody.innerHTML = '<p style="color:red;">Error loading workout: ' + err.message + '</p>';
+      }
+    });
+  }
+
+  function renderWorkoutCard(day, todayName) {
+    var exercises = day.exercises || [];
+    var portalBody = document.getElementById('portal-body');
+
+    var html =
+      '<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px;">' +
+        '<div style="font-size:18px;font-weight:bold;margin-bottom:2px;">' + day.name + '</div>' +
+        '<div style="font-size:13px;color:#888;margin-bottom:16px;">' + (day.focus || todayName) + '</div>';
+
+    for (var i = 0; i < exercises.length; i++) {
+      var ex = exercises[i];
+      var name = (ex.name || '').replace(/^SS\w+:\s*/i, '');
+      html +=
+        '<div style="border-top:1px solid #eee;padding:12px 0;">' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:3px;">' + name + '</div>' +
+          '<div style="font-size:13px;color:#4fa3e8;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+        '</div>';
+    }
+
+    html += '</div>';
+    portalBody.innerHTML = html;
+  }
 })();
 
 init();
-  
-</script>
-
-</body>
-</html>
-
-
-
-
-
-
-
-
 </script>
 
 </body>
