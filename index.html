@@ -1442,26 +1442,123 @@ function renderAIProgramHtml(text){
   }).join('');
 }
 
-var cpParam=window.location.search.indexOf('client=');
+var cpParam=window.location.search.indexOf(‘client=’);
 if(cpParam!==-1){
-var cpName=window.location.search.split('client=')[1].split('&')[0];
-var CP_IDS={alex:'06acdc81-5f0b-4481-917a-d27baf89bc51',kathryn:'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7'};
+var cpName=window.location.search.split(‘client=’)[1].split(’&’)[0];
+var CP_IDS={alex:‘06acdc81-5f0b-4481-917a-d27baf89bc51’,kathryn:‘c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7’};
 var CP_ID=CP_IDS[cpName];
-var CP_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+var CP_H={‘apikey’:SB_KEY,‘Authorization’:‘Bearer ‘+SB_KEY,‘Content-Type’:‘application/json’,‘Prefer’:‘return=representation’};
 var cp_cli=null,cp_sess=[],cp_aDay=null;
-fetch(SB_URL+'/rest/v1/clients?id=eq.'+CP_ID,{headers:CP_H})
+var CP_DN=[‘Su’,‘Mo’,‘Tu’,‘We’,‘Th’,‘Fr’,‘Sa’];
+function cpGreet(){var h=new Date().getHours();if(h<12)return ‘Good morning’;if(h<17)return ‘Good afternoon’;return ‘Good evening’;}
+function cpGetSM(){var prog=cp_cli.structured_program;if(!prog||!prog.days)return{};var days=prog.days;var sc=(cp_cli.schedule||’’).toLowerCase();var dm={sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};var m=[],map={};Object.keys(dm).forEach(function(k){if(sc.indexOf(k)!==-1&&m.indexOf(dm[k])===-1)m.push(dm[k]);});m.sort(function(a,b){return a-b;});m.forEach(function(d,i){if(i<days.length)map[d]=i;});return map;}
+function cpRender(){
+var sm=cpGetSM();var ti=new Date().getDay();cp_aDay=(sm[ti]!==undefined)?sm[ti]:null;
+var prog=cp_cli.structured_program;var days=(prog&&prog.days)?prog.days:[];
+var now=new Date();var ds=now.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var sow=new Date(now);sow.setDate(now.getDate()-now.getDay());
+var week=’<div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;">’;
+for(var i=0;i<7;i++){
+var d=new Date(sow);d.setDate(sow.getDate()+i);
+var di=d.getDay();var isTod=(d.toDateString()===now.toDateString());
+var pdi=sm[di];var hasW=(pdi!==undefined);
+var dStr=d.toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var isLog=false;for(var si2=0;si2<cp_sess.length;si2++){if(cp_sess[si2].date===dStr){isLog=true;break;}}
+var wbg=(isTod&&cp_aDay!==null)?’#2563eb’:(isLog?‘rgba(52,211,153,0.06)’:’#0d1018’);
+var wbc=(isTod&&cp_aDay!==null)?’#2563eb’:(isLog?‘rgba(52,211,153,0.35)’:(hasW?‘rgba(96,165,250,0.35)’:‘rgba(120,160,255,0.1)’));
+var wn=(hasW&&days[pdi])?days[pdi].name.split(’ ‘)[0]:’’;
+var dlc=(isTod&&cp_aDay!==null)?‘rgba(255,255,255,0.8)’:‘rgba(180,200,235,0.4)’;
+var dc=(isTod&&cp_aDay!==null)?’#fff’:’#eef2fa’;
+var dotC=(isTod&&cp_aDay!==null)?‘rgba(255,255,255,0.6)’:(isLog?’#34d399’:(hasW?’#60a5fa’:‘transparent’));
+var pf=(pdi!==undefined)?String(pdi):‘null’;
+week+=’<div onclick="cpSelDay('+pf+')" style="flex-shrink:0;width:50px;background:'+wbg+';border:1px solid '+wbc+';border-radius:12px;padding:10px 0;text-align:center;cursor:pointer;">’;
+week+=’<div style="font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:'+dlc+';">’+CP_DN[di]+’</div>’;
+week+=’<div style="font-size:16px;font-weight:700;margin:2px 0;color:'+dc+';">’+d.getDate()+’</div>’;
+week+=’<div style="width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:'+dotC+';"></div>’;
+if(wn)week+=’<div style="font-size:7px;color:rgba(100,160,255,0.6);margin-top:2px;">’+wn+’</div>’;
+week+=’</div>’;
+}
+week+=’</div>’;
+var wc=’’;
+if(cp_aDay===null){wc=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.1);border-radius:16px;padding:32px 20px;text-align:center;"><div style="font-size:18px;font-weight:700;margin-bottom:8px;">Rest Day</div><div style="font-size:13px;color:rgba(180,200,235,0.45);">No workout today. Recovery is part of the program!</div></div>’;
+}else{
+var day=days[cp_aDay];var hist=cp_cli.exercise_history||{};var exs=’’;
+if(day&&day.exercises){for(var ei=0;ei<day.exercises.length;ei++){
+var ex=day.exercises[ei];var key=ex.name.toLowerCase().replace(/\s+/g,’*’);var last=hist[key]||null;
+var isSS=/^SS/i.test(ex.name);var nm=ex.name.replace(/^SS\w+:\s*/i,’’);
+var lastHtml=’’;if(last){lastHtml=’<div style="font-size:11px;color:#60a5fa;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;padding:5px 10px;display:inline-block;margin-bottom:8px;">Last: ‘+(last.reps||’-’)+’ / ‘+(last.weight||’-’)+’</div>’;}
+var rph=(last&&last.reps)?last.reps:‘Sets x Reps’;var wph=(last&&last.weight)?last.weight:‘Weight / Load’;
+var loadStr=ex.load?(’ / ‘+ex.load):’’;
+exs+=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.1);'+(isSS?'border-left:3px solid #fbbf24;':'')+'border-radius:11px;padding:14px;margin-bottom:10px;">’;
+if(isSS)exs+=’<div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#fbbf24;margin-bottom:6px;">SUPERSET</div>’;
+exs+=’<div style="font-size:15px;font-weight:600;margin-bottom:3px;">’+nm+’</div>’;
+exs+=’<div style="font-size:12px;color:#60a5fa;margin-bottom:6px;">’+ex.prescription+loadStr+’</div>’;
+exs+=lastHtml;
+exs+=’<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">’;
+exs+=’<div><input id="cpr'+ei+'" placeholder="'+rph+'" style="width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:9px;color:#eef2fa;font-size:15px;font-weight:600;padding:13px 12px;text-align:center;outline:none;"><div style="font-size:9px;text-transform:uppercase;color:rgba(180,200,235,0.45);text-align:center;margin-top:4px;">Sets x Reps</div></div>’;
+exs+=’<div><input id="cpw'+ei+'" placeholder="'+wph+'" style="width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:9px;color:#eef2fa;font-size:15px;font-weight:600;padding:13px 12px;text-align:center;outline:none;"><div style="font-size:9px;text-transform:uppercase;color:rgba(180,200,235,0.45);text-align:center;margin-top:4px;">Weight / Load</div></div>’;
+exs+=’</div></div>’;
+}}
+var exCount=(day&&day.exercises)?day.exercises.length:0;
+var tL=false;for(var si=0;si<cp_sess.length;si++){if(cp_sess[si].date===ds){tL=true;break;}}
+var loggedBadge=tL?’<span style="color:#34d399;"> - Logged today</span>’:’’;
+wc=’<div style="background:#0d1018;border:1px solid rgba(120,160,255,0.18);border-radius:16px;padding:18px 20px;margin-bottom:14px;position:relative;overflow:hidden;">’;
+wc+=’<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,#60a5fa);"></div>’;
+wc+=’<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:6px;">Todays Workout</div>’;
+wc+=’<div style="font-size:22px;font-weight:700;">’+(day?day.name:’’)+’</div>’;
+wc+=’<div style="font-size:12px;color:rgba(180,200,235,0.45);margin-top:4px;">’+exCount+’ exercises’+loggedBadge+’</div>’;
+wc+=’</div>’;
+wc+=exs;
+wc+=’<textarea id="cp-note" placeholder="Add a note (optional)..." style="width:100%;background:#131720;border:1px solid rgba(120,160,255,0.18);border-radius:11px;color:#eef2fa;font-size:14px;padding:14px;resize:none;height:75px;outline:none;margin-bottom:14px;font-family:sans-serif;"></textarea>’;
+wc+=’<button onclick="cpLogIt()" id="cp-lbtn" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:11px;padding:17px;font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">LOG THIS WORKOUT</button>’;
+}
+var hh=’’;
+if(cp_sess.length>0){hh=’<div style="margin-top:28px;"><div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,235,0.45);margin-bottom:12px;">Recent Sessions</div>’;
+var recent=cp_sess.slice(0,5);
+for(var ri=0;ri<recent.length;ri++){var sv=recent[ri];var wnames=’’;
+if(sv.workout&&sv.workout.length){var sl=[];for(var wi=0;wi<sv.workout.length&&wi<3;wi++){sl.push(sv.workout[wi].name.replace(/^SS\w+:\s*/i,’’));}wnames=’<div style="font-size:11px;color:rgba(180,200,235,0.45);margin-top:2px;">’+sl.join(’ / ‘)+’</div>’;}
+hh+=’<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(120,160,255,0.08);">’;
+hh+=’<div><div style="font-size:13px;font-weight:600;">’+sv.date+’</div>’+wnames+’</div>’;
+hh+=’<span style="font-size:10px;color:#34d399;font-weight:700;">Done</span></div>’;
+}
+hh+=’</div>’;}
+var html=’<div style="position:sticky;top:0;z-index:10;background:rgba(7,9,16,0.95);border-bottom:1px solid rgba(120,160,255,0.18);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:10px;color:#60a5fa;letter-spacing:3px;font-weight:700;">BAYMADE TRAINING</div><div style="font-size:9px;color:rgba(180,200,235,0.45);letter-spacing:1px;margin-top:2px;">CLIENT PORTAL</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;">’+((cp_cli.first||’’)+’ ‘+(cp_cli.last||’’)).trim()+’</div><div style="font-size:10px;color:rgba(180,200,235,0.45);margin-top:1px;">’+(cp_cli.level||’’)+’ - ‘+(cp_cli.duration||60)+’ min</div></div></div>’;
+html+=’<div style="padding:20px 16px 80px;max-width:560px;margin:0 auto;">’;
+html+=’<div style="font-size:26px;font-weight:700;line-height:1.2;margin-bottom:6px;">’+cpGreet()+’, ‘+cp_cli.first+’</div>’;
+html+=’<div style="font-size:13px;color:rgba(180,200,235,0.45);margin-bottom:24px;">’+(cp_aDay!==null?‘Here is your workout for today.’:‘Rest up - no workout today.’)+’</div>’;
+html+=week+wc+hh+’</div>’;
+document.body.style.background=’#070910’;
+document.body.style.color=’#eef2fa’;
+document.body.style.fontFamily=‘sans-serif’;
+document.body.innerHTML=html;
+}
+function cpSelDay(idx){if(idx===null||idx===undefined)return;cp_aDay=idx;cpRender();}
+function cpLogIt(){
+var btn=document.getElementById(‘cp-lbtn’);if(!btn)return;
+btn.disabled=true;btn.textContent=‘Saving…’;
+var day=cp_cli.structured_program.days[cp_aDay];
+var ds=new Date().toLocaleDateString(‘en-US’,{month:‘short’,day:‘numeric’,year:‘numeric’});
+var noteEl=document.getElementById(‘cp-note’);var note=noteEl?noteEl.value.trim():’’;
+var hist=Object.assign({},cp_cli.exercise_history||{});var wo=[];
+for(var i=0;i<day.exercises.length;i++){var ex=day.exercises[i];
+var rEl=document.getElementById(‘cpr’+i);var wEl=document.getElementById(‘cpw’+i);
+var r=rEl?rEl.value.trim():’’;var w=wEl?wEl.value.trim():’’;
+if(r||w){hist[ex.name.toLowerCase().replace(/\s+/g,’*’)]={reps:r||’’,weight:w||’’,date:ds};wo.push({name:ex.name,reps:r||’’,weight:w||’’});}}
+fetch(SB_URL+’/rest/v1/sessions’,{method:‘POST’,headers:CP_H,body:JSON.stringify({client_id:CP_ID,date:ds,note:note,workout:wo})})
 .then(function(r){return r.json();})
-.then(function(d){
-cp_cli=d[0];
-return fetch(SB_URL+'/rest/v1/sessions?client_id=eq.'+CP_ID+'&order=created_at.desc',{headers:CP_H});
-})
+.then(function(){return fetch(SB_URL+’/rest/v1/clients?id=eq.’+CP_ID,{method:‘PATCH’,headers:CP_H,body:JSON.stringify({exercise_history:hist})});})
 .then(function(r){return r.json();})
-.then(function(s){
-cp_sess=s;
-document.body.style.background='#070910';
-document.body.innerHTML='<p style="color:#34d399;padding:20px;font-family:sans-serif;">Got '+cp_cli.first+' - '+cp_sess.length+' sessions</p>';
-})
-.catch(function(e){document.body.innerHTML='<p style="color:#f87171;padding:20px;">Error: '+e.message+'</p>';});
+.then(function(){cp_cli.exercise_history=hist;return fetch(SB_URL+’/rest/v1/sessions?client_id=eq.’+CP_ID+’&order=created_at.desc’,{headers:CP_H});})
+.then(function(r){return r.json();})
+.then(function(s){cp_sess=s;cpRender();})
+.catch(function(e){if(btn){btn.disabled=false;btn.textContent=‘LOG THIS WORKOUT’;}});
+}
+fetch(SB_URL+’/rest/v1/clients?id=eq.’+CP_ID,{headers:CP_H})
+.then(function(r){return r.json();})
+.then(function(d){cp_cli=d[0];return fetch(SB_URL+’/rest/v1/sessions?client_id=eq.’+CP_ID+’&order=created_at.desc’,{headers:CP_H});})
+.then(function(r){return r.json();})
+.then(function(s){cp_sess=s;cpRender();})
+.catch(function(e){document.body.innerHTML=’<p style="padding:20px;color:#f87171;">Error: ‘+e.message+’</p>’;});
 }
 if(cpParam===-1){init();}
 
