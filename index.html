@@ -1530,7 +1530,7 @@ function renderAIProgramHtml(text){
     var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
 
     var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;align-items:center;">' +
-      '<div onclick="window._showPortalDay(-1)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);" title="Home">&#8962;</div>';
+      '<div onclick="window._calendarHome()" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
       var type = typeMap[i];
@@ -1554,6 +1554,13 @@ function renderAIProgramHtml(text){
         '</div>' +
       '</div>';
     el.innerHTML = html;
+
+    window._calendarHome = function() {
+      document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(c) {
+        c.style.outline = 'none';
+      });
+      window._showPortalDay(-1);
+    };
 
     window._calendarDayTap = function(dayIdx) {
       // dayIdx: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
