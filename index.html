@@ -1984,6 +1984,8 @@ function renderAIProgramHtml(text){
         '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;margin-bottom:4px;">' + day.name + '</div>' +
         '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>';
 
+    var lastSSGroup = null;
+
     for (var i = 0; i < exercises.length; i++) {
       var ex = exercises[i];
       var isSuperset = /^SS/i.test(ex.name || '');
@@ -1991,12 +1993,21 @@ function renderAIProgramHtml(text){
       var histKey = (ex.name || '').toLowerCase().replace(/\s+/g,'_');
       var lastData = window._portalHistory && window._portalHistory[histKey];
 
-      // Check if next exercise is also a superset (for connecting line)
-      var nextIsSuperset = exercises[i+1] && /^SS/i.test(exercises[i+1].name || '');
+      // Extract superset group number e.g. SS1A -> "1", SS2B -> "2"
+      var ssGroupMatch = (ex.name || '').match(/^SS(\d+)/i);
+      var ssGroup = ssGroupMatch ? ssGroupMatch[1] : null;
+
+      // Add a gap between different superset groups
+      var groupBreak = isSuperset && ssGroup && lastSSGroup !== null && ssGroup !== lastSSGroup;
+      if (groupBreak) {
+        html += '<div style="height:12px;"></div>';
+      }
+      if (isSuperset) lastSSGroup = ssGroup;
+      else lastSSGroup = null;
 
       html +=
         '<div style="border-top:1px solid rgba(100,160,255,0.08);padding:14px 0 14px ' + (isSuperset ? '16px' : '0') + ';position:relative;' + (isSuperset ? 'border-left:3px solid #ff8c47;padding-left:14px;margin-left:4px;' : '') + '">' +
-          (isSuperset ? '<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ff8c47;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:12px;height:1px;background:#ff8c47;"></span>Superset</div>' : '') +
+          (isSuperset ? '<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ff8c47;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:12px;height:1px;background:#ff8c47;"></span>Superset ' + ssGroup + '</div>' : '') +
           '<div style="font-weight:600;font-size:15px;color:#fff;margin-bottom:2px;">' + name + '</div>' +
           '<div style="font-size:13px;color:#7ec8ff;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
           (lastData ?
