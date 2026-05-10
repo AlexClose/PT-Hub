@@ -1528,11 +1528,16 @@ function renderAIProgramHtml(text){
   }
 
   function renderDayPicker(days) {
+    window._portalDays = days;
+    window._showPortalDay = function(index) {
+      var day = window._portalDays[index];
+      renderWorkoutCard(day, day.name);
+    };
     var portalBody = document.getElementById('portal-body');
     var html = '<p style="color:#555;font-size:14px;margin-bottom:12px;">What are you training today?</p>';
     for (var i = 0; i < days.length; i++) {
       var day = days[i];
-      html += '<div onclick="showDay(' + i + ')" style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
+      html += '<div onclick="window._showPortalDay(' + i + ')" style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
         '<div>' +
           '<div style="font-weight:700;font-size:16px;color:#111;">' + day.name + '</div>' +
           '<div style="font-size:13px;color:#888;margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>' +
@@ -1541,12 +1546,6 @@ function renderAIProgramHtml(text){
       '</div>';
     }
     portalBody.innerHTML = html;
-    window._portalDays = days;
-  }
-
-  function showDay(index) {
-    var day = window._portalDays[index];
-    renderWorkoutCard(day, day.name);
   }
 
   function renderWorkoutCard(day, todayName) {
