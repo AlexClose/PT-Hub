@@ -1552,23 +1552,49 @@ function renderAIProgramHtml(text){
     var exercises = day.exercises || [];
     var portalBody = document.getElementById('portal-body');
 
+    window._portalDay = day;
+
     var html =
-      '<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:16px;">' +
+      '<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:12px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">' +
+          '<div onclick="window._showPortalDay(-1)" style="font-size:13px;color:#4fa3e8;cursor:pointer;">&#8592; Back</div>' +
+        '</div>' +
         '<div style="font-size:18px;font-weight:bold;margin-bottom:2px;">' + day.name + '</div>' +
-        '<div style="font-size:13px;color:#888;margin-bottom:16px;">' + (day.focus || todayName) + '</div>';
+        '<div style="font-size:13px;color:#888;margin-bottom:16px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>';
 
     for (var i = 0; i < exercises.length; i++) {
       var ex = exercises[i];
       var name = (ex.name || '').replace(/^SS\w+:\s*/i, '');
       html +=
-        '<div style="border-top:1px solid #eee;padding:12px 0;">' +
-          '<div style="font-weight:600;font-size:15px;margin-bottom:3px;">' + name + '</div>' +
-          '<div style="font-size:13px;color:#4fa3e8;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+        '<div style="border-top:1px solid #eee;padding:14px 0;">' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:2px;">' + name + '</div>' +
+          '<div style="font-size:13px;color:#4fa3e8;margin-bottom:10px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+            '<div>' +
+              '<input id="wr-' + i + '" type="text" placeholder="Sets x Reps" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box;">' +
+              '<div style="font-size:10px;text-align:center;color:#aaa;margin-top:4px;letter-spacing:1px;">SETS x REPS</div>' +
+            '</div>' +
+            '<div>' +
+              '<input id="wt-' + i + '" type="text" placeholder="Weight / Load" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box;">' +
+              '<div style="font-size:10px;text-align:center;color:#aaa;margin-top:4px;letter-spacing:1px;">WEIGHT / LOAD</div>' +
+            '</div>' +
+          '</div>' +
         '</div>';
     }
 
-    html += '</div>';
+    html += '</div>' +
+      '<button onclick="window._logPortalSession()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:20px;">Log Workout</button>';
+
     portalBody.innerHTML = html;
+
+    window._showPortalDay = function(index) {
+      if (index === -1) {
+        renderDayPicker(window._portalDays);
+      } else {
+        var d = window._portalDays[index];
+        renderWorkoutCard(d, d.name);
+      }
+    };
   }
 })();
 
