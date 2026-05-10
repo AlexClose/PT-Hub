@@ -1529,7 +1529,8 @@ function renderAIProgramHtml(text){
     // Run days  = Tue(1), Thu(3)
     var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
 
-    var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">';
+    var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;align-items:center;">' +
+      '<div onclick="renderDayPicker(window._portalDays)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
       var type = typeMap[i];
