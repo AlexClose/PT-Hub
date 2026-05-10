@@ -1986,15 +1986,22 @@ function renderAIProgramHtml(text){
 
     for (var i = 0; i < exercises.length; i++) {
       var ex = exercises[i];
+      var isSuperset = /^SS/i.test(ex.name || '');
       var name = (ex.name || '').replace(/^SS\w+:\s*/i, '');
+      var histKey = (ex.name || '').toLowerCase().replace(/\s+/g,'_');
+      var lastData = window._portalHistory && window._portalHistory[histKey];
+
+      // Check if next exercise is also a superset (for connecting line)
+      var nextIsSuperset = exercises[i+1] && /^SS/i.test(exercises[i+1].name || '');
+
       html +=
-        '<div style="border-top:1px solid rgba(100,160,255,0.08);padding:14px 0;">' +
+        '<div style="border-top:1px solid rgba(100,160,255,0.08);padding:14px 0 14px ' + (isSuperset ? '16px' : '0') + ';position:relative;' + (isSuperset ? 'border-left:3px solid #ff8c47;padding-left:14px;margin-left:4px;' : '') + '">' +
+          (isSuperset ? '<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ff8c47;margin-bottom:4px;display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:12px;height:1px;background:#ff8c47;"></span>Superset</div>' : '') +
           '<div style="font-weight:600;font-size:15px;color:#fff;margin-bottom:2px;">' + name + '</div>' +
           '<div style="font-size:13px;color:#7ec8ff;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
-          (window._portalHistory && window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')] ?
+          (lastData ?
             '<div style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.2);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">Last: ' +
-              window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].reps + ' &nbsp;·&nbsp; ' +
-              window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].weight +
+              lastData.reps + ' &nbsp;·&nbsp; ' + lastData.weight +
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
