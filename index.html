@@ -834,12 +834,12 @@ function renderDashboard(){
     <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="${statStyle};color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
     <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="${statStyle};color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
   let alerts='';
-  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
-  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
+  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions - send invoice via Square</div></div>`;});
+  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left - time to renew</div></div>`;});
   // Shared package alerts
   sharedPackages.forEach(pkg=>{
     const linked=clients.filter(c=>c.shared_package_id===pkg.id).map(c=>c.first).join(' & ');
-    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out - invoice via Square</div></div>`;
     else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
@@ -887,7 +887,7 @@ function clientRowHtml(c){
 function renderClientList(){
   const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
   const filtered=clients.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
-  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet - tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
 }
 
 // ── ADD/EDIT CLIENT ──
@@ -904,7 +904,7 @@ async function saveClient(){
     const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{}});
     if(created&&created[0])clients.push(created[0]);
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
-  }catch(e){toast('Error saving — check connection');}
+  }catch(e){toast('Error saving - check connection');}
 }
 function openEditClient(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
@@ -927,7 +927,7 @@ async function togglePause(id){
     c.paused=newPaused;
     renderClientModal(c);
     renderDashboard();
-    toast(newPaused?`⏸ ${c.first} paused — won't show in alerts`:`▶ ${c.first} resumed`);
+    toast(newPaused?`⏸ ${c.first} paused - won't show in alerts`:`▶ ${c.first} resumed`);
   }catch(e){toast('Error updating');}
 }
 
@@ -1006,7 +1006,7 @@ function renderClientModal(c){
             ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:16px;color:rgba(180,200,230,0.4);font-weight:400"> / ${sharedPkg.total_sessions} shared</span></div><div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
             :c.package_size>0
             ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${c.package_size} sessions</span></div>`
-            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session — no package tracking</div>`}
+            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session - no package tracking</div>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
           <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
@@ -1126,8 +1126,8 @@ function renderStructuredProgram(c){
       const isSuperset=ex.name.match(/^SS/i);
       const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
       const lastHtml=last
-        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'—'}</b> · <b>${last.weight||'—'}</b> · <span style="opacity:.6">${last.date}</span></div>`
-        :`<div class="ex-last">No data yet — log first session to track</div>`;
+        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'-'}</b> · <b>${last.weight||'-'}</b> · <span style="opacity:.6">${last.date}</span></div>`
+        :`<div class="ex-last">No data yet - log first session to track</div>`;
       return `<div class="ex-row" ${isSuperset?'style="padding-left:22px;border-left:2px solid var(--warn)"':''}>
         <div class="ex-row-content">
           ${isSuperset?`<div class="ss-label">Superset</div>`:''}
@@ -1165,7 +1165,7 @@ function openEditProgramDay(clientId,dayIndex){
   editingClientId=clientId;editingDayIndex=dayIndex;
   const day=c.structured_program.days[dayIndex];
   editingExercises=JSON.parse(JSON.stringify(day.exercises));
-  document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
+  document.getElementById('editProgTitle').textContent=`Edit - ${day.name}`;
   renderEditExerciseList();openModal('editProgramModal');
 }
 function renderEditExerciseList(){
@@ -1202,7 +1202,7 @@ function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
   // Allow negative sessions for clients like Ali who go on extended breaks
   pendingLogId=id;
-  document.getElementById('logModalTitle').textContent=`Log Session — ${c.first}`;
+  document.getElementById('logModalTitle').textContent=`Log Session - ${c.first}`;
   document.getElementById('logNote').value='';
   let workoutHtml='';
   if(c.structured_program){
@@ -1237,7 +1237,7 @@ function updateLogWorkout(clientId){
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
+      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'-'} &nbsp;·&nbsp; ${last.weight||'-'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
@@ -1253,7 +1253,7 @@ function showSuccessAnimation(name){
   overlay.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards">
       <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.6);">⚡</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} — Done!</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} - Done!</div>
       <div style="font-size:13px;color:rgba(67,217,162,0.8);letter-spacing:1px;">Session Logged ✓</div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1292,7 +1292,7 @@ async function confirmLogSession(){
     c.remaining=newRemaining;c.exercise_history=newHistory;
     // Deduct from shared package if linked
     if(c.package_size>0&&c.remaining<0){
-      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions - balance owed`),300);
     } else if(c.shared_package_id){
       const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
       if(sharedPkg&&sharedPkg.remaining_sessions>0){
@@ -1304,32 +1304,32 @@ async function confirmLogSession(){
     c._sessions=await db.getSessions(c.id);
     closeModal('logModal');renderClientModal(c);renderDashboard();
     if(c.package_size>0&&c.remaining<0){
-      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions - balance owed`),300);
     } else if(c.shared_package_id){
       const sp=sharedPackages.find(p=>p.id===c.shared_package_id);
       if(sp){
-        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out — invoice via Square!`),300);
+        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out - invoice via Square!`),300);
         else if(sp.remaining_sessions<=2)setTimeout(()=>toast(`🟡 Shared package: ${sp.remaining_sessions} left`),300);
-        else toast(`Session logged ✓ — ${sp.remaining_sessions} shared remaining`);
+        else toast(`Session logged ✓ - ${sp.remaining_sessions} shared remaining`);
       }
     } else if(c.package_size>0){
-      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions — invoice via Square!`),300);
+      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions - invoice via Square!`),300);
       else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
-      else toast(`Session logged ✓ — ${c.remaining} remaining`);
+      else toast(`Session logged ✓ - ${c.remaining} remaining`);
     }else toast('Session logged ✓');
-  }catch(e){toast('Error saving — check connection');console.error(e);}
+  }catch(e){toast('Error saving - check connection');console.error(e);}
 }
 
 // ── RENEW ──
 function openRenew(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
+  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package - ${c.first}`;
   document.getElementById('renewPkg').value=c.package_size||10;openModal('renewModal');
 }
 async function confirmRenew(){
   const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
   const pkg=parseInt(document.getElementById('renewPkg').value);
-  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed — ${pkg} sessions ✓`);}
+  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed - ${pkg} sessions ✓`);}
   catch(e){toast('Error renewing package');}
 }
 async function deleteClient(id){
@@ -1424,7 +1424,7 @@ async function generateProgram(id){
   section.innerHTML=`<div class="ai-output"><span class="ai-thinking">✦ Building a 6-week program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
   const equip=equipment.length>0?equipment.map(e=>e.name).join(', '):'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Resistance bands';
   const days=(c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
-  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
+  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise - 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Could not generate program.';
@@ -1437,7 +1437,7 @@ function renderAIProgramHtml(text){
   lines.forEach(line=>{const t=line.trim();if(!t)return;if(/^WEEK\s+\d/i.test(t)){if(cur)weeks.push(cur);cur={title:t,days:[],coach:''};}else if(cur){if(/^Coach'?s?\s+Note/i.test(t))cur.coach=t.replace(/^Coach'?s?\s+Note:?\s*/i,'');else if(/^Day\s+\d/i.test(t)){const m=t.match(/\(([^)]+)\)/);cur.days.push({label:t.split('(')[0].trim(),type:m?m[1]:'',exercises:[]});}else if((t.startsWith('•')||t.startsWith('-'))&&cur.days.length>0)cur.days[cur.days.length-1].exercises.push(t.replace(/^[•\-]\s*/,''));}});
   if(cur)weeks.push(cur);if(!weeks.length)return`<div class="ai-output">${text}</div>`;
   return weeks.map((w,wi)=>{
-    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('—');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">— '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
+    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('-');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">- '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
     return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
   }).join('');
 }
@@ -1514,14 +1514,14 @@ function renderAIProgramHtml(text){
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
         '<div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);">Loading your workouts...</div>' +
       '</div>';
-    renderCalendarStrip();
+    setTimeout(function() { renderCalendarStrip(); }, 0);
   }
 
   function renderCalendarStrip() {
     var el = document.getElementById('calendar-strip');
     if (!el) return;
     var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    // 0=Sun,1=Mon...6=Sat — remap to Mon-first
+    // 0=Sun,1=Mon...6=Sat - remap to Mon-first
     var todayJS = new Date().getDay(); // 0=Sun
     var todayIdx = todayJS === 0 ? 6 : todayJS - 1; // Mon=0 ... Sun=6
 
@@ -1562,9 +1562,9 @@ function renderAIProgramHtml(text){
       intervals: [
         {name: 'Warmup', detail: '5 min easy jog', pace: 'Conversational pace'},
         {name: 'Dynamic stretches', detail: '2-3 min', pace: 'Hip circles, leg swings, high knees'},
-        {name: 'Interval 1', detail: '4 x 400m', pace: 'Hard effort — about 5k race pace, 90 sec rest between each'},
+        {name: 'Interval 1', detail: '4 x 400m', pace: 'Hard effort - about 5k race pace, 90 sec rest between each'},
         {name: 'Recovery jog', detail: '2 min', pace: 'Easy'},
-        {name: 'Interval 2', detail: '2 x 800m', pace: 'Comfortably hard — 10k pace, 2 min rest between'},
+        {name: 'Interval 2', detail: '2 x 800m', pace: 'Comfortably hard - 10k pace, 2 min rest between'},
         {name: 'Cooldown', detail: '5 min easy jog', pace: 'Easy, let heart rate come down'},
         {name: 'Stretch', detail: '3-5 min', pace: 'Calves, quads, hamstrings, hip flexors'}
       ]
@@ -1575,8 +1575,8 @@ function renderAIProgramHtml(text){
       description: 'Easy aerobic effort to build endurance base for 10k',
       intervals: [
         {name: 'Warmup walk', detail: '3 min', pace: 'Brisk walk to get blood moving'},
-        {name: 'Easy run', detail: '4.5 - 5.5 miles', pace: 'Conversational pace — you should be able to hold a sentence. This builds over time as fitness improves.'},
-        {name: 'Final push', detail: 'Last 0.5 mile', pace: 'Pick up to a comfortable tempo — not all out, just a gear up'},
+        {name: 'Easy run', detail: '4.5 - 5.5 miles', pace: 'Conversational pace - you should be able to hold a sentence. This builds over time as fitness improves.'},
+        {name: 'Final push', detail: 'Last 0.5 mile', pace: 'Pick up to a comfortable tempo - not all out, just a gear up'},
         {name: 'Cooldown walk', detail: '3-5 min', pace: 'Slow walk, shake out the legs'},
         {name: 'Stretch', detail: '5 min', pace: 'Focus on calves, IT band, and hip flexors'}
       ]
@@ -1724,7 +1724,7 @@ function renderAIProgramHtml(text){
         '<div style="border-top:1px solid rgba(255,140,71,0.1);padding:12px 0;display:flex;gap:12px;align-items:flex-start;">' +
           '<div style="width:6px;height:6px;border-radius:50%;background:' + (isMain ? '#ff8c47' : 'rgba(255,140,71,0.3)') + ';flex-shrink:0;margin-top:5px;"></div>' +
           '<div>' +
-            '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px;">' + interval.name + ' <span style="color:#ff8c47;font-size:13px;">— ' + interval.detail + '</span></div>' +
+            '<div style="font-weight:600;font-size:14px;color:#fff;margin-bottom:2px;">' + interval.name + ' <span style="color:#ff8c47;font-size:13px;">- ' + interval.detail + '</span></div>' +
             '<div style="font-size:12px;color:rgba(180,200,230,0.45);line-height:1.5;">' + interval.pace + '</div>' +
           '</div>' +
         '</div>';
