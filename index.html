@@ -1489,15 +1489,27 @@ function renderAIProgramHtml(text){
 
   function renderClientShell(client) {
     document.body.style.margin = '0';
-    document.body.style.fontFamily = 'sans-serif';
-    document.body.style.background = '#f4f4f4';
+    document.body.style.fontFamily = "'Instrument Sans', sans-serif";
+    document.body.style.background = '#0a0c0f';
+    document.body.style.color = '#e8edf5';
+    document.body.style.minHeight = '100vh';
     document.body.innerHTML =
-      '<div style="background:#111;color:#fff;padding:16px 20px;">' +
-        '<div style="font-size:20px;font-weight:bold;">Baymade Training</div>' +
-        '<div style="font-size:14px;color:#aaa;margin-top:4px;">' + (client ? client.first : 'Client') + '</div>' +
+      '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.15);padding:16px 20px;position:sticky;top:0;z-index:10;">' +
+        '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.3px;">' +
+              '<span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>' +
+            '</div>' +
+            '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;">Client Portal</div>' +
+          '</div>' +
+          '<div style="background:#1a1f28;border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:6px 12px;text-align:right;">' +
+            '<div style="font-size:13px;font-weight:600;color:#fff;">' + (client ? client.first : 'Client') + '</div>' +
+            '<div style="font-size:10px;color:rgba(180,200,230,0.5);margin-top:1px;">' + (client ? (client.level || '') : '') + '</div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
-        '<p style="color:#333;">Loading your workouts...</p>' +
+        '<div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);">Loading your workouts...</div>' +
       '</div>';
   }
 
@@ -1542,26 +1554,31 @@ function renderAIProgramHtml(text){
       }
     };
     var portalBody = document.getElementById('portal-body');
-    var html = '<p style="color:#555;font-size:14px;margin-bottom:12px;">What are you training today?</p>';
+    var html = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
     for (var i = 0; i < days.length; i++) {
       var day = days[i];
-      html += '<div onclick="window._showPortalDay(' + i + ')" style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);cursor:pointer;display:flex;align-items:center;justify-content:space-between;">' +
-        '<div>' +
-          '<div style="font-weight:700;font-size:16px;color:#111;">' + day.name + '</div>' +
-          '<div style="font-size:13px;color:#888;margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>' +
+      var colors = ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'];
+      var col = colors[i % colors.length];
+      html += '<div onclick="window._showPortalDay(' + i + ')" style="background:#0f1317;border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:16px 20px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .2s;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;"></div>' +
+          '<div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;letter-spacing:0.5px;">' + day.name + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>' +
+          '</div>' +
         '</div>' +
-        '<div style="font-size:20px;color:#4fa3e8;">&#8250;</div>' +
+        '<div style="font-size:20px;color:rgba(100,160,255,0.4);">&#8250;</div>' +
       '</div>';
     }
 
     // Recent sessions
-    html += '<div style="margin-top:24px;">' +
-      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:10px;">Recent Sessions</div>';
+    html += '<div style="margin-top:28px;">' +
+      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>';
 
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 
-    html += '<div id="recent-sessions-list"><p style="color:#aaa;font-size:13px;">Loading...</p></div>';
+    html += '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>';
     html += '</div>';
 
     portalBody.innerHTML = html;
@@ -1574,18 +1591,18 @@ function renderAIProgramHtml(text){
       var el = document.getElementById('recent-sessions-list');
       if (!el) return;
       if (!sessions || sessions.length === 0) {
-        el.innerHTML = '<p style="color:#aaa;font-size:13px;">No sessions yet.</p>';
+        el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet.</p>';
         return;
       }
       var html2 = '';
       for (var i = 0; i < sessions.length; i++) {
         var s = sessions[i];
-        html2 += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;">' +
+        html2 += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.08);">' +
           '<div>' +
-            '<div style="font-size:14px;font-weight:600;color:#111;">' + (s.note || 'Workout') + '</div>' +
-            '<div style="font-size:12px;color:#aaa;margin-top:2px;">' + s.date + '</div>' +
+            '<div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px;">' + s.date + '</div>' +
           '</div>' +
-          '<div style="font-size:12px;color:#43d9a2;font-weight:600;">Done</div>' +
+          '<div style="font-size:11px;font-weight:600;color:#43d9a2;background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;">Done</div>' +
         '</div>';
       }
       el.innerHTML = html2;
@@ -1603,40 +1620,38 @@ function renderAIProgramHtml(text){
     window._portalDay = day;
 
     var html =
-      '<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:12px;">' +
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">' +
-          '<div onclick="window._showPortalDay(-1)" style="font-size:13px;color:#4fa3e8;cursor:pointer;">&#8592; Back</div>' +
-        '</div>' +
-        '<div style="font-size:18px;font-weight:bold;margin-bottom:2px;">' + day.name + '</div>' +
-        '<div style="font-size:13px;color:#888;margin-bottom:16px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>';
+      '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(100,160,255,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+      '<div style="background:#0f1317;border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:20px;margin-bottom:12px;">' +
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;margin-bottom:4px;">' + day.name + '</div>' +
+        '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + (day.exercises ? day.exercises.length : 0) + ' exercises</div>';
 
     for (var i = 0; i < exercises.length; i++) {
       var ex = exercises[i];
       var name = (ex.name || '').replace(/^SS\w+:\s*/i, '');
       html +=
-        '<div style="border-top:1px solid #eee;padding:14px 0;">' +
-          '<div style="font-weight:600;font-size:15px;margin-bottom:2px;">' + name + '</div>' +
-          '<div style="font-size:13px;color:#4fa3e8;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
+        '<div style="border-top:1px solid rgba(100,160,255,0.08);padding:14px 0;">' +
+          '<div style="font-weight:600;font-size:15px;color:#fff;margin-bottom:2px;">' + name + '</div>' +
+          '<div style="font-size:13px;color:#7ec8ff;margin-bottom:6px;">' + (ex.prescription || '') + (ex.load ? ' - ' + ex.load : '') + '</div>' +
           (window._portalHistory && window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')] ?
-            '<div style="font-size:12px;color:#888;background:#f0f4ff;border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">Last: ' +
+            '<div style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.2);border-radius:6px;padding:5px 10px;margin-bottom:8px;display:inline-block;">Last: ' +
               window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].reps + ' &nbsp;·&nbsp; ' +
               window._portalHistory[(ex.name || '').toLowerCase().replace(/\s+/g,'_')].weight +
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
-              '<input id="wr-' + i + '" type="text" placeholder="Sets x Reps" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box;">' +
-              '<div style="font-size:10px;text-align:center;color:#aaa;margin-top:4px;letter-spacing:1px;">SETS x REPS</div>' +
+              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
+              '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:4px;letter-spacing:1px;">SETS x REPS</div>' +
             '</div>' +
             '<div>' +
-              '<input id="wt-' + i + '" type="text" placeholder="Weight / Load" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;text-align:center;box-sizing:border-box;">' +
-              '<div style="font-size:10px;text-align:center;color:#aaa;margin-top:4px;letter-spacing:1px;">WEIGHT / LOAD</div>' +
+              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
+              '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:4px;letter-spacing:1px;">WEIGHT / LOAD</div>' +
             '</div>' +
           '</div>' +
         '</div>';
     }
 
     html += '</div>' +
-      '<button onclick="window._logPortalSession()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:20px;">Log Workout</button>';
+      '<button onclick="window._logPortalSession()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">LOG WORKOUT</button>';
 
     portalBody.innerHTML = html;
 
@@ -1696,10 +1711,10 @@ function renderAIProgramHtml(text){
         var portalBody = document.getElementById('portal-body');
         portalBody.innerHTML =
           '<div style="text-align:center;padding:60px 20px;">' +
-            '<div style="font-size:64px;margin-bottom:16px;">&#9889;</div>' +
-            '<div style="font-size:22px;font-weight:700;color:#111;margin-bottom:8px;">Workout Logged!</div>' +
-            '<div style="font-size:14px;color:#888;margin-bottom:32px;">' + day.name + ' - ' + dateStr + '</div>' +
-            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:#2563eb;color:#fff;border-radius:10px;padding:12px 24px;font-weight:700;cursor:pointer;">Log Another</div>' +
+            '<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px;box-shadow:0 0 50px rgba(67,217,162,0.4);">&#9889;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Session Logged!</div>' +
+            '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:40px;">' + day.name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
+            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
           '</div>';
       })
       .catch(function(err) {
