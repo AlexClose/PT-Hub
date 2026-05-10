@@ -1442,7 +1442,8 @@ function renderAIProgramHtml(text){
   }).join('');
 }
 
-if(window.location.href.indexOf('client=alex')!==-1){document.body.innerHTML='<p style="padding:20px;color:#34d399;">ALEX DETECTED</p>';}else{init();}
+if(window.location.hash==='#alex'){document.body.innerHTML='<p style="padding:20px;color:#34d399;">ALEX DETECTED</p>';}else{init();}
+
 
 
 
