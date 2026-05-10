@@ -1530,11 +1530,11 @@ function renderAIProgramHtml(text){
     var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
 
     var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;align-items:center;">' +
-      '<div onclick="window._showPortalDay(-1)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;" title="Home">&#8962;</div>';
+      '<div onclick="window._showPortalDay(-1)" style="text-align:center;padding:8px 6px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
       var type = typeMap[i];
-      var dotColor = type === 'lift' ? '#4fa3e8' : type === 'run' ? '#ff8c47' : 'transparent';
+      var dotColor = type === 'lift' ? '#4fa3e8' : type === 'run' ? '#ff8c47' : 'rgba(180,200,230,0.25)';
       var bgColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.15)' : type === 'run' ? 'rgba(255,140,71,0.15)' : 'rgba(255,255,255,0.05)') : 'transparent';
       var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
