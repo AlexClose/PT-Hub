@@ -1442,7 +1442,17 @@ function renderAIProgramHtml(text){
   }).join('');
 }
 
-if(window.location.hash==='#alex'){document.body.innerHTML='<p style="padding:20px;color:#34d399;">ALEX DETECTED</p>';}else{init();}
+if(window.location.hash==='#alex'||window.location.hash==='#kathryn'){
+var cpHash=window.location.hash.replace('#','');
+var CP_IDS={alex:'06acdc81-5f0b-4481-917a-d27baf89bc51',kathryn:'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7'};
+var CP_ID=CP_IDS[cpHash];
+var CP_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+fetch(SB_URL+'/rest/v1/clients?id=eq.'+CP_ID,{headers:CP_H})
+.then(function(r){return r.json();})
+.then(function(d){document.body.innerHTML='<p style="padding:20px;color:#34d399;">Got: '+d[0].first+' - '+d[0].schedule+'</p>';})
+.catch(function(e){document.body.innerHTML='<p style="padding:20px;color:#f87171;">Error: '+e.message+'</p>';});
+}else{init();}
+
 
 
 
