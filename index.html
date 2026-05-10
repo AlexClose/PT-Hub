@@ -1710,6 +1710,7 @@ function renderAIProgramHtml(text){
   }
 
   function renderRunCard(runDay) {
+    window._portalRunName = runDay.name;
     var portalBody = document.getElementById('portal-body');
     var html =
       '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
@@ -1731,11 +1732,12 @@ function renderAIProgramHtml(text){
     }
 
     html += '</div>' +
-      '<button onclick="window._logRunSession('' + runDay.name + '')" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 20px rgba(255,140,71,0.3);">LOG RUN</button>';
+      '<button onclick="window._logRunSession()" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 20px rgba(255,140,71,0.3);">LOG RUN</button>';
 
     portalBody.innerHTML = html;
 
-    window._logRunSession = function(name) {
+    window._logRunSession = function() {
+      var name = window._portalRunName || 'Run';
       var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
       var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
       var H = {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'};
