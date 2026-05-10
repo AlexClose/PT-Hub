@@ -1028,10 +1028,7 @@ function renderClientModal(c){
     <div style="margin-bottom:4px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div class="page-label" style="margin:0">Monthly Report</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="muted" style="font-size:11px">${new Date().toLocaleString('default',{month:'long',year:'numeric'})}</span>
-          <button onclick="exportMonthlyReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:6px;padding:4px 10px;font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;">&#8659; PDF</button>
-        </div>
+        <span class="muted" style="font-size:11px">${new Date().toLocaleString('default',{month:'long',year:'numeric'})}</span>
       </div>
       <div id="monthly-${c.id}"><div class="muted" style="font-size:13px;padding:8px 0">Loading...</div></div>
     </div>
@@ -1132,7 +1129,7 @@ function renderStructuredProgram(c){
       const isSuperset=ex.name.match(/^SS/i);
       const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
       const lastHtml=last
-        ?`<div class="ex-last has-data" style="display:inline-flex;align-items:center;gap:6px;">📊 Last: <b>${last.reps||'-'}</b> · <b>${last.weight||'-'}</b> · <span style="opacity:.6">${last.date}</span>${last.pb?'<span style="background:#f59e0b;color:#000;font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 5px;border-radius:3px;">PB</span>':''}</div>`
+        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'-'}</b> · <b>${last.weight||'-'}</b> · <span style="opacity:.6">${last.date}</span></div>`
         :`<div class="ex-last">No data yet - log first session to track</div>`;
       return `<div class="ex-row" ${isSuperset?'style="padding-left:22px;border-left:2px solid var(--warn)"':''}>
         <div class="ex-row-content">
@@ -1243,7 +1240,7 @@ function updateLogWorkout(clientId){
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">📊 Last: ${last.reps||'-'} &nbsp;·&nbsp; ${last.weight||'-'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span>${last.pb?'<span style="background:#f59e0b;color:#000;font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:4px;">PB</span>':''}</div>`:''}
+      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'-'} &nbsp;·&nbsp; ${last.weight||'-'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
@@ -2186,142 +2183,118 @@ function renderAIProgramHtml(text){
   };
 })();
 
-function exportMonthlyReport(clientId) {
-  const c = clients.find(x => x.id === clientId);
-  if (!c) return;
-  const el = document.getElementById('monthly-' + clientId);
+async function renderMonthlyReport(c) {
+  const el = document.getElementById('monthly-' + c.id);
   if (!el) return;
 
-  const monthName = new Date().toLocaleString('default', {month:'long', year:'numeric'});
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <style>
-      body{font-family:-apple-system,sans-serif;max-width:600px;margin:40px auto;padding:0 24px;color:#111;background:#fff;}
-      h1{font-size:28px;font-weight:800;margin-bottom:4px;letter-spacing:-0.5px;}
-      h2{font-size:13px;color:#666;font-weight:400;margin-bottom:32px;}
-      .section{margin-bottom:28px;}
-      .label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#999;margin-bottom:12px;}
-      .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
-      .stat{background:#f8f8f8;border-radius:10px;padding:14px 16px;}
-      .stat-num{font-size:32px;font-weight:800;color:#111;line-height:1;}
-      .stat-label{font-size:11px;color:#999;margin-top:4px;}
-      .pb-box{background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:14px 16px;margin-bottom:20px;}
-      .ex-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;}
-      .ex-name{font-size:14px;font-weight:500;}
-      .ex-vol{font-size:13px;color:#666;}
-      .bar-wrap{background:#f0f0f0;border-radius:20px;height:4px;margin-top:4px;overflow:hidden;}
-      .bar-fill{height:100%;border-radius:20px;background:#2563eb;}
-      .footer{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;text-align:center;}
-    </style>
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  </head><body>
-    <h1>${c.first} ${c.last||''}</h1>
-    <h2>Monthly Report &mdash; ${monthName}</h2>
-    ${el.innerHTML.replace(/style="[^"]*color:[^"]*#fff[^"]*"/g, '').replace(/background:#0f1317/g,'background:#f8f8f8').replace(/color:#fff/g,'color:#111').replace(/color:rgba\(180,200,230[^)]*\)/g,'color:#888').replace(/border:[^;]*rgba\(100,160,255[^;]*/g,'border:1px solid #eee').replace(/var\(--[^)]+\)/g,'#eee')}
-    <div class="footer">Generated by Baymade Training &mdash; Coach Portal</div>
-  </body></html>`);
-  win.document.close();
-  setTimeout(() => win.print(), 500);
-}
+  // Get exercise logs from Supabase for this client
+  let logs = [];
+  let lastMonthLogs = [];
+  try {
+    const monthStr = monthStart.toISOString().split('T')[0];
+    const lastStr = lastMonthStart.toISOString().split('T')[0];
+    const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
+    logs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`);
+    lastMonthLogs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`);
+  } catch(e) { logs = []; lastMonthLogs = []; }
 
-async function renderMonthlyReport(c) {
-const el = document.getElementById(‘monthly-’ + c.id);
-if (!el) return;
+  const sessions = c._sessions || [];
+  const monthlySessions = sessions.filter(s => {
+    if (!s.date) return false;
+    const d = new Date(s.date);
+    return d >= monthStart;
+  });
 
-const now = new Date();
-const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  // Calculate total volume from logs
+  let totalVolume = 0;
+  const exVolume = {};
+  const exMaxWeight = {};
+  logs.forEach(l => {
+    const sets = parseInt((l.reps||'').split('x')[0]) || 0;
+    const reps = parseInt((l.reps||'').split('x')[1]) || 0;
+    const weight = parseFloat(l.weight) || 0;
+    const vol = sets * reps * weight;
+    totalVolume += vol;
+    if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
+    exVolume[l.exercise_name] += vol;
+    if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) {
+      exMaxWeight[l.exercise_name] = weight;
+    }
+  });
 
-// Get exercise logs from Supabase for this client
-let logs = [];
-let lastMonthLogs = [];
-try {
-const monthStr = monthStart.toISOString().split(‘T’)[0];
-const lastStr = lastMonthStart.toISOString().split(‘T’)[0];
-const lastEndStr = lastMonthEnd.toISOString().split(‘T’)[0];
-logs = await sb(‘GET’,‘exercise_logs’,null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`);
-lastMonthLogs = await sb(‘GET’,‘exercise_logs’,null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`);
-} catch(e) { logs = []; lastMonthLogs = []; }
+  // Find most improved vs last month
+  const lastMonthMax = {};
+  lastMonthLogs.forEach(l => {
+    const weight = parseFloat(l.weight) || 0;
+    if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) {
+      lastMonthMax[l.exercise_name] = weight;
+    }
+  });
 
-const sessions = c._sessions || [];
-const monthlySessions = sessions.filter(s => {
-if (!s.date) return false;
-const d = new Date(s.date);
-return d >= monthStart;
-});
+  let mostImproved = null;
+  let biggestGain = 0;
+  Object.keys(exMaxWeight).forEach(ex => {
+    if (lastMonthMax[ex]) {
+      const gain = exMaxWeight[ex] - lastMonthMax[ex];
+      if (gain > biggestGain) { biggestGain = gain; mostImproved = ex; }
+    }
+  });
 
-// Calculate total volume from logs
-let totalVolume = 0;
-const exVolume = {};
-const exMaxWeight = {};
-logs.forEach(l => {
-const sets = parseInt((l.reps||’’).split(‘x’)[0]) || 0;
-const reps = parseInt((l.reps||’’).split(‘x’)[1]) || 0;
-const weight = parseFloat(l.weight) || 0;
-const vol = sets * reps * weight;
-totalVolume += vol;
-if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
-exVolume[l.exercise_name] += vol;
-if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) {
-exMaxWeight[l.exercise_name] = weight;
-}
-});
+  // Top exercises by volume
+  const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,4);
 
-// Find most improved vs last month
-const lastMonthMax = {};
-lastMonthLogs.forEach(l => {
-const weight = parseFloat(l.weight) || 0;
-if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) {
-lastMonthMax[l.exercise_name] = weight;
-}
-});
+  const monthName = now.toLocaleString('default',{month:'long'});
 
-let mostImproved = null;
-let biggestGain = 0;
-Object.keys(exMaxWeight).forEach(ex => {
-if (lastMonthMax[ex]) {
-const gain = exMaxWeight[ex] - lastMonthMax[ex];
-if (gain > biggestGain) { biggestGain = gain; mostImproved = ex; }
-}
-});
-
-// Top exercises by volume
-const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,4);
-
-const monthName = now.toLocaleString(‘default’,{month:‘long’});
-
-let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
-<div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Sessions</div>
-<div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${monthlySessions.length}</div>
-<div class="muted" style="font-size:11px;margin-top:2px">${monthName}</div>
-</div>
-<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
-<div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Volume</div>
-<div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : ‘–’}</div>
-<div class="muted" style="font-size:11px;margin-top:2px">${totalVolume > 0 ? ‘lbs lifted’ : ‘Log weights to track’}</div>
-</div>
-
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
+      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Sessions</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${monthlySessions.length}</div>
+      <div class="muted" style="font-size:11px;margin-top:2px">${monthName}</div>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
+      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Volume</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : '--'}</div>
+      <div class="muted" style="font-size:11px;margin-top:2px">${totalVolume > 0 ? 'lbs lifted' : 'Log weights to track'}</div>
+    </div>
   </div>`;
 
-if (mostImproved) {
-html += `<div style="background:rgba(67,217,162,0.07);border:1px solid rgba(67,217,162,0.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px"> <div style="font-size:24px">&#127942;</div> <div> <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#43d9a2;margin-bottom:3px">Most Improved</div> <div style="font-size:14px;font-weight:600;color:#fff">${mostImproved}</div> <div class="muted" style="font-size:12px">+${biggestGain} lbs vs last month</div> </div> </div>`;
-}
+  if (mostImproved) {
+    html += `<div style="background:rgba(67,217,162,0.07);border:1px solid rgba(67,217,162,0.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:24px">&#127942;</div>
+      <div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#43d9a2;margin-bottom:3px">Most Improved</div>
+        <div style="font-size:14px;font-weight:600;color:#fff">${mostImproved}</div>
+        <div class="muted" style="font-size:12px">+${biggestGain} lbs vs last month</div>
+      </div>
+    </div>`;
+  }
 
-if (topEx.length > 0) {
-html += `<div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Top Exercises by Volume</div>`;
-topEx.forEach(([name, vol]) => {
-const pct = Math.round((vol / totalVolume) * 100);
-html += `<div style="margin-bottom:10px"> <div style="display:flex;justify-content:space-between;margin-bottom:4px"> <div style="font-size:13px;color:var(--text)">${name}</div> <div style="font-size:12px;color:var(--muted)">${Math.round(vol).toLocaleString()} lbs</div> </div> <div style="background:var(--surface2);border-radius:20px;height:4px;overflow:hidden"> <div style="width:${pct}%;height:100%;border-radius:20px;background:var(--accent)"></div> </div> </div>`;
-});
-}
+  if (topEx.length > 0) {
+    html += `<div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Top Exercises by Volume</div>`;
+    topEx.forEach(([name, vol]) => {
+      const pct = Math.round((vol / totalVolume) * 100);
+      html += `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:13px;color:var(--text)">${name}</div>
+          <div style="font-size:12px;color:var(--muted)">${Math.round(vol).toLocaleString()} lbs</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:20px;height:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;border-radius:20px;background:var(--accent)"></div>
+        </div>
+      </div>`;
+    });
+  }
 
-if (monthlySessions.length === 0 && logs.length === 0) {
-html = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
-}
+  if (monthlySessions.length === 0 && logs.length === 0) {
+    html = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
+  }
 
-el.innerHTML = html;
+  el.innerHTML = html;
 }
 
 init();
