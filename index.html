@@ -1897,7 +1897,7 @@ function renderAIProgramHtml(text){
         var hiddenHtml = '';
         for (var j = 0; j < hidden.length; j++) { hiddenHtml += sessionRow(hidden[j]); }
         html2 += '<div id="portal-sess-hidden" style="display:none;">' + hiddenHtml + '</div>';
-        html2 += '<div onclick="(function(){var h=document.getElementById('portal-sess-hidden');var t=document.getElementById('portal-sess-btn');if(h.style.display==='none'){h.style.display='block';t.textContent='Show less';}else{h.style.display='none';t.textContent='View all ' + sessions.length + ' sessions';}})();" id="portal-sess-btn" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
+        html2 += '<div id="portal-sess-btn" onclick="window._toggleSessions(' + sessions.length + ')" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
       }
       el.innerHTML = html2;
     })
@@ -2166,6 +2166,19 @@ function renderAIProgramHtml(text){
 
   window._clearDraft = function() {
     try { sessionStorage.removeItem('bm_workout_draft'); } catch(e) {}
+  };
+
+  window._toggleSessions = function(total) {
+    var h = document.getElementById('portal-sess-hidden');
+    var t = document.getElementById('portal-sess-btn');
+    if (!h || !t) return;
+    if (h.style.display === 'none') {
+      h.style.display = 'block';
+      t.textContent = 'Show less';
+    } else {
+      h.style.display = 'none';
+      t.textContent = 'View all ' + total + ' sessions';
+    }
   };
 
   window._checkExRow = function(idx) {
