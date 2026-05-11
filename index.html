@@ -379,7 +379,6 @@ box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 .search-wrap::before{content:‘🔍’;position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;z-index:1;}
 
 ::-webkit-scrollbar{width:4px;}
-@keyframes portalPop{0%{opacity:0;transform:scale(0.3)}60%{transform:scale(1.15)}100%{opacity:1;transform:scale(1)}}
 ::-webkit-scrollbar-thumb{background:var(–border2);border-radius:2px;}
 
 /* Session logged success animation */
@@ -835,12 +834,12 @@ function renderDashboard(){
     <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="${statStyle};color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
     <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="${statStyle};color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
   let alerts='';
-  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions - send invoice via Square</div></div>`;});
-  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left - time to renew</div></div>`;});
+  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
+  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
   // Shared package alerts
   sharedPackages.forEach(pkg=>{
     const linked=clients.filter(c=>c.shared_package_id===pkg.id).map(c=>c.first).join(' & ');
-    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out - invoice via Square</div></div>`;
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
     else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
@@ -888,7 +887,7 @@ function clientRowHtml(c){
 function renderClientList(){
   const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
   const filtered=clients.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
-  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet - tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
 }
 
 // ── ADD/EDIT CLIENT ──
@@ -905,7 +904,7 @@ async function saveClient(){
     const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{}});
     if(created&&created[0])clients.push(created[0]);
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
-  }catch(e){toast('Error saving - check connection');}
+  }catch(e){toast('Error saving — check connection');}
 }
 function openEditClient(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
@@ -928,7 +927,7 @@ async function togglePause(id){
     c.paused=newPaused;
     renderClientModal(c);
     renderDashboard();
-    toast(newPaused?`⏸ ${c.first} paused - won't show in alerts`:`▶ ${c.first} resumed`);
+    toast(newPaused?`⏸ ${c.first} paused — won't show in alerts`:`▶ ${c.first} resumed`);
   }catch(e){toast('Error updating');}
 }
 
@@ -946,7 +945,6 @@ async function openClientDetail(id){
       renderClientModal(c);
     }
   }catch(e){}
-  renderMonthlyReport(c);
 }
 
 function renderClientModal(c){
@@ -1000,7 +998,7 @@ function renderClientModal(c){
             ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:16px;color:rgba(180,200,230,0.4);font-weight:400"> / ${sharedPkg.total_sessions} shared</span></div><div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
             :c.package_size>0
             ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${c.package_size} sessions</span></div>`
-            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session - no package tracking</div>`}
+            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session — no package tracking</div>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
           <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
@@ -1022,15 +1020,6 @@ function renderClientModal(c){
         <span class="muted" style="font-size:12px">${sessions.length} total</span>
       </div>
       ${sessHtml}
-    </div>
-
-    <div class="divider"></div>
-    <div style="margin-bottom:4px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="page-label" style="margin:0">Monthly Report</div>
-        <span class="muted" style="font-size:11px">${new Date().toLocaleString('default',{month:'long',year:'numeric'})}</span>
-      </div>
-      <div id="monthly-${c.id}"><div class="muted" style="font-size:13px;padding:8px 0">Loading...</div></div>
     </div>
 
     <div class="divider"></div>
@@ -1129,8 +1118,8 @@ function renderStructuredProgram(c){
       const isSuperset=ex.name.match(/^SS/i);
       const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
       const lastHtml=last
-        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'-'}</b> · <b>${last.weight||'-'}</b> · <span style="opacity:.6">${last.date}</span></div>`
-        :`<div class="ex-last">No data yet - log first session to track</div>`;
+        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'—'}</b> · <b>${last.weight||'—'}</b> · <span style="opacity:.6">${last.date}</span></div>`
+        :`<div class="ex-last">No data yet — log first session to track</div>`;
       return `<div class="ex-row" ${isSuperset?'style="padding-left:22px;border-left:2px solid var(--warn)"':''}>
         <div class="ex-row-content">
           ${isSuperset?`<div class="ss-label">Superset</div>`:''}
@@ -1168,7 +1157,7 @@ function openEditProgramDay(clientId,dayIndex){
   editingClientId=clientId;editingDayIndex=dayIndex;
   const day=c.structured_program.days[dayIndex];
   editingExercises=JSON.parse(JSON.stringify(day.exercises));
-  document.getElementById('editProgTitle').textContent=`Edit - ${day.name}`;
+  document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   renderEditExerciseList();openModal('editProgramModal');
 }
 function renderEditExerciseList(){
@@ -1205,7 +1194,7 @@ function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
   // Allow negative sessions for clients like Ali who go on extended breaks
   pendingLogId=id;
-  document.getElementById('logModalTitle').textContent=`Log Session - ${c.first}`;
+  document.getElementById('logModalTitle').textContent=`Log Session — ${c.first}`;
   document.getElementById('logNote').value='';
   let workoutHtml='';
   if(c.structured_program){
@@ -1240,7 +1229,7 @@ function updateLogWorkout(clientId){
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'-'} &nbsp;·&nbsp; ${last.weight||'-'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
+      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
@@ -1248,30 +1237,24 @@ function updateLogWorkout(clientId){
     </div>`;
   }).join('');
 }
-function showSuccessAnimation(name,pbs){
+function showSuccessAnimation(name){
+  // Remove any existing
   document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
-  const pbHtml=pbs&&pbs.length>0
-    ?`<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-top:4px;text-align:left;width:100%;">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>
-        ${pbs.map(n=>`<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; ${n}</div>`).join('')}
-      </div>`
-    :'';
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
   overlay.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:0 32px;max-width:340px;width:100%;">
-      <div style="width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:50px;box-shadow:0 0 80px rgba(67,217,162,0.5);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-top:4px;">Crushed it!</div>
-      <div style="font-family:'Syne',sans-serif;font-size:15px;color:#43d9a2;font-weight:600;">${name} - session logged</div>
-      ${pbHtml}
-      <div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:4px;">Coach Portal</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards">
+      <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.6);">⚡</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} — Done!</div>
+      <div style="font-size:13px;color:rgba(67,217,162,0.8);letter-spacing:1px;">Session Logged ✓</div>
     </div>`;
   document.body.appendChild(overlay);
+  // Fade out after 1s
   setTimeout(()=>{
-    overlay.style.transition='opacity .4s ease';
+    overlay.style.transition='opacity .3s ease';
     overlay.style.opacity='0';
-    setTimeout(()=>overlay.remove(), 400);
-  }, 2400);
+    setTimeout(()=>overlay.remove(), 300);
+  }, 1000);
 }
 
 async function confirmLogSession(){
@@ -1289,11 +1272,10 @@ async function confirmLogSession(){
       if(wr||wt){
         const key=ex.name.toLowerCase().replace(/\s+/g,'_');
         const prev=c.exercise_history&&c.exercise_history[key]?parseFloat(c.exercise_history[key].weight):0;
-        const newW=parseFloat(wt)||0;
-        const isPB=newW>0&&newW>prev;
+        const newW=parseFloat(wt)||0,isPB=newW>0&&newW>prev;
         if(isPB)coachPBs.push(ex.name.replace(/^SS\w+:\s*/i,''));
         newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?wt:(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
-        workout.push({name:ex.name,reps:wr||'',weight:wt||'',pb:isPB});
+        workout.push({name:ex.name,reps:wr||'',weight:wt||''});
         exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
       }
     });
@@ -1306,7 +1288,7 @@ async function confirmLogSession(){
     c.remaining=newRemaining;c.exercise_history=newHistory;
     // Deduct from shared package if linked
     if(c.package_size>0&&c.remaining<0){
-      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions - balance owed`),300);
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
     } else if(c.shared_package_id){
       const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
       if(sharedPkg&&sharedPkg.remaining_sessions>0){
@@ -1319,32 +1301,32 @@ async function confirmLogSession(){
     closeModal('logModal');renderClientModal(c);renderDashboard();
     showSuccessAnimation(c.first,coachPBs);
     if(c.package_size>0&&c.remaining<0){
-      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions - balance owed`),300);
+      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
     } else if(c.shared_package_id){
       const sp=sharedPackages.find(p=>p.id===c.shared_package_id);
       if(sp){
-        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out - invoice via Square!`),300);
+        if(sp.remaining_sessions===0)setTimeout(()=>toast(`🔴 Shared package out — invoice via Square!`),300);
         else if(sp.remaining_sessions<=2)setTimeout(()=>toast(`🟡 Shared package: ${sp.remaining_sessions} left`),300);
-        else toast(`Session logged ✓ - ${sp.remaining_sessions} shared remaining`);
+        else toast(`Session logged ✓ — ${sp.remaining_sessions} shared remaining`);
       }
     } else if(c.package_size>0){
-      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions - invoice via Square!`),300);
+      if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions — invoice via Square!`),300);
       else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
-      else toast(`Session logged ✓ - ${c.remaining} remaining`);
+      else toast(`Session logged ✓ — ${c.remaining} remaining`);
     }else toast('Session logged ✓');
-  }catch(e){toast('Error saving - check connection');console.error(e);}
+  }catch(e){toast('Error saving — check connection');console.error(e);}
 }
 
 // ── RENEW ──
 function openRenew(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package - ${c.first}`;
+  pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
   document.getElementById('renewPkg').value=c.package_size||10;openModal('renewModal');
 }
 async function confirmRenew(){
   const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
   const pkg=parseInt(document.getElementById('renewPkg').value);
-  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed - ${pkg} sessions ✓`);}
+  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed — ${pkg} sessions ✓`);}
   catch(e){toast('Error renewing package');}
 }
 async function deleteClient(id){
@@ -1439,7 +1421,7 @@ async function generateProgram(id){
   section.innerHTML=`<div class="ai-output"><span class="ai-thinking">✦ Building a 6-week program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
   const equip=equipment.length>0?equipment.map(e=>e.name).join(', '):'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Resistance bands';
   const days=(c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
-  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise - 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
+  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Could not generate program.';
@@ -1452,7 +1434,7 @@ function renderAIProgramHtml(text){
   lines.forEach(line=>{const t=line.trim();if(!t)return;if(/^WEEK\s+\d/i.test(t)){if(cur)weeks.push(cur);cur={title:t,days:[],coach:''};}else if(cur){if(/^Coach'?s?\s+Note/i.test(t))cur.coach=t.replace(/^Coach'?s?\s+Note:?\s*/i,'');else if(/^Day\s+\d/i.test(t)){const m=t.match(/\(([^)]+)\)/);cur.days.push({label:t.split('(')[0].trim(),type:m?m[1]:'',exercises:[]});}else if((t.startsWith('•')||t.startsWith('-'))&&cur.days.length>0)cur.days[cur.days.length-1].exercises.push(t.replace(/^[•\-]\s*/,''));}});
   if(cur)weeks.push(cur);if(!weeks.length)return`<div class="ai-output">${text}</div>`;
   return weeks.map((w,wi)=>{
-    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('-');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">- '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
+    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('—');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">— '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
     return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
   }).join('');
 }
@@ -1888,7 +1870,7 @@ function renderAIProgramHtml(text){
 
     portalBody.innerHTML = html;
 
-    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=5', {
+    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=50', {
       headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
     })
     .then(function(res) { return res.json(); })
@@ -1900,16 +1882,22 @@ function renderAIProgramHtml(text){
         return;
       }
       window._portalRecentSessions = sessions;
-      var html2 = '';
-      for (var i = 0; i < sessions.length; i++) {
-        var s = sessions[i];
-        html2 += '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.08);">' +
-          '<div>' +
-            '<div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px;">' + s.date + '</div>' +
-          '</div>' +
+      var sessionRow = function(s) {
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.08);">' +
+          '<div><div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
+          '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px;">' + s.date + '</div></div>' +
           '<div style="font-size:11px;font-weight:600;color:#43d9a2;background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;">Done</div>' +
         '</div>';
+      };
+      var visible = sessions.slice(0, 3);
+      var hidden = sessions.slice(3);
+      var html2 = '';
+      for (var i = 0; i < visible.length; i++) { html2 += sessionRow(visible[i]); }
+      if (hidden.length > 0) {
+        var hiddenHtml = '';
+        for (var j = 0; j < hidden.length; j++) { hiddenHtml += sessionRow(hidden[j]); }
+        html2 += '<div id="portal-sess-hidden" style="display:none;">' + hiddenHtml + '</div>';
+        html2 += '<div onclick="(function(){var h=document.getElementById('portal-sess-hidden');var t=document.getElementById('portal-sess-btn');if(h.style.display==='none'){h.style.display='block';t.textContent='Show less';}else{h.style.display='none';t.textContent='View all ' + sessions.length + ' sessions';}})();" id="portal-sess-btn" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
       }
       el.innerHTML = html2;
     })
@@ -2031,11 +2019,11 @@ function renderAIProgramHtml(text){
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
             '<div>' +
-              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" oninput="window._checkExRow(' + i + ')" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
+              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:4px;letter-spacing:1px;">SETS x REPS</div>' +
             '</div>' +
             '<div>' +
-              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
+              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" oninput="window._saveDraft();" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:8px;font-size:15px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:4px;letter-spacing:1px;">WEIGHT / LOAD</div>' +
             '</div>' +
           '</div>' +
@@ -2046,6 +2034,7 @@ function renderAIProgramHtml(text){
       '<button onclick="window._logPortalSession()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">LOG WORKOUT</button>';
 
     portalBody.innerHTML = html;
+    setTimeout(window._restoreDraft, 50);
 
     window._showPortalDay = function(index) {
       if (index === -1) {
@@ -2075,9 +2064,9 @@ function renderAIProgramHtml(text){
         var weight = wt ? wt.value.trim() : '';
         if (reps || weight) {
           var key = exercises[i].name.toLowerCase().replace(/\s+/g, '_');
-          var prev = window._portalHistory && window._portalHistory[key] ? parseFloat(window._portalHistory[key].weight) : 0;
-          var newW = parseFloat(weight) || 0;
-          var isPB = newW > 0 && newW > prev;
+          var prevWeight = window._portalHistory && window._portalHistory[key] ? parseFloat(window._portalHistory[key].weight) : 0;
+          var newWeight = parseFloat(weight) || 0;
+          var isPB = newWeight > 0 && newWeight > prevWeight;
           if (isPB) newPBs.push(exercises[i].name.replace(/^SS\w+:\s*/i, ''));
           workout.push({name: exercises[i].name, reps: reps, weight: weight, pb: isPB});
           newHistory[key] = {reps: reps, weight: weight, date: dateStr, pb: isPB ? weight : (window._portalHistory && window._portalHistory[key] && window._portalHistory[key].pb ? window._portalHistory[key].pb : '')};
@@ -2088,6 +2077,28 @@ function renderAIProgramHtml(text){
       var btn = document.querySelector('button[onclick="window._logPortalSession()"]');
       if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
 
+      // Show success screen immediately - save happens in background
+      var portalBody = document.getElementById('portal-body');
+      var pbHtml = '';
+      if (window._newPBs && window._newPBs.length > 0) {
+        pbHtml = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;">' +
+          '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>' +
+          window._newPBs.map(function(n){ return '<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; ' + n + '</div>'; }).join('') +
+        '</div>';
+      }
+      var savedDateStr = dateStr;
+      var savedDayName = day.name;
+      portalBody.innerHTML =
+        '<div style="text-align:center;padding:48px 20px 60px;">' +
+          '<div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 20px;box-shadow:0 0 60px rgba(67,217,162,0.5);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>' +
+          '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Crushed it!</div>' +
+          '<div style="font-family:Syne,sans-serif;font-size:14px;color:#43d9a2;font-weight:600;margin-bottom:6px;">' + savedDayName + ' complete</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:24px;">' + savedDateStr + '</div>' +
+          pbHtml +
+          '<div id="save-status" style="font-size:12px;color:rgba(180,200,230,0.3);margin-bottom:16px;">Saving...</div>' +
+          '<div onclick="window._calendarHome()" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px 28px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Dashboard</div>' +
+        '</div>';
+
       fetch(SUPABASE_URL + '/rest/v1/sessions', {
         method: 'POST',
         headers: H,
@@ -2096,6 +2107,7 @@ function renderAIProgramHtml(text){
       .then(function(res) {
         if (!res.ok) throw new Error('Failed to save session');
         var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
+        window._clearDraft();
         window._portalHistory = updatedHistory;
         var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
         window._portalRemaining = newRemaining;
@@ -2106,67 +2118,56 @@ function renderAIProgramHtml(text){
         });
       })
       .then(function() {
-        var portalBody = document.getElementById('portal-body');
-        var pbHtml = '';
-        if (window._newPBs && window._newPBs.length > 0) {
-          pbHtml = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;">' +
-            '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>' +
-            window._newPBs.map(function(n){ return '<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; ' + n + '</div>'; }).join('') +
-          '</div>';
-        }
-        portalBody.innerHTML =
-          '<div style="text-align:center;padding:48px 20px 60px;">' +
-            '<div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:44px;margin:0 auto 20px;box-shadow:0 0 60px rgba(67,217,162,0.5),0 0 120px rgba(37,99,235,0.2);animation:portalPop .5s cubic-bezier(.34,1.56,.64,1) forwards;">&#9889;</div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Crushed it!</div>' +
-            '<div style="font-family:Syne,sans-serif;font-size:14px;color:#43d9a2;font-weight:600;margin-bottom:6px;">' + day.name + ' complete</div>' +
-            '<div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:24px;">' + dateStr + '</div>' +
-            pbHtml +
-            '<div onclick="window._calendarHome()" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px 28px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Dashboard</div>' +
-            '<div style="margin-top:48px;opacity:0.25;">' +
-            '<defs>' +
-                '<linearGradient id="spL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#1d4ed8"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>' +
-                '<linearGradient id="spR" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/></linearGradient>' +
-                '<linearGradient id="swg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#60a5fa"/><stop offset="100%" style="stop-color:#1e3a8a"/></linearGradient>' +
-              '</defs>' +
-              '<text x="200" y="68" font-family="Syne,sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">BAY</text>' +
-              '<rect x="20" y="106" width="9" height="22" rx="2" fill="#60a5fa"/>' +
-              '<rect x="33" y="96" width="13" height="42" rx="3" fill="url(#spL)"/>' +
-              '<rect x="50" y="90" width="13" height="54" rx="3" fill="url(#spL)"/>' +
-              '<rect x="67" y="84" width="13" height="66" rx="3" fill="url(#spL)"/>' +
-              '<rect x="84" y="78" width="13" height="78" rx="3" fill="url(#spL)"/>' +
-              '<rect x="371" y="106" width="9" height="22" rx="2" fill="#60a5fa"/>' +
-              '<rect x="354" y="96" width="13" height="42" rx="3" fill="url(#spR)"/>' +
-              '<rect x="337" y="90" width="13" height="54" rx="3" fill="url(#spR)"/>' +
-              '<rect x="320" y="84" width="13" height="66" rx="3" fill="url(#spR)"/>' +
-              '<rect x="303" y="78" width="13" height="78" rx="3" fill="url(#spR)"/>' +
-              '<path d="M97,100 Q115,85 132,95 Q150,106 168,96 Q186,85 204,95 Q222,106 240,94 Q258,82 276,94 Q288,102 303,100 L303,134 Q288,134 276,122 Q258,110 240,122 Q222,134 204,123 Q186,113 168,124 Q150,135 132,123 Q115,113 97,134 Z" fill="url(#swg)"/>' +
-              '<path d="M228,94 C230,82 233,69 237,57 C241,46 245,36 250,26" stroke="#93c5fd" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
-              '<path d="M250,26 C261,15 275,11 285,14 C274,18 263,24 255,34" fill="#60a5fa"/>' +
-              '<path d="M250,26 C257,13 263,5 268,1 C263,12 257,21 252,32" fill="#7ec8ff"/>' +
-              '<path d="M250,26 C249,12 250,2 252,-4 C250,8 249,18 250,30" fill="#93c5fd"/>' +
-              '<path d="M250,26 C243,12 238,4 234,0 C238,11 243,20 248,31" fill="#7ec8ff"/>' +
-              '<path d="M250,26 C240,15 229,11 220,14 C230,17 241,22 247,33" fill="#60a5fa"/>' +
-              '<path d="M250,26 C261,29 270,35 272,43 C263,38 254,33 252,36" fill="#3b82f6"/>' +
-              '<path d="M250,26 C239,30 230,37 228,45 C237,40 247,35 249,37" fill="#3b82f6"/>' +
-              '<circle cx="249" cy="33" r="4" fill="#1d4ed8"/>' +
-              '<circle cx="255" cy="31" r="3.5" fill="#1e3a8a"/>' +
-              '<circle cx="243" cy="32" r="3.5" fill="#1d4ed8"/>' +
-              '<text x="200" y="195" font-family="Syne,sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">MADE</text>' +
-              '<text x="200" y="234" font-family="Syne,sans-serif" font-weight="600" font-size="20" fill="#60a5fa" text-anchor="middle" letter-spacing="12">TRAINING</text>' +
-              '<path d="M12,12 L12,34 M12,12 L34,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' +
-              '<path d="M388,12 L388,34 M388,12 L366,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' +
-              '<path d="M12,288 L12,266 M12,288 L34,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' +
-              '<path d="M388,288 L388,266 M388,288 L366,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' +
-            '</svg>' +
-          '</div>' +
-          '</div>';
+        var statusEl = document.getElementById('save-status');
+        if (statusEl) { statusEl.textContent = 'Saved!'; statusEl.style.color = 'rgba(67,217,162,0.5)'; }
       })
       .catch(function(err) {
-        if (btn) { btn.textContent = 'Log Workout'; btn.disabled = false; }
-        alert('Error saving: ' + err.message);
+        var statusEl = document.getElementById('save-status');
+        if (statusEl) { statusEl.textContent = 'Save failed - check connection'; statusEl.style.color = '#ff5c6a'; }
       });
     };
   }
+  window._saveDraft = function() {
+    var day = window._portalDay;
+    if (!day) return;
+    var draft = {dayName: day.name, inputs: {}};
+    var exercises = day.exercises || [];
+    for (var i = 0; i < exercises.length; i++) {
+      var wr = document.getElementById('wr-' + i);
+      var wt = document.getElementById('wt-' + i);
+      draft.inputs[i] = {reps: wr ? wr.value : '', weight: wt ? wt.value : ''};
+    }
+    try { sessionStorage.setItem('bm_workout_draft', JSON.stringify(draft)); } catch(e) {}
+  };
+
+  window._restoreDraft = function() {
+    try {
+      var raw = sessionStorage.getItem('bm_workout_draft');
+      if (!raw) return;
+      var draft = JSON.parse(raw);
+      if (!window._portalDay || draft.dayName !== window._portalDay.name) return;
+      var exercises = window._portalDay.exercises || [];
+      for (var i = 0; i < exercises.length; i++) {
+        var inp = draft.inputs[i];
+        if (!inp) continue;
+        var wr = document.getElementById('wr-' + i);
+        var wt = document.getElementById('wt-' + i);
+        if (wr && inp.reps) { wr.value = inp.reps; }
+        if (wt && inp.weight) { wt.value = inp.weight; }
+      }
+      // Show a subtle indicator that draft was restored
+      var banner = document.createElement('div');
+      banner.textContent = 'Draft restored';
+      banner.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1f28;border:1px solid rgba(79,163,232,0.3);color:#7ec8ff;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;z-index:999;';
+      document.body.appendChild(banner);
+      setTimeout(function(){banner.remove();}, 2500);
+    } catch(e) {}
+  };
+
+  window._clearDraft = function() {
+    try { sessionStorage.removeItem('bm_workout_draft'); } catch(e) {}
+  };
+
   window._checkExRow = function(idx) {
     var wr = document.getElementById('wr-' + idx);
     var wt = document.getElementById('wt-' + idx);
