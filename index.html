@@ -78,6 +78,7 @@ if(link)link.href=dataURL;
   --radius-sm:9px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+html{overflow-x:hidden;}
 body{background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
 
 /* ── NAV ── */
@@ -459,9 +460,12 @@ to{opacity:1;transform:translateY(0);}
 </div>
 
 <nav style="display:none">
-  <div class="nav-logo">
+  <div class="nav-logo" onclick="toggleSignOutMenu()" style="cursor:pointer;user-select:none;position:relative;">
     <span style="color:#7ec8ff !important;font-family:'Syne',sans-serif;font-weight:800;">BAYMADE</span><span style="color:#ffffff !important;"> TRAINING</span>
     <small style="color:rgba(180,200,230,0.5);">Coach Portal</small>
+    <div id="signOutMenu" style="display:none;position:absolute;top:calc(100% + 10px);left:0;background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:4px;min-width:130px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+      <button onclick="signOut()" style="width:100%;background:none;border:none;color:rgba(255,92,106,0.85);font-size:13px;font-family:'Instrument Sans',sans-serif;padding:10px 14px;text-align:left;cursor:pointer;border-radius:7px;" onmouseover="this.style.background='rgba(255,92,106,0.1)'" onmouseout="this.style.background='none'">Sign out</button>
+    </div>
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showView('dashboard',this)">
@@ -474,7 +478,6 @@ to{opacity:1;transform:translateY(0);}
       <span class="tab-icon">📋</span> Library
     </button>
   </div>
-  <button onclick="signOut()" title="Sign out" style="flex-shrink:0;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 11px;color:rgba(180,200,230,0.45);font-size:13px;cursor:pointer;margin-left:4px;line-height:1;">↪</button>
 </nav>
 
 <main style="display:none">
@@ -790,6 +793,19 @@ async function signIn() {
     errEl.textContent = 'Incorrect email or password.';
     errEl.style.display = 'block';
     if (btn) { btn.textContent = 'Sign In'; btn.disabled = false; }
+  }
+}
+
+function toggleSignOutMenu() {
+  const m = document.getElementById('signOutMenu');
+  if (!m) return;
+  const open = m.style.display !== 'none';
+  m.style.display = open ? 'none' : 'block';
+  if (!open) {
+    setTimeout(() => document.addEventListener('click', function h(e) {
+      if (!e.target.closest('.nav-logo')) m.style.display = 'none';
+      document.removeEventListener('click', h);
+    }), 0);
   }
 }
 
