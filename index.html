@@ -1117,15 +1117,15 @@ function renderClientModal(c){
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
 
-  const sessionRowHtml=s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div><div style="font-size:14px;font-weight:600">${s.date}</div>${s.workout&&s.workout.length>0?`<div class="muted" style="font-size:12px;margin-top:2px">${s.workout[0]?.day||s.note||''}</div>`:''} ${s.note&&(!s.workout||s.workout.length===0)?`<div class="muted" style="font-size:12px;margin-top:2px">${s.note}</div>`:''}</div><span class="badge badge-green" style="flex-shrink:0;margin-left:8px">Done</span></div>`;
+  const sessionRowHtml=s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${(s.workout&&s.workout.length>0&&(s.workout[0]?.day||s.note))||(s.note&&(!s.workout||s.workout.length===0))?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${s.workout&&s.workout.length>0?s.workout[0]?.day||s.note||'':s.note}</div>`:''}</div></div></div>`;
   const sessHtml=sessions.length===0
-    ?'<div class="muted" style="padding:12px 0;font-size:13px">No sessions logged yet.</div>'
-    :sessions.slice(0,3).map(sessionRowHtml).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(sessionRowHtml).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
+    ?'<div style="padding:10px 0;font-size:13px;color:rgba(180,200,230,0.3)">No sessions logged yet.</div>'
+    :sessions.slice(0,3).map(sessionRowHtml).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(sessionRowHtml).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
 
   let progSection='';
   if(c.structured_program)progSection=renderStructuredProgram(c);
   else progSection=`<div style="text-align:center;padding:28px 0">
-    <div class="muted" style="font-size:13px">No program built yet</div>
+    <div style="font-size:13px;color:rgba(180,200,230,0.3)">No program built yet</div>
   </div>`;
 
   document.getElementById('clientModalBody').innerHTML=`
@@ -1142,63 +1142,63 @@ function renderClientModal(c){
       <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
 
-    ${c.schedule?`<div style="margin-bottom:16px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm)">
-      <div class="page-label" style="margin-bottom:4px">Schedule</div>
-      <div style="font-size:13px;color:var(--accent-bright)">${c.schedule}</div>
-      ${c.notes?`<div class="muted" style="font-size:12px;margin-top:4px">${c.notes}</div>`:''}
+    ${c.schedule?`<div style="margin-bottom:14px;padding:10px 14px;background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.12);border-radius:var(--radius-sm);display:flex;align-items:center;gap:10px">
+      <div style="font-size:18px;opacity:.6">📅</div>
+      <div>
+        <div style="font-size:13px;color:rgba(232,237,245,0.9);font-weight:500">${c.schedule}</div>
+        ${c.notes?`<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px">${c.notes}</div>`:''}
+      </div>
     </div>`:''}
 
     <div class="card card-glow" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
         <div>
-          <div class="page-label" style="margin-bottom:6px">Package Status</div>
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:600;margin-bottom:6px">Sessions Remaining</div>
           ${sharedPkg
-            ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:16px;color:rgba(180,200,230,0.4);font-weight:400"> / ${sharedPkg.total_sessions} shared</span></div><div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
+            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
             :c.package_size>0
-            ?`<div style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:16px;color:var(--muted);font-weight:400"> / ${c.package_size} sessions</span></div>`
-            :`<div style="font-size:13px;color:var(--muted);padding-top:4px">Pay per session — no package tracking</div>`}
+            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
+            :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-          <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
-          ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.05);color:rgba(200,215,235,0.65);border:1px solid rgba(100,160,255,0.12);border-radius:9px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer">Renew Package</button>`:''}
+          <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
+          ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Renew</button>`:''}
         </div>
       </div>
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
     </div>
 
-    <div style="margin-bottom:14px">
-      <div class="page-label" style="margin-bottom:8px">Client Portal Link</div>
-      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
-        <div style="flex:1;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${location.origin}/#client-${c.id}</div>
-        <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="flex-shrink:0;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer">Copy</button>
-      </div>
-    </div>
-
-    ${c.goals||c.injuries?`<div class="card" style="margin-bottom:14px">
-      ${c.goals?`<div class="page-label" style="margin-bottom:6px">Goals</div><div style="font-size:13px;line-height:1.6">${c.goals}</div>`:''}
-      ${c.goals&&c.injuries?'<div class="divider"></div>':''}
-      ${c.injuries?`<div class="page-label" style="margin-bottom:6px">Injuries / Limitations</div><div style="font-size:13px;color:var(--warn);line-height:1.6">${c.injuries}</div>`:''}
+    ${c.goals||c.injuries?`<div style="margin-bottom:14px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:var(--radius-sm);padding:12px 14px">
+      ${c.goals?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:5px">Goals</div><div style="font-size:13px;line-height:1.6;color:rgba(232,237,245,0.8)">${c.goals}</div>`:''}
+      ${c.goals&&c.injuries?`<div style="height:1px;background:rgba(100,160,255,0.07);margin:10px 0"></div>`:''}
+      ${c.injuries?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.5);font-weight:600;margin-bottom:5px">Injuries / Limitations</div><div style="font-size:13px;color:rgba(255,179,71,0.8);line-height:1.6">${c.injuries}</div>`:''}
     </div>`:''}
 
-    <div style="margin-bottom:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="page-label" style="margin:0">Session History</div>
-        <span class="muted" style="font-size:12px">${sessions.length} total</span>
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600">Session History</div>
+        <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
       </div>
       ${sessHtml}
+      <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:rgba(180,200,230,0.35)">Portal link</span>
+        <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
+      </div>
     </div>
 
-    <div class="divider"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div class="page-label" style="margin:0">Training Program</div>
-      
+    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="flex:1">
+          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
+          <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':''}</div>
+        </div>
+      </div>
+      <div id="prog-${c.id}">${progSection}</div>
     </div>
-    <div id="prog-${c.id}">${progSection}</div>
 
-    <div class="divider"></div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit Client</button>
-      <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.05)'};color:${c.paused?'var(--success)':'rgba(200,215,235,0.6)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(255,255,255,0.1)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume Client':'⏸ Pause Client'}</button>
+      <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit</button>
+      <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.4)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(100,160,255,0.08)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
     </div>
     <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
     <div style="padding:40px 20px 56px;text-align:center;margin-top:24px">
