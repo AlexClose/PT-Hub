@@ -1115,6 +1115,14 @@ function renderClientModal(c){
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
     </div>
 
+    <div style="margin-bottom:14px">
+      <div class="page-label" style="margin-bottom:8px">Client Portal Link</div>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
+        <div style="flex:1;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${location.origin}/#client-${c.id}</div>
+        <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)})" style="flex-shrink:0;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer">Copy</button>
+      </div>
+    </div>
+
     ${c.goals||c.injuries?`<div class="card" style="margin-bottom:14px">
       ${c.goals?`<div class="page-label" style="margin-bottom:6px">Goals</div><div style="font-size:13px;line-height:1.6">${c.goals}</div>`:''}
       ${c.goals&&c.injuries?'<div class="divider"></div>':''}
