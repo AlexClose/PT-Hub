@@ -249,6 +249,9 @@ transition:transform .32s cubic-bezier(0.32,0,0.2,1);
 will-change:transform;
 }
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes checkPop{from{transform:scale(0) rotate(-15deg)}60%{transform:scale(1.25) rotate(5deg)}to{transform:scale(1) rotate(0deg)}}
+@keyframes confettiFall{from{top:-8px;opacity:1;}to{top:108%;opacity:0;transform:rotate(720deg) scale(0.5);}}
+@keyframes successIn{from{transform:scale(0.85) translateY(16px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
 .modal-title{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;color:var(–text);}
@@ -2286,6 +2289,24 @@ function startClientPortal(id) {
           (day.exercises ? day.exercises.length : 0) + ' exercise' + (day.exercises && day.exercises.length !== 1 ? 's' : '') +
         '</div></div>';
 
+    window._portalExCount = exercises.length;
+    window._portalExerciseData = exercises.map(function(ex) {
+      var hk = (ex.name||'').toLowerCase().replace(/\s+/g,'_');
+      var ld = window._portalHistory && window._portalHistory[hk];
+      return {lastWeight: ld ? parseFloat(ld.weight)||0 : 0};
+    });
+
+    html +=
+      '<div style="margin-bottom:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div>' +
+          '<div id="workout-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ' + exercises.length + '</div>' +
+        '</div>' +
+        '<div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">' +
+          '<div id="workout-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:4px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div>' +
+        '</div>' +
+      '</div>';
+
     // Pre-compute superset group first/last indices
     var ssBounds = {};
     for (var si = 0; si < exercises.length; si++) {
@@ -2314,7 +2335,7 @@ function startClientPortal(id) {
       }
 
       html +=
-        '<div style="' + (isSuperset ? 'padding:16px;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;') + '">' +
+        '<div id="ex-row-' + i + '"' + (isSuperset ? ' data-ss="1"' : '') + ' style="' + (isSuperset ? 'padding:16px;position:relative;transition:background 0.25s;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;transition:border-color 0.25s,background 0.25s;') + '">' +
           '<div style="font-weight:700;font-size:16px;color:#fff;margin-bottom:4px;">' + name + '</div>' +
           '<div style="font-size:12px;color:rgba(126,200,255,0.8);margin-bottom:10px;font-weight:500;">' + (ex.prescription || '') + (ex.load ? ' &nbsp;·&nbsp; ' + ex.load : '') + '</div>' +
           (lastData ?
@@ -2328,7 +2349,7 @@ function startClientPortal(id) {
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.5);margin-top:6px;letter-spacing:0.5px;font-weight:600;">SETS × REPS</div>' +
             '</div>' +
             '<div>' +
-              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" oninput="window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
+              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.5);margin-top:6px;letter-spacing:0.5px;font-weight:600;">WEIGHT / LOAD</div>' +
             '</div>' +
           '</div>' +
@@ -2395,15 +2416,33 @@ function startClientPortal(id) {
       }
       var savedDateStr = dateStr;
       var savedDayName = day.name;
+
+      // Build confetti particles
+      var confettiColors = ['#ff5c6a','#ff8c47','#f59e0b','#43d9a2','#7ec8ff','#a78bfa','#fb7185','#34d399'];
+      var confettiHtml = '';
+      for (var ci = 0; ci < 28; ci++) {
+        var cx = (Math.random()*110 - 5).toFixed(1);
+        var cd = (Math.random()*0.9).toFixed(2);
+        var dur = (0.9 + Math.random()*0.7).toFixed(2);
+        var cc = confettiColors[Math.floor(Math.random()*confettiColors.length)];
+        var cs = 4 + Math.floor(Math.random()*6);
+        var cr = Math.floor(Math.random()*360);
+        var isRect = Math.random() > 0.45;
+        confettiHtml += '<div style="position:absolute;left:'+cx+'%;top:-8px;width:'+cs+'px;height:'+(isRect?cs*2:cs)+'px;border-radius:'+(isRect?'2':'50')+'%;background:'+cc+';animation:confettiFall '+dur+'s '+cd+'s ease-in forwards;transform:rotate('+cr+'deg);pointer-events:none;"></div>';
+      }
+
       portalBody.innerHTML =
-        '<div style="text-align:center;padding:32px 20px 48px;">' +
-          '<div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:56px;margin:0 auto 28px;box-shadow:0 0 80px rgba(67,217,162,0.6);animation:portalPop .6s cubic-bezier(.34,1.56,.64,1) forwards;position:relative;"><div style="position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(67,217,162,0.2);animation:pulse 2s ease-in-out infinite;"></div>&#9889;</div>' +
-          '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Crushed it!</div>' +
-          '<div style="font-family:Syne,sans-serif;font-size:14px;color:#7ec8ff;font-weight:700;margin-bottom:4px;">' + savedDayName + '</div>' +
-          '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:28px;letter-spacing:0.5px;">' + savedDateStr + '</div>' +
-          pbHtml +
-          '<div id="save-status" style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:20px;min-height:16px;">Saving...</div>' +
-          '<div onclick="window._calendarHome()" style="display:inline-block;background:linear-gradient(135deg,rgba(79,163,232,0.1),rgba(67,217,162,0.1));color:rgba(126,200,255,0.8);border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:14px 32px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;" onmouseover="this.style.background=\'linear-gradient(135deg,rgba(79,163,232,0.15),rgba(67,217,162,0.15))\';this.style.borderColor=\'rgba(100,160,255,0.3)\';" onmouseout="this.style.background=\'linear-gradient(135deg,rgba(79,163,232,0.1),rgba(67,217,162,0.1))\';this.style.borderColor=\'rgba(100,160,255,0.2)\';">Back to Dashboard</div>' +
+        '<div style="position:relative;overflow:hidden;">' +
+          confettiHtml +
+          '<div style="text-align:center;padding:32px 20px 48px;animation:successIn .45s cubic-bezier(0.34,1.2,0.64,1) forwards;">' +
+            '<div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:56px;margin:0 auto 28px;box-shadow:0 0 80px rgba(67,217,162,0.6);animation:portalPop .6s cubic-bezier(.34,1.56,.64,1) forwards;position:relative;"><div style="position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(67,217,162,0.2);animation:pulse 2s ease-in-out infinite;"></div>&#9889;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Crushed it!</div>' +
+            '<div style="font-family:Syne,sans-serif;font-size:14px;color:#7ec8ff;font-weight:700;margin-bottom:4px;">' + savedDayName + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:28px;letter-spacing:0.5px;">' + savedDateStr + '</div>' +
+            pbHtml +
+            '<div id="save-status" style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:20px;min-height:16px;">Saving...</div>' +
+            '<div onclick="window._calendarHome()" style="display:inline-block;background:linear-gradient(135deg,rgba(79,163,232,0.1),rgba(67,217,162,0.1));color:rgba(126,200,255,0.8);border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:14px 32px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;" onmouseover="this.style.background=\'linear-gradient(135deg,rgba(79,163,232,0.15),rgba(67,217,162,0.15))\';this.style.borderColor=\'rgba(100,160,255,0.3)\';" onmouseout="this.style.background=\'linear-gradient(135deg,rgba(79,163,232,0.1),rgba(67,217,162,0.1))\';this.style.borderColor=\'rgba(100,160,255,0.2)\';">Back to Dashboard</div>' +
+          '</div>' +
         '</div>';
 
       fetch(SUPABASE_URL + '/rest/v1/sessions', {
@@ -2462,6 +2501,7 @@ function startClientPortal(id) {
         var wt = document.getElementById('wt-' + i);
         if (wr && inp.reps) { wr.value = inp.reps; }
         if (wt && inp.weight) { wt.value = inp.weight; }
+        if ((inp.reps || inp.weight) && window._checkExRow) window._checkExRow(i);
       }
       // Show a subtle indicator that draft was restored
       var banner = document.createElement('div');
@@ -2492,15 +2532,62 @@ function startClientPortal(id) {
   window._checkExRow = function(idx) {
     var wr = document.getElementById('wr-' + idx);
     var wt = document.getElementById('wt-' + idx);
-    var row = wr ? wr.closest('.ex-input-row') : null;
-    if (!row) {
-      row = wr ? wr.parentElement.parentElement.parentElement.parentElement : null;
-    }
+    var row = document.getElementById('ex-row-' + idx);
     var hasBoth = wr && wt && wr.value.trim() && wt.value.trim();
+
     if (row) {
-      row.style.borderColor = hasBoth ? 'rgba(67,217,162,0.4)' : 'rgba(100,160,255,0.2)';
-      row.style.background = hasBoth ? 'rgba(67,217,162,0.04)' : '#0f1317';
+      var isSS = row.dataset.ss === '1';
+      if (!isSS) {
+        row.style.borderColor = hasBoth ? 'rgba(67,217,162,0.4)' : 'rgba(100,160,255,0.12)';
+        row.style.background = hasBoth ? 'rgba(67,217,162,0.04)' : 'rgba(15,19,23,0.6)';
+      } else {
+        row.style.background = hasBoth ? 'rgba(67,217,162,0.03)' : '';
+      }
+
+      // Checkmark badge
+      var checkBadge = row.querySelector('.ex-check-badge');
+      if (hasBoth && !checkBadge) {
+        var badge = document.createElement('div');
+        badge.className = 'ex-check-badge';
+        badge.style.cssText = 'position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:rgba(67,217,162,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;color:#0a1a12;font-weight:900;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;';
+        badge.textContent = '✓';
+        row.appendChild(badge);
+      } else if (!hasBoth && checkBadge) {
+        checkBadge.remove();
+      }
+
+      // Live PB badge
+      var exData = window._portalExerciseData && window._portalExerciseData[idx];
+      var pbBadge = row.querySelector('.ex-pb-badge');
+      if (hasBoth && exData && exData.lastWeight > 0 && wt) {
+        var newW = parseFloat(wt.value) || 0;
+        var isPB = newW > exData.lastWeight;
+        if (isPB && !pbBadge) {
+          var pb = document.createElement('div');
+          pb.className = 'ex-pb-badge';
+          pb.style.cssText = 'position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';
+          pb.textContent = '🏆 PB!';
+          row.appendChild(pb);
+        } else if (!isPB && pbBadge) {
+          pbBadge.remove();
+        }
+      } else if (pbBadge && !hasBoth) {
+        pbBadge.remove();
+      }
     }
+
+    // Update progress bar
+    var total = window._portalExCount || 0;
+    var done = 0;
+    for (var j = 0; j < total; j++) {
+      var r2 = document.getElementById('wr-' + j);
+      var t2 = document.getElementById('wt-' + j);
+      if (r2 && t2 && r2.value.trim() && t2.value.trim()) done++;
+    }
+    var bar = document.getElementById('workout-progress-bar');
+    var label = document.getElementById('workout-progress-label');
+    if (bar) bar.style.width = (total ? Math.round(done/total*100) : 0) + '%';
+    if (label) label.textContent = done + ' / ' + total;
   };
 
 async function renderMonthlyReport(c) {
