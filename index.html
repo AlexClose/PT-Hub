@@ -1378,7 +1378,10 @@ function updateLogWorkout(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
   const di=parseInt(document.getElementById('logDaySelect').value)||0;
   const day=c.structured_program.days[di];const history=c.exercise_history||{};
-  document.getElementById('logExercises').innerHTML=day.exercises.map((ex,ei)=>{
+  const hasAny=day.exercises.some(ex=>history[ex.name.toLowerCase().replace(/\s+/g,'_')]);
+  document.getElementById('logExercises').innerHTML=
+    (hasAny?`<button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.3);border-radius:10px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:14px;letter-spacing:.5px;">⚡ Fill Last Session</button>`:'')
+    +day.exercises.map((ex,ei)=>{
     const key=ex.name.toLowerCase().replace(/\s+/g,'_');
     const last=history[key];
     const isSuperset=ex.name.match(/^SS/i);
@@ -1387,7 +1390,7 @@ function updateLogWorkout(clientId){
       ${isSuperset?`<div class="ss-label" style="margin-bottom:6px">Superset</div>`:''}
       <div class="workout-ex-name">${displayName}</div>
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-      ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
+      ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
       <div class="workout-inputs">
         <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
         <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
@@ -1395,6 +1398,74 @@ function updateLogWorkout(clientId){
     </div>`;
   }).join('');
   saveDraftCoach();
+}
+
+function autoFillLog(){
+  const c=clients.find(x=>x.id===pendingLogId);if(!c||!c.structured_program)return;
+  const di=parseInt(document.getElementById('logDaySelect').value)||0;
+  const day=c.structured_program.days[di];
+  const history=c.exercise_history||{};
+  day.exercises.forEach((ex,ei)=>{
+    const key=ex.name.toLowerCase().replace(/\s+/g,'_');
+    const last=history[key];
+    if(!last)return;
+    const wr=document.getElementById('wr-'+ei);
+    const wt=document.getElementById('wt-'+ei);
+    if(wr&&last.reps)wr.value=last.reps;
+    if(wt&&last.weight)wt.value=last.weight;
+  });
+  saveDraftCoach();
+  toast('Filled from last session ✓');
+}
+
+async function showExHistory(clientId, exName, displayName, ei){
+  const exKey=exName.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  const existing=document.getElementById('ex-hist-sheet');
+  if(existing)existing.remove();
+  const sheet=document.createElement('div');
+  sheet.id='ex-hist-sheet';
+  sheet.style.cssText='position:fixed;inset:0;z-index:1100;display:flex;align-items:flex-end;background:rgba(0,0,0,0.6);';
+  sheet.innerHTML=`<div style="width:100%;background:#0f1317;border-radius:20px 20px 0 0;padding:20px;max-height:70vh;overflow-y:auto;">
+    <div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 16px;"></div>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;margin-bottom:4px;">${displayName}</div>
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:16px;">Exercise History</div>
+    <div id="ex-hist-rows" style="font-size:14px;color:rgba(180,200,230,0.5);">Loading...</div>
+    <button onclick="document.getElementById('ex-hist-sheet').remove()" style="width:100%;margin-top:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(200,215,235,0.7);cursor:pointer;">Close</button>
+  </div>`;
+  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+  document.body.appendChild(sheet);
+  try{
+    const rows=await sb('GET','exercise_logs',null,`?client_id=eq.${clientId}&exercise_name=eq.${encodeURIComponent(exName.replace(/^SS\w+:\s*/i,''))}&order=session_date.desc&limit=20`);
+    const el=document.getElementById('ex-hist-rows');
+    if(!el)return;
+    if(!rows||rows.length===0){el.textContent='No history yet.';return;}
+    el.innerHTML=rows.map(r=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(100,160,255,0.08);">
+        <div style="font-size:13px;color:rgba(180,200,230,0.5);">${r.session_date}</div>
+        <div style="text-align:right;">
+          <span style="font-weight:700;color:#e8edf5;">${r.reps||'—'}</span>
+          <span style="color:rgba(180,200,230,0.4);margin:0 6px;">·</span>
+          <span style="font-weight:700;color:#7ec8ff;">${r.weight||'—'}</span>
+          ${r.pb?'<span style="margin-left:6px;background:#f59e0b;color:#000;font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 5px;border-radius:4px;">PB</span>':''}
+        </div>
+      </div>`).join('');
+    const c=clients.find(x=>x.id===clientId);
+    if(c&&c.exercise_history){
+      const last=c.exercise_history[exName.toLowerCase().replace(/\s+/g,'_')];
+      if(last){
+        const fillBtn=document.createElement('button');
+        fillBtn.textContent='Use last session';
+        fillBtn.style.cssText='width:100%;margin-top:12px;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.3);border-radius:10px;padding:11px;font-family:\'Syne\',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;';
+        fillBtn.onclick=()=>{
+          const wr=document.getElementById('wr-'+ei);const wt=document.getElementById('wt-'+ei);
+          if(wr&&last.reps)wr.value=last.reps;
+          if(wt&&last.weight)wt.value=last.weight;
+          saveDraftCoach();sheet.remove();toast('Filled ✓');
+        };
+        el.parentElement.insertBefore(fillBtn,el.nextSibling);
+      }
+    }
+  }catch(e){const el=document.getElementById('ex-hist-rows');if(el)el.textContent='Could not load history.';}
 }
 function showSuccessAnimation(name){
   // Remove any existing
