@@ -251,6 +251,8 @@ will-change:transform;
 .modal-overlay.open .modal{
 transform:translateY(0);
 }
+@keyframes modalSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.modal-overlay.open .modal{animation:modalSlideUp .25s cubic-bezier(.34,1.2,.64,1) forwards;}
 .modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
 .modal-title{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;color:var(–text);}
 
@@ -491,8 +493,12 @@ to{opacity:1;transform:translateY(0);}
     <div id="todaySessions" style="margin-bottom:16px"></div>
     <div class="stats-grid" id="dashStats"></div>
     <div id="dashAlerts"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="page-label" style="margin:0">All Clients</div>
+    </div>
+    <div style="position:relative;margin-bottom:14px;">
+      <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;opacity:0.5;">🔍</span>
+      <input id="dashSearch" type="text" placeholder="Search clients..." oninput="renderDashboard()" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.12);border-radius:10px;color:#e8edf5;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;" onfocus="this.style.borderColor='rgba(100,160,255,0.3)';" onblur="this.style.borderColor='rgba(100,160,255,0.12)';">
     </div>
     <div id="dashClients"></div>
   </div>
@@ -559,6 +565,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="form-group"><label class="form-label">Goals</label><input id="acGoals"></div>
     <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="acInjuries"></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="acNotes"></textarea></div>
+    <div class="form-group"><label class="form-label">Client Tier</label><select id="acTier"><option value="">No Tier</option><option value="bronze">🥉 Bronze</option><option value="silver">🥈 Silver</option><option value="gold">🥇 Gold</option></select></div>
     <div class="form-group"><label class="form-label">Portal Email <span style="color:rgba(180,200,230,0.4);font-weight:400">(optional — enables client login)</span></label><input id="acEmail" type="email" placeholder="client@email.com"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('addClientModal')">Cancel</button>
@@ -590,6 +597,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="form-group"><label class="form-label">Goals</label><input id="ecGoals"></div>
     <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="ecInjuries"></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="ecNotes"></textarea></div>
+    <div class="form-group"><label class="form-label">Client Tier</label><select id="ecTier"><option value="">No Tier</option><option value="bronze">🥉 Bronze</option><option value="silver">🥈 Silver</option><option value="gold">🥇 Gold</option></select></div>
     <div class="form-group"><label class="form-label">Portal Email <span style="color:rgba(180,200,230,0.4);font-weight:400">(optional — enables client login)</span></label><input id="ecEmail" type="email" placeholder="client@email.com"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('editClientModal')">Cancel</button>
@@ -1001,8 +1009,10 @@ function renderDashboard(){
     else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
+  const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
-  document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:sorted.map(clientRowHtml).join('');
+  const dashFiltered=dashQ?sorted.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(dashQ)):sorted;
+  document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:dashFiltered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>No clients match your search</p></div>`:dashFiltered.map(clientRowHtml).join('');
   renderTodaySessions();
 }
 
@@ -1025,16 +1035,23 @@ function clientRowHtml(c){
       :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
       :`<span class="badge badge-green">${c.remaining} left</span>`;
   const isSummer=c.first.toLowerCase().includes('summer');
+  const tierBadge = c.tier === 'gold' ? '<span style="font-size:14px;line-height:1;" title="Gold Client">🥇</span>' : c.tier === 'silver' ? '<span style="font-size:14px;line-height:1;" title="Silver Client">🥈</span>' : c.tier === 'bronze' ? '<span style="font-size:14px;line-height:1;" title="Bronze Client">🥉</span>' : '';
+  const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
+  const lastSessText = lastSess ? (() => { const d = new Date(lastSess.created_at || lastSess.date); const now = new Date(); const diff = Math.floor((now - d) / (1000*60*60*24)); return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? diff + 'd ago' : diff < 30 ? Math.floor(diff/7) + 'w ago' : Math.floor(diff/30) + 'mo ago'; })() : null;
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
       <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          ${tierBadge}
           <span style="font-weight:600;font-size:15px">${c.first} ${c.last||''}</span>
           ${isSummer?'<span class="badge badge-summer" style="font-size:9px">☀️ Summer</span>':''}
           ${c.structured_program?'<span class="badge badge-blue" style="font-size:9px">📋 Program</span>':''}
         </div>
-        <div class="muted" style="font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.schedule||'No schedule set'}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+          <div class="muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${c.schedule||'No schedule set'}</div>
+          ${lastSessText ? `<div style="font-size:11px;color:rgba(180,200,230,0.35);white-space:nowrap;flex-shrink:0">Last: ${lastSessText}</div>` : '<div style="font-size:11px;color:rgba(255,92,106,0.4);white-space:nowrap;flex-shrink:0">No sessions</div>'}
+        </div>
       </div>
       ${badge}
     </div>
@@ -1052,6 +1069,7 @@ function renderClientList(){
 function openAddClient(){
   ['acFirst','acLast','acAge','acGoals','acInjuries','acNotes','acSchedule','acEmail'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('acLevel').value='Intermediate';document.getElementById('acPackage').value='0';
+  document.getElementById('acTier').value='';
   document.getElementById('acRemaining').value='';document.getElementById('acDuration').value='60';
   openModal('addClientModal');
 }
@@ -1060,20 +1078,20 @@ async function saveClient(){
   const pkg=parseInt(document.getElementById('acPackage').value)||0;
   try{
     const acEmail=document.getElementById('acEmail').value.trim().toLowerCase();
-    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{},email:acEmail||null});
+    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{},email:acEmail||null,tier:document.getElementById('acTier').value||null});
     if(created&&created[0])clients.push(created[0]);
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
   }catch(e){toast('Error saving — check connection');}
 }
 function openEditClient(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';document.getElementById('ecEmail').value=c.email||'';
+  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';document.getElementById('ecEmail').value=c.email||'';document.getElementById('ecTier').value=c.tier||'';
   closeModal('clientModal');openModal('editClientModal');
 }
 async function saveEditClient(){
   const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
   const ecEmail=document.getElementById('ecEmail').value.trim().toLowerCase();
-  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null};
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null,tier:document.getElementById('ecTier').value||null};
   try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
   catch(e){toast('Error updating');}
 }
@@ -1135,6 +1153,7 @@ function renderClientModal(c){
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800">${c.first} ${c.last||''}</span>
+          ${c.tier==='gold'?'<span style="font-size:18px;" title="Gold Client">🥇</span>':c.tier==='silver'?'<span style="font-size:18px;" title="Silver Client">🥈</span>':c.tier==='bronze'?'<span style="font-size:18px;" title="Bronze Client">🥉</span>':''}
           ${isSummer?'<span class="badge badge-summer">☀️ Summer</span>':''}
         </div>
         <div class="muted" style="font-size:12px;margin-top:2px">${c.level}${c.age?' · Age '+c.age:''} · ${c.duration||60} min sessions</div>
