@@ -53,6 +53,7 @@ var link=document.getElementById(‘appIcon’);
 if(link)link.href=dataURL;
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Baymade Training</title>
@@ -367,11 +368,6 @@ box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 .empty-icon{font-size:44px;margin-bottom:14px;filter:grayscale(.3);}
 .empty p{font-size:14px;line-height:1.6;}
 
-/* ── AI OUTPUT ── */
-.ai-output{background:var(–surface2);border:1px solid var(–border2);border-radius:var(–radius);padding:18px;font-size:13px;line-height:1.8;color:var(–text);white-space:pre-wrap;}
-.ai-thinking{color:var(–muted);font-style:italic;}
-.cursor-blink{animation:blink .8s infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* ── SEARCH ── */
 .search-wrap{position:relative;margin-bottom:16px;}
@@ -443,6 +439,26 @@ to{opacity:1;transform:translateY(0);}
 </head>
 <body>
 
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="display:none;position:fixed;inset:0;z-index:999;background:#0a0c0f;align-items:center;justify-content:center;padding:24px;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:44px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.3px;margin-bottom:6px;">
+        <span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>
+      </div>
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Sign in to continue</div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <input id="authEmail" type="email" placeholder="Email" autocomplete="username" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;">
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')signIn()">
+    </div>
+    <button onclick="signIn()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35);">Sign In</button>
+    <div id="auth-error" style="display:none;color:#ff5c6a;font-size:13px;text-align:center;margin-top:14px;padding:12px 16px;background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.2);border-radius:10px;"></div>
+  </div>
+</div>
+
 <nav>
   <div class="nav-logo">
     <span style="color:#7ec8ff !important;font-family:'Syne',sans-serif;font-weight:800;">BAYMADE</span><span style="color:#ffffff !important;"> TRAINING</span>
@@ -459,6 +475,7 @@ to{opacity:1;transform:translateY(0);}
       <span class="tab-icon">📋</span> Library
     </button>
   </div>
+  <button onclick="signOut()" title="Sign out" style="flex-shrink:0;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 11px;color:rgba(180,200,230,0.45);font-size:13px;cursor:pointer;margin-left:4px;line-height:1;">↪</button>
 </nav>
 
 <main>
@@ -508,7 +525,6 @@ to{opacity:1;transform:translateY(0);}
         <div class="page-label" style="margin:0">Equipment</div>
         <button class="btn btn-secondary btn-sm" onclick="openAddEquip()">+ Add</button>
       </div>
-      <p class="muted" style="margin-bottom:14px;font-size:12px">Used when generating AI programs for clients.</p>
       <div class="equip-grid" id="equipList"></div>
     </div>
   </div>
@@ -644,7 +660,7 @@ to{opacity:1;transform:translateY(0);}
     <div id="logWorkoutSection"></div>
     <div class="form-group" style="margin-top:10px">
       <label class="form-label">Session Note (optional)</label>
-      <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..."></textarea>
+      <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('logModal')">Cancel</button>
@@ -675,6 +691,11 @@ to{opacity:1;transform:translateY(0);}
 const SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 const H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
+
+// ── AUTH CONFIG ──
+// IMPORTANT: Replace this with your Google email address before using the app
+const COACH_EMAIL = 'akclose23@gmail.com';
+const supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
 
 async function sb(method,table,body=null,params=''){
   const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
@@ -712,6 +733,61 @@ function getGreeting(){
   if(h<12)return'Good morning';if(h<17)return'Good afternoon';return'Good evening';
 }
 
+// ── AUTH FUNCTIONS ──
+
+function showAuthScreen() {
+  const s = document.getElementById('auth-screen');
+  s.style.display = 'flex';
+  document.querySelector('nav').style.display = 'none';
+  document.querySelector('main').style.display = 'none';
+}
+
+function hideAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.querySelector('nav').style.display = '';
+  document.querySelector('main').style.display = '';
+}
+
+async function startApp() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) {
+    showAuthScreen();
+    return;
+  }
+  hideAuthScreen();
+  init();
+}
+
+async function signIn() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+  if (!email || !password) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const btn = document.querySelector('#auth-screen button[onclick="signIn()"]');
+  btn.textContent = 'Signing in...';
+  btn.disabled = true;
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) {
+    errEl.textContent = 'Incorrect email or password.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+    return;
+  }
+  hideAuthScreen();
+  init();
+}
+
+async function signOut() {
+  await supabaseClient.auth.signOut();
+  window.location.reload();
+}
+
 async function init(){
   showLoading('dashClients');
   try{
@@ -721,6 +797,7 @@ async function init(){
     // Load all sessions then re-render
     await Promise.all(clients.map(c=>db.getSessions(c.id).then(s=>{c._sessions=s;}).catch(()=>{c._sessions=[];})));
     renderDashboard();
+    restoreDraftCoach();
   }catch(e){
     document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
   }
@@ -964,10 +1041,8 @@ function renderClientModal(c){
 
   let progSection='';
   if(c.structured_program)progSection=renderStructuredProgram(c);
-  else if(c.program)progSection=renderAIProgramHtml(c.program);
   else progSection=`<div style="text-align:center;padding:28px 0">
-    <div class="muted" style="margin-bottom:16px;font-size:13px">No program built yet</div>
-    <button onclick="generateProgram('${c.id}')" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.25);border-radius:10px;padding:13px 20px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;width:100%">✦ Generate 6-Week Program</button>
+    <div class="muted" style="font-size:13px">No program built yet</div>
   </div>`;
 
   document.getElementById('clientModalBody').innerHTML=`
@@ -1189,6 +1264,47 @@ async function saveProgramDay(){
   }catch(e){toast('Error saving program');}
 }
 
+// ── WORKOUT DRAFT (coach) ──
+function saveDraftCoach(){
+  if(!pendingLogId)return;
+  const sel=document.getElementById('logDaySelect');
+  const dayIndex=sel?parseInt(sel.value)||0:0;
+  const note=document.getElementById('logNote')?.value||'';
+  const inputs={};
+  let i=0;
+  while(document.getElementById('wr-'+i)||document.getElementById('wt-'+i)){
+    inputs[i]={reps:document.getElementById('wr-'+i)?.value||'',weight:document.getElementById('wt-'+i)?.value||''};
+    i++;
+  }
+  try{localStorage.setItem('bm_coach_draft',JSON.stringify({clientId:pendingLogId,dayIndex,note,inputs}));}catch(e){}
+}
+function clearDraftCoach(){
+  try{localStorage.removeItem('bm_coach_draft');}catch(e){}
+}
+function restoreDraftCoach(){
+  try{
+    const raw=localStorage.getItem('bm_coach_draft');
+    if(!raw)return;
+    const draft=JSON.parse(raw);
+    if(!draft.clientId)return;
+    const c=clients.find(x=>x.id===draft.clientId);
+    if(!c)return;
+    openLogSession(draft.clientId,draft.dayIndex);
+    setTimeout(()=>{
+      const note=document.getElementById('logNote');
+      if(note&&draft.note)note.value=draft.note;
+      const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight);
+      Object.keys(draft.inputs||{}).forEach(i=>{
+        const wr=document.getElementById('wr-'+i);
+        const wt=document.getElementById('wt-'+i);
+        if(wr&&draft.inputs[i].reps)wr.value=draft.inputs[i].reps;
+        if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
+      });
+      if(hasData)toast('Draft restored — pick up where you left off ✓');
+    },200);
+  }catch(e){}
+}
+
 // ── LOG SESSION ──
 function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
@@ -1231,11 +1347,12 @@ function updateLogWorkout(clientId){
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
       ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
-        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
-        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
+        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
+        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
       </div>
     </div>`;
   }).join('');
+  saveDraftCoach();
 }
 function showSuccessAnimation(name){
   // Remove any existing
@@ -1298,6 +1415,7 @@ async function confirmLogSession(){
       }
     }
     c._sessions=await db.getSessions(c.id);
+    clearDraftCoach();
     closeModal('logModal');renderClientModal(c);renderDashboard();
     showSuccessAnimation(c.first,coachPBs);
     if(c.package_size>0&&c.remaining<0){
@@ -1415,51 +1533,8 @@ async function removeEquip(id){
 }
 
 // ── AI PROGRAM ──
-async function generateProgram(id){
-  const c=clients.find(x=>x.id===id);if(!c)return;
-  const section=document.getElementById('prog-'+id);if(!section)return;
-  section.innerHTML=`<div class="ai-output"><span class="ai-thinking">✦ Building a 6-week program for ${c.first}...<span class="cursor-blink"> |</span></span></div>`;
-  const equip=equipment.length>0?equipment.map(e=>e.name).join(', '):'Barbell, Dumbbells, Squat rack, Bench, Pull-up bar, Cable machine, Leg press, Resistance bands';
-  const days=(c.schedule?.match(/mon|tue|wed|thu|fri|sat|sun/gi)||[]).length||3;
-  const prompt=`Expert personal trainer. Build a detailed 6-week progressive program.\nClient: ${c.first}, Level: ${c.level}, Goals: ${c.goals||'General fitness and strength'}, Injuries: ${c.injuries||'None'}, ${days} days/week, ${c.duration||60} min sessions.\nEquipment: ${equip}\nFormat:\nWEEK 1-2: FOUNDATION\nDay 1 (Push):\n• Exercise — 3x10\nDay 2 (Rest)\nCoach's Note: brief coaching cue\n\nWEEK 3-4: BUILD\n[same format]\n\nWEEK 5-6: PEAK\n[same format]`;
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
-    const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Could not generate program.';
-    await db.updateClient(c.id,{program:text});c.program=text;
-    if(section)section.innerHTML=renderAIProgramHtml(text);
-  }catch(e){if(section)section.innerHTML=`<div class="ai-output" style="color:var(--danger)">Failed to generate. Check connection and try again.</div>`;}
-}
-function renderAIProgramHtml(text){
-  const lines=text.split('\n');let weeks=[],cur=null;
-  lines.forEach(line=>{const t=line.trim();if(!t)return;if(/^WEEK\s+\d/i.test(t)){if(cur)weeks.push(cur);cur={title:t,days:[],coach:''};}else if(cur){if(/^Coach'?s?\s+Note/i.test(t))cur.coach=t.replace(/^Coach'?s?\s+Note:?\s*/i,'');else if(/^Day\s+\d/i.test(t)){const m=t.match(/\(([^)]+)\)/);cur.days.push({label:t.split('(')[0].trim(),type:m?m[1]:'',exercises:[]});}else if((t.startsWith('•')||t.startsWith('-'))&&cur.days.length>0)cur.days[cur.days.length-1].exercises.push(t.replace(/^[•\-]\s*/,''));}});
-  if(cur)weeks.push(cur);if(!weeks.length)return`<div class="ai-output">${text}</div>`;
-  return weeks.map((w,wi)=>{
-    const dHtml=w.days.map(d=>{const exHtml=d.exercises.map(ex=>{const p=ex.split('—');return`<div style="font-size:13px;line-height:1.8">${p[0]?.trim()} ${p[1]?'<span style="color:var(--muted);font-size:12px">— '+p[1].trim()+'</span>':''}</div>`;}).join('');return`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:var(--accent-bright);margin-bottom:4px;letter-spacing:1px">${d.label}${d.type?' · '+d.type:''}</div>${exHtml}</div>`;}).join('');
-    return`<div class="prog-day-block"><div class="prog-day-header" onclick="toggleDay(this)"><span class="prog-day-title" style="color:var(--accent-bright)">${w.title}</span><span style="color:var(--muted);font-size:12px">▼</span></div><div class="prog-day-body ${wi===0?'open':''}">${dHtml}${w.coach?`<div style="padding:10px 16px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--accent);font-style:italic;line-height:1.6">💬 Coach's Note: ${w.coach}</div></div>`:''}</div></div>`;
-  }).join('');
-}
 // CLIENT PORTAL
-(function() {
-  var hash = window.location.hash;
-  var clientSlug = null;
-  var clientId = null;
-
-  if (hash === '#alex') {
-    clientSlug = 'alex';
-    clientId = '06acdc81-5f0b-4481-917a-d27baf89bc51';
-  } else if (hash === '#kathryn') {
-    clientSlug = 'kathryn';
-    clientId = 'c6a1809f-1b4c-4f5c-8ec5-b6e2ae8197b7';
-  }
-
-  if (!clientSlug) return;
-
-  // Stop the coach portal from loading
-  document.addEventListener('DOMContentLoaded', function() {
-    startClientPortal(clientId);
-  });
-
-  function startClientPortal(id) {
+function startClientPortal(id) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 
@@ -2186,7 +2261,6 @@ function renderAIProgramHtml(text){
     var wt = document.getElementById('wt-' + idx);
     var row = wr ? wr.closest('.ex-input-row') : null;
     if (!row) {
-      // traverse up to the workout-ex-row div
       row = wr ? wr.parentElement.parentElement.parentElement.parentElement : null;
     }
     var hasBoth = wr && wt && wr.value.trim() && wt.value.trim();
@@ -2195,7 +2269,7 @@ function renderAIProgramHtml(text){
       row.style.background = hasBoth ? 'rgba(67,217,162,0.04)' : '#0f1317';
     }
   };
-})();
+}
 
 async function renderMonthlyReport(c) {
   const el = document.getElementById('monthly-' + c.id);
@@ -2311,7 +2385,7 @@ async function renderMonthlyReport(c) {
   el.innerHTML = html;
 }
 
-init();
+startApp();
 </script>
 
 </body>
