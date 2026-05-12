@@ -1214,7 +1214,6 @@ function renderClientModal(c){
         <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
       </div>
     </div>
-
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit</button>
       <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.4)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(100,160,255,0.08)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
