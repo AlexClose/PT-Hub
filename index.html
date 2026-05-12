@@ -660,7 +660,7 @@ to{opacity:1;transform:translateY(0);}
     <div id="logWorkoutSection"></div>
     <div class="form-group" style="margin-top:10px">
       <label class="form-label">Session Note (optional)</label>
-      <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..."></textarea>
+      <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('logModal')">Cancel</button>
@@ -797,6 +797,7 @@ async function init(){
     // Load all sessions then re-render
     await Promise.all(clients.map(c=>db.getSessions(c.id).then(s=>{c._sessions=s;}).catch(()=>{c._sessions=[];})));
     renderDashboard();
+    restoreDraftCoach();
   }catch(e){
     document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
   }
@@ -1263,6 +1264,47 @@ async function saveProgramDay(){
   }catch(e){toast('Error saving program');}
 }
 
+// ── WORKOUT DRAFT (coach) ──
+function saveDraftCoach(){
+  if(!pendingLogId)return;
+  const sel=document.getElementById('logDaySelect');
+  const dayIndex=sel?parseInt(sel.value)||0:0;
+  const note=document.getElementById('logNote')?.value||'';
+  const inputs={};
+  let i=0;
+  while(document.getElementById('wr-'+i)||document.getElementById('wt-'+i)){
+    inputs[i]={reps:document.getElementById('wr-'+i)?.value||'',weight:document.getElementById('wt-'+i)?.value||''};
+    i++;
+  }
+  try{localStorage.setItem('bm_coach_draft',JSON.stringify({clientId:pendingLogId,dayIndex,note,inputs}));}catch(e){}
+}
+function clearDraftCoach(){
+  try{localStorage.removeItem('bm_coach_draft');}catch(e){}
+}
+function restoreDraftCoach(){
+  try{
+    const raw=localStorage.getItem('bm_coach_draft');
+    if(!raw)return;
+    const draft=JSON.parse(raw);
+    if(!draft.clientId)return;
+    const c=clients.find(x=>x.id===draft.clientId);
+    if(!c)return;
+    openLogSession(draft.clientId,draft.dayIndex);
+    setTimeout(()=>{
+      const note=document.getElementById('logNote');
+      if(note&&draft.note)note.value=draft.note;
+      const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight);
+      Object.keys(draft.inputs||{}).forEach(i=>{
+        const wr=document.getElementById('wr-'+i);
+        const wt=document.getElementById('wt-'+i);
+        if(wr&&draft.inputs[i].reps)wr.value=draft.inputs[i].reps;
+        if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
+      });
+      if(hasData)toast('Draft restored — pick up where you left off ✓');
+    },200);
+  }catch(e){}
+}
+
 // ── LOG SESSION ──
 function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
@@ -1305,11 +1347,12 @@ function updateLogWorkout(clientId){
       <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
       ${last?`<div style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span></div>`:''}
       <div class="workout-inputs">
-        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}"><div class="wi-label">Sets × Reps</div></div>
-        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}"><div class="wi-label">Weight / Load</div></div>
+        <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
+        <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
       </div>
     </div>`;
   }).join('');
+  saveDraftCoach();
 }
 function showSuccessAnimation(name){
   // Remove any existing
@@ -1372,6 +1415,7 @@ async function confirmLogSession(){
       }
     }
     c._sessions=await db.getSessions(c.id);
+    clearDraftCoach();
     closeModal('logModal');renderClientModal(c);renderDashboard();
     showSuccessAnimation(c.first,coachPBs);
     if(c.package_size>0&&c.remaining<0){
