@@ -667,7 +667,7 @@ to{opacity:1;transform:translateY(0);}
       <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
-      <button class="btn btn-secondary btn-full" onclick="closeModal('logModal')">Cancel</button>
+      <button class="btn btn-secondary btn-full" onclick="clearDraftCoach();closeModal('logModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="confirmLogSession()">✓ Mark Complete</button>
     </div>
   </div>
@@ -1737,6 +1737,7 @@ function startClientPortal(id) {
     document.body.style.background = '#0a0c0f';
     document.body.style.color = '#e8edf5';
     document.body.style.minHeight = '100vh';
+    document.body.style.overflowX = 'hidden';
     document.body.innerHTML =
       '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.15);padding:16px 20px;position:sticky;top:0;z-index:10;">' +
         '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
