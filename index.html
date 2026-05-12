@@ -1378,9 +1378,8 @@ function updateLogWorkout(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
   const di=parseInt(document.getElementById('logDaySelect').value)||0;
   const day=c.structured_program.days[di];const history=c.exercise_history||{};
-  const hasAny=day.exercises.some(ex=>history[ex.name.toLowerCase().replace(/\s+/g,'_')]);
   document.getElementById('logExercises').innerHTML=
-    (hasAny?`<button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.3);border-radius:10px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:14px;letter-spacing:.5px;">⚡ Fill Last Session</button>`:'')
+    `<button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.3);border-radius:10px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:14px;letter-spacing:.5px;">⚡ Fill Last Session</button>`
     +day.exercises.map((ex,ei)=>{
     const key=ex.name.toLowerCase().replace(/\s+/g,'_');
     const last=history[key];
