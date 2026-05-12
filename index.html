@@ -53,7 +53,7 @@ var link=document.getElementById(‘appIcon’);
 if(link)link.href=dataURL;
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>Baymade Training</title>
 <!-- v-fix-regen-2 -->
@@ -248,11 +248,9 @@ transform:translateY(-100%);
 transition:transform .38s cubic-bezier(.25,1.2,.5,1);
 will-change:transform;
 }
-.modal-overlay.open .modal{
-transform:translateY(0);
-}
-@keyframes modalSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-.modal-overlay.open .modal{animation:modalSlideUp .25s cubic-bezier(.34,1.2,.64,1) forwards;}
+@keyframes modalSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.modal-overlay.open .modal{transform:translateY(0);animation:modalSlideUp .22s cubic-bezier(0.25,0,0.25,1) forwards;}
 .modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
 .modal-title{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;color:var(–text);}
 
@@ -881,6 +879,8 @@ async function init(){
   showLoading('dashClients');
   try{
     [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
+    const _tiers=JSON.parse(localStorage.getItem('bm_tiers')||'{}');
+    clients.forEach(c=>{if(_tiers[c.id])c.tier=_tiers[c.id];});
     document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
     renderDashboard();
     // Load all sessions then re-render
@@ -1078,8 +1078,9 @@ async function saveClient(){
   const pkg=parseInt(document.getElementById('acPackage').value)||0;
   try{
     const acEmail=document.getElementById('acEmail').value.trim().toLowerCase();
-    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{},email:acEmail||null,tier:document.getElementById('acTier').value||null});
-    if(created&&created[0])clients.push(created[0]);
+    const acTier=document.getElementById('acTier').value||'';
+    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{},email:acEmail||null});
+    if(created&&created[0]){const cid=created[0].id;if(acTier){const t=JSON.parse(localStorage.getItem('bm_tiers')||'{}');t[cid]=acTier;localStorage.setItem('bm_tiers',JSON.stringify(t));}clients.push(created[0]);}
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
   }catch(e){toast('Error saving — check connection');}
 }
@@ -1091,7 +1092,12 @@ function openEditClient(id){
 async function saveEditClient(){
   const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
   const ecEmail=document.getElementById('ecEmail').value.trim().toLowerCase();
-  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null,tier:document.getElementById('ecTier').value||null};
+  const ecTierVal=document.getElementById('ecTier').value||'';
+  const tiers=JSON.parse(localStorage.getItem('bm_tiers')||'{}');
+  if(ecTierVal)tiers[id]=ecTierVal;else delete tiers[id];
+  localStorage.setItem('bm_tiers',JSON.stringify(tiers));
+  c.tier=ecTierVal;
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null};
   try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
   catch(e){toast('Error updating');}
 }
@@ -2322,6 +2328,8 @@ function startClientPortal(id) {
     };
 
     window._logPortalSession = function() {
+      var logBtn = document.querySelector('button[onclick="window._logPortalSession()"]');
+      if(logBtn){logBtn.disabled=true;logBtn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.7s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Saving...</span>';}
       var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
       var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
       var H = {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation'};
