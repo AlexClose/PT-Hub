@@ -1423,6 +1423,7 @@ function restoreDraftCoach(){
         const wt=document.getElementById('wt-'+i);
         if(wr&&draft.inputs[i].reps)wr.value=draft.inputs[i].reps;
         if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
+        if(draft.inputs[i].reps||draft.inputs[i].weight)checkExRowCoach(parseInt(i));
       });
       toast('Draft restored — pick up where you left off ✓');
     },200);
@@ -1463,10 +1464,13 @@ function updateLogWorkout(clientId){
   document.getElementById('logExercises').innerHTML=
     `<button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(79,163,232,0.2)';this.style.borderColor='rgba(79,163,232,0.5)';" onmouseout="this.style.background='rgba(79,163,232,0.15)';this.style.borderColor='rgba(79,163,232,0.35)';">⚡ Fill Last Session</button>`
     +(()=>{
+    const exCount=day.exercises.length;
+    window._coachExCount=exCount;
+    window._coachExData=day.exercises.map(ex=>{const k=ex.name.toLowerCase().replace(/\s+/g,'_');const l=history[k];return{lastWeight:l?parseFloat(l.weight)||0:0};});
     // Pre-compute superset group first/last indices
     const ssBounds={};
     day.exercises.forEach((ex,ei)=>{const m=ex.name.match(/^SS(\d+)/i);if(m){const g=m[1];if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}});
-    let html='';
+    let html=`<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ${exCount}</div></div><div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:4px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div></div></div>`;
     day.exercises.forEach((ex,ei)=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
@@ -1484,13 +1488,13 @@ function updateLogWorkout(clientId){
       } else if(isSuperset&&ssGroup){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
-      html+=`<div style="padding:14px;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s;">
+      html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
         <div class="workout-ex-name">${displayName}</div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
         ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
         <div class="workout-inputs">
-          <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
-          <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
+          <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
+          <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
         </div>
       </div>`;
       if(isLast)html+=`</div>`;
@@ -1498,6 +1502,30 @@ function updateLogWorkout(clientId){
     return html;
     })()
   saveDraftCoach();
+}
+
+function checkExRowCoach(ei){
+  const wr=document.getElementById('wr-'+ei);
+  const wt=document.getElementById('wt-'+ei);
+  const row=document.getElementById('ex-row-'+ei);
+  const hasBoth=wr&&wt&&wr.value.trim()&&wt.value.trim();
+  if(row){
+    const isSS=row.dataset.ss==='1';
+    if(!isSS){row.style.borderColor=hasBoth?'rgba(67,217,162,0.4)':'';row.style.background=hasBoth?'rgba(67,217,162,0.04)':'';}
+    else{row.style.background=hasBoth?'rgba(67,217,162,0.03)':'';}
+    let cb=row.querySelector('.ex-check-badge');
+    if(hasBoth&&!cb){const b=document.createElement('div');b.className='ex-check-badge';b.style.cssText='position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:rgba(67,217,162,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;color:#0a1a12;font-weight:900;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;';b.textContent='✓';row.appendChild(b);}
+    else if(!hasBoth&&cb)cb.remove();
+    const exData=window._coachExData&&window._coachExData[ei];
+    let pb=row.querySelector('.ex-pb-badge');
+    if(hasBoth&&exData&&exData.lastWeight>0&&wt){const nw=parseFloat(wt.value)||0,isPB=nw>exData.lastWeight;if(isPB&&!pb){const p=document.createElement('div');p.className='ex-pb-badge';p.style.cssText='position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';p.textContent='🏆 PB!';row.appendChild(p);}else if(!isPB&&pb)pb.remove();}
+    else if(pb&&!hasBoth)pb.remove();
+  }
+  const total=window._coachExCount||0;let done=0;
+  for(let j=0;j<total;j++){const r2=document.getElementById('wr-'+j);const t2=document.getElementById('wt-'+j);if(r2&&t2&&r2.value.trim()&&t2.value.trim())done++;}
+  const bar=document.getElementById('coach-progress-bar');const lbl=document.getElementById('coach-progress-label');
+  if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
+  if(lbl)lbl.textContent=done+' / '+total;
 }
 
 function autoFillLog(){
@@ -1513,6 +1541,7 @@ function autoFillLog(){
     const wt=document.getElementById('wt-'+ei);
     if(wr&&last.reps)wr.value=last.reps;
     if(wt&&last.weight)wt.value=last.weight;
+    if(last.reps||last.weight)checkExRowCoach(ei);
   });
   saveDraftCoach();
   toast('Filled from last session ✓');
@@ -1571,8 +1600,11 @@ function showSuccessAnimation(name){
   // Remove any existing
   document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
-  overlay.innerHTML = `
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);overflow:hidden;';
+  const confettiColors=['#ff5c6a','#ff8c47','#f59e0b','#43d9a2','#7ec8ff','#a78bfa','#fb7185','#34d399'];
+  let confettiHtml='';
+  for(let ci=0;ci<28;ci++){const cx=(Math.random()*110-5).toFixed(1);const cd=(Math.random()*0.7).toFixed(2);const dur=(0.8+Math.random()*0.7).toFixed(2);const cc=confettiColors[Math.floor(Math.random()*confettiColors.length)];const cs=4+Math.floor(Math.random()*6);const cr=Math.floor(Math.random()*360);const isRect=Math.random()>0.45;confettiHtml+=`<div style="position:absolute;left:${cx}%;top:-8px;width:${cs}px;height:${isRect?cs*2:cs}px;border-radius:${isRect?2:50}%;background:${cc};animation:confettiFall ${dur}s ${cd}s ease-in forwards;transform:rotate(${cr}deg);pointer-events:none;"></div>`;}
+  overlay.innerHTML = confettiHtml + `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards">
       <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.6);">⚡</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} — Done!</div>
