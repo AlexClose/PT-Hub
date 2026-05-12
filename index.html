@@ -245,12 +245,11 @@ overflow-y:scroll;
 -webkit-overflow-scrolling:touch;
 overscroll-behavior:contain;
 transform:translateY(-100%);
-transition:transform .38s cubic-bezier(.25,1.2,.5,1);
+transition:transform .32s cubic-bezier(0.32,0,0.2,1);
 will-change:transform;
 }
-@keyframes modalSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.modal-overlay.open .modal{transform:translateY(0);animation:modalSlideUp .22s cubic-bezier(0.25,0,0.25,1) forwards;}
+.modal-overlay.open .modal{transform:translateY(0);}
 .modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
 .modal-title{font-family:‘Syne’,sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;color:var(–text);}
 
@@ -2358,11 +2357,9 @@ function startClientPortal(id) {
       }
       window._newPBs = newPBs;
 
-      var btn = document.querySelector('button[onclick="window._logPortalSession()"]');
-      if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-
-      // Show success screen immediately - save happens in background
+      // Let the spinner render for one frame before replacing the whole body
       var portalBody = document.getElementById('portal-body');
+      setTimeout(function() {
       var pbHtml = '';
       if (window._newPBs && window._newPBs.length > 0) {
         pbHtml = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;">' +
@@ -2374,7 +2371,7 @@ function startClientPortal(id) {
       var savedDayName = day.name;
       portalBody.innerHTML =
         '<div style="text-align:center;padding:32px 20px 48px;">' +
-          '<div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:56px;margin:0 auto 28px;box-shadow:0 0 80px rgba(67,217,162,0.6);animation:portalPop .6s cubic-bezier(.34,1.56,.64,1) forwards;position:relative;" style=""><div style="position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(67,217,162,0.2);animation:pulse 2s ease-in-out infinite;"></div>&#9889;</div>' +
+          '<div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:56px;margin:0 auto 28px;box-shadow:0 0 80px rgba(67,217,162,0.6);animation:portalPop .6s cubic-bezier(.34,1.56,.64,1) forwards;position:relative;"><div style="position:absolute;width:100%;height:100%;border-radius:50%;background:rgba(67,217,162,0.2);animation:pulse 2s ease-in-out infinite;"></div>&#9889;</div>' +
           '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;color:#fff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Crushed it!</div>' +
           '<div style="font-family:Syne,sans-serif;font-size:14px;color:#7ec8ff;font-weight:700;margin-bottom:4px;">' + savedDayName + '</div>' +
           '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:28px;letter-spacing:0.5px;">' + savedDateStr + '</div>' +
@@ -2409,6 +2406,7 @@ function startClientPortal(id) {
         var statusEl = document.getElementById('save-status');
         if (statusEl) { statusEl.textContent = 'Save failed - check connection'; statusEl.style.color = '#ff5c6a'; }
       });
+      }, 50);
     };
   }
   window._saveDraft = function() {
