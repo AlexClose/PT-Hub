@@ -678,7 +678,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="modal-handle"></div>
     <div class="modal-title" id="renewTitle">Renew Package</div>
     <div class="form-group"><label class="form-label">New Package Size</label>
-      <select id="renewPkg"><option value="5">5 sessions</option><option value="10" selected>10 sessions</option><option value="15">15 sessions</option><option value="20">20 sessions</option><option value="25">25 sessions</option><option value="30">30 sessions</option></select>
+      <select id="renewPkg"><option value="8">8 sessions</option><option value="10">10 sessions</option><option value="12" selected>12 sessions</option><option value="16">16 sessions</option><option value="20">20 sessions</option><option value="24">24 sessions</option></select>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('renewModal')">Cancel</button>
@@ -1481,7 +1481,7 @@ async function confirmLogSession(){
 function openRenew(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
-  document.getElementById('renewPkg').value=c.package_size||10;openModal('renewModal');
+  document.getElementById('renewPkg').value=c.package_size||12;openModal('renewModal');
 }
 async function confirmRenew(){
   const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
