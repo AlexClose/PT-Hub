@@ -1590,7 +1590,7 @@ async function confirmLogSession(){
   }
   try{
     await db.addSession({client_id:c.id,date:dateStr,note,workout});
-    for(const log of exLogs)await db.addExLog(log);
+    for(const log of exLogs){try{await db.addExLog(log);}catch(e){}}
     let newRemaining=c.package_size>0?c.remaining-1:c.remaining;
     await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
     c.remaining=newRemaining;c.exercise_history=newHistory;
