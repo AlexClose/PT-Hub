@@ -751,7 +751,6 @@ function hideAuthScreen() {
 
 async function startApp() {
   const hash = location.hash;
-  if (hash.startsWith('#access_token=')) { await handleClientMagicLink(); return; }
   if (hash.startsWith('#client-')) { startClientPortal(hash.slice(8)); return; }
   const raw = localStorage.getItem('bm_session');
   if (!raw) { showAuthScreen(); return; }
@@ -826,37 +825,6 @@ async function signOut() {
 }
 
 // ── CLIENT AUTH ──
-async function handleClientMagicLink() {
-  const params = new URLSearchParams(location.hash.slice(1));
-  const access_token = params.get('access_token');
-  const refresh_token = params.get('refresh_token');
-  const expires_in = parseInt(params.get('expires_in') || '3600');
-  if (!access_token) { history.replaceState(null,'',location.pathname); startApp(); return; }
-  try {
-    const res = await fetch(`${AUTH_URL}/user`, {
-      headers: {...AUTH_H, 'Authorization': `Bearer ${access_token}`}
-    });
-    const user = await res.json();
-    const email = user.email;
-    if (!email) throw new Error('no email');
-    const rows = await sb('GET','clients',null,`?email=eq.${encodeURIComponent(email)}&limit=1`);
-    if (!rows || !rows[0]) {
-      document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;padding:24px;text-align:center;flex-direction:column;gap:12px;"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#ff5c6a;">Email not found</div><div style="color:rgba(180,200,230,0.5);font-size:14px;">This email isn't linked to a client portal. Contact your coach.</div></div>`;
-      return;
-    }
-    const client = rows[0];
-    localStorage.setItem('bm_client_session', JSON.stringify({
-      access_token, refresh_token,
-      expires_at: Math.floor(Date.now()/1000) + expires_in,
-      client_id: client.id, email
-    }));
-    history.replaceState(null,'',location.pathname);
-    startClientPortal(client.id);
-  } catch(e) {
-    document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;padding:24px;text-align:center;flex-direction:column;gap:12px;"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#ff5c6a;">Sign-in error</div><div style="color:rgba(180,200,230,0.5);font-size:14px;">Something went wrong. Try your link again.</div></div>`;
-  }
-}
-
 function showClientAuthScreen(clientName, clientId) {
   document.body.innerHTML = `
     <div style="display:flex;position:fixed;inset:0;background:#0a0c0f;align-items:center;justify-content:center;padding:24px;">
@@ -868,36 +836,35 @@ function showClientAuthScreen(clientName, clientId) {
           <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:8px;">Hi ${clientName} — enter your email to continue</div>
         </div>
         <div style="margin-bottom:12px;">
-          <input id="clientAuthEmail" type="email" placeholder="Your email address" autocomplete="email" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')sendClientMagicLink('${clientId}')">
+          <input id="clientAuthEmail" type="email" placeholder="Your email address" autocomplete="email" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')verifyClientEmail('${clientId}')">
         </div>
-        <button id="clientMagicBtn" onclick="sendClientMagicLink('${clientId}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35);">Send Login Link</button>
+        <button id="clientAuthBtn" onclick="verifyClientEmail('${clientId}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35);">Sign In</button>
         <div id="client-auth-msg" style="display:none;margin-top:14px;padding:12px 16px;border-radius:10px;font-size:13px;text-align:center;"></div>
       </div>
     </div>`;
 }
 
-async function sendClientMagicLink(clientId) {
-  const email = (document.getElementById('clientAuthEmail')?.value||'').trim();
+async function verifyClientEmail(clientId) {
+  const email = (document.getElementById('clientAuthEmail')?.value||'').trim().toLowerCase();
   const msg = document.getElementById('client-auth-msg');
-  const btn = document.getElementById('clientMagicBtn');
+  const btn = document.getElementById('clientAuthBtn');
   if (!email) { if(msg){msg.textContent='Please enter your email.';msg.style.display='block';msg.style.background='rgba(255,92,106,0.1)';msg.style.color='#ff5c6a';} return; }
-  if (btn) { btn.textContent='Sending...'; btn.disabled=true; }
+  if (btn) { btn.textContent='Signing in...'; btn.disabled=true; }
   try {
-    const res = await fetch(`${AUTH_URL}/otp`, {
-      method:'POST', headers:AUTH_H,
-      body: JSON.stringify({email, options:{emailRedirectTo: location.origin+'/'}})
-    });
-    if (!res.ok) throw new Error();
-    if (msg) {
-      msg.textContent = '✓ Check your email for a login link!';
-      msg.style.display='block';
-      msg.style.background='rgba(67,217,162,0.1)';
-      msg.style.color='#43d9a2';
+    const rows = await sb('GET','clients',null,`?id=eq.${clientId}&email=eq.${encodeURIComponent(email)}&limit=1`);
+    if (!rows || !rows[0]) {
+      if (msg) { msg.textContent="That email doesn't match our records. Check with your coach."; msg.style.display='block'; msg.style.background='rgba(255,92,106,0.1)'; msg.style.color='#ff5c6a'; }
+      if (btn) { btn.textContent='Sign In'; btn.disabled=false; }
+      return;
     }
-    if (btn) btn.style.display='none';
+    localStorage.setItem('bm_client_session', JSON.stringify({
+      client_id: clientId, email,
+      expires_at: Math.floor(Date.now()/1000) + 60*60*24*30
+    }));
+    startClientPortal(clientId);
   } catch(e) {
-    if (msg) { msg.textContent='Something went wrong. Try again.';msg.style.display='block';msg.style.background='rgba(255,92,106,0.1)';msg.style.color='#ff5c6a'; }
-    if (btn) { btn.textContent='Send Login Link'; btn.disabled=false; }
+    if (msg) { msg.textContent='Something went wrong. Try again.'; msg.style.display='block'; msg.style.background='rgba(255,92,106,0.1)'; msg.style.color='#ff5c6a'; }
+    if (btn) { btn.textContent='Sign In'; btn.disabled=false; }
   }
 }
 
