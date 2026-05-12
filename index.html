@@ -558,6 +558,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="form-group"><label class="form-label">Goals</label><input id="acGoals"></div>
     <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="acInjuries"></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="acNotes"></textarea></div>
+    <div class="form-group"><label class="form-label">Portal Email <span style="color:rgba(180,200,230,0.4);font-weight:400">(optional — enables client login)</span></label><input id="acEmail" type="email" placeholder="client@email.com"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('addClientModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveClient()">Save Client</button>
@@ -588,6 +589,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="form-group"><label class="form-label">Goals</label><input id="ecGoals"></div>
     <div class="form-group"><label class="form-label">Injuries / Limitations</label><input id="ecInjuries"></div>
     <div class="form-group"><label class="form-label">Notes</label><textarea id="ecNotes"></textarea></div>
+    <div class="form-group"><label class="form-label">Portal Email <span style="color:rgba(180,200,230,0.4);font-weight:400">(optional — enables client login)</span></label><input id="ecEmail" type="email" placeholder="client@email.com"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('editClientModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveEditClient()">Save Changes</button>
@@ -749,6 +751,7 @@ function hideAuthScreen() {
 
 async function startApp() {
   const hash = location.hash;
+  if (hash.startsWith('#access_token=')) { await handleClientMagicLink(); return; }
   if (hash.startsWith('#client-')) { startClientPortal(hash.slice(8)); return; }
   const raw = localStorage.getItem('bm_session');
   if (!raw) { showAuthScreen(); return; }
@@ -820,6 +823,82 @@ async function signOut() {
   } catch(e) {}
   localStorage.removeItem('bm_session');
   window.location.reload();
+}
+
+// ── CLIENT AUTH ──
+async function handleClientMagicLink() {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  const expires_in = parseInt(params.get('expires_in') || '3600');
+  if (!access_token) { history.replaceState(null,'',location.pathname); startApp(); return; }
+  try {
+    const res = await fetch(`${AUTH_URL}/user`, {
+      headers: {...AUTH_H, 'Authorization': `Bearer ${access_token}`}
+    });
+    const user = await res.json();
+    const email = user.email;
+    if (!email) throw new Error('no email');
+    const rows = await sb('GET','clients',null,`?email=eq.${encodeURIComponent(email)}&limit=1`);
+    if (!rows || !rows[0]) {
+      document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;padding:24px;text-align:center;flex-direction:column;gap:12px;"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#ff5c6a;">Email not found</div><div style="color:rgba(180,200,230,0.5);font-size:14px;">This email isn't linked to a client portal. Contact your coach.</div></div>`;
+      return;
+    }
+    const client = rows[0];
+    localStorage.setItem('bm_client_session', JSON.stringify({
+      access_token, refresh_token,
+      expires_at: Math.floor(Date.now()/1000) + expires_in,
+      client_id: client.id, email
+    }));
+    history.replaceState(null,'',location.pathname);
+    startClientPortal(client.id);
+  } catch(e) {
+    document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;padding:24px;text-align:center;flex-direction:column;gap:12px;"><div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#ff5c6a;">Sign-in error</div><div style="color:rgba(180,200,230,0.5);font-size:14px;">Something went wrong. Try your link again.</div></div>`;
+  }
+}
+
+function showClientAuthScreen(clientName, clientId) {
+  document.body.innerHTML = `
+    <div style="display:flex;position:fixed;inset:0;background:#0a0c0f;align-items:center;justify-content:center;padding:24px;">
+      <div style="width:100%;max-width:360px;">
+        <div style="text-align:center;margin-bottom:44px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;">
+            <span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>
+          </div>
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:8px;">Hi ${clientName} — enter your email to continue</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <input id="clientAuthEmail" type="email" placeholder="Your email address" autocomplete="email" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')sendClientMagicLink('${clientId}')">
+        </div>
+        <button id="clientMagicBtn" onclick="sendClientMagicLink('${clientId}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35);">Send Login Link</button>
+        <div id="client-auth-msg" style="display:none;margin-top:14px;padding:12px 16px;border-radius:10px;font-size:13px;text-align:center;"></div>
+      </div>
+    </div>`;
+}
+
+async function sendClientMagicLink(clientId) {
+  const email = (document.getElementById('clientAuthEmail')?.value||'').trim();
+  const msg = document.getElementById('client-auth-msg');
+  const btn = document.getElementById('clientMagicBtn');
+  if (!email) { if(msg){msg.textContent='Please enter your email.';msg.style.display='block';msg.style.background='rgba(255,92,106,0.1)';msg.style.color='#ff5c6a';} return; }
+  if (btn) { btn.textContent='Sending...'; btn.disabled=true; }
+  try {
+    const res = await fetch(`${AUTH_URL}/otp`, {
+      method:'POST', headers:AUTH_H,
+      body: JSON.stringify({email, options:{emailRedirectTo: location.origin+'/'}})
+    });
+    if (!res.ok) throw new Error();
+    if (msg) {
+      msg.textContent = '✓ Check your email for a login link!';
+      msg.style.display='block';
+      msg.style.background='rgba(67,217,162,0.1)';
+      msg.style.color='#43d9a2';
+    }
+    if (btn) btn.style.display='none';
+  } catch(e) {
+    if (msg) { msg.textContent='Something went wrong. Try again.';msg.style.display='block';msg.style.background='rgba(255,92,106,0.1)';msg.style.color='#ff5c6a'; }
+    if (btn) { btn.textContent='Send Login Link'; btn.disabled=false; }
+  }
 }
 
 async function init(){
@@ -1003,7 +1082,7 @@ function renderClientList(){
 
 // ── ADD/EDIT CLIENT ──
 function openAddClient(){
-  ['acFirst','acLast','acAge','acGoals','acInjuries','acNotes','acSchedule'].forEach(id=>document.getElementById(id).value='');
+  ['acFirst','acLast','acAge','acGoals','acInjuries','acNotes','acSchedule','acEmail'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('acLevel').value='Intermediate';document.getElementById('acPackage').value='0';
   document.getElementById('acRemaining').value='';document.getElementById('acDuration').value='60';
   openModal('addClientModal');
@@ -1012,19 +1091,21 @@ async function saveClient(){
   const first=document.getElementById('acFirst').value.trim();if(!first){toast('Please enter a name');return;}
   const pkg=parseInt(document.getElementById('acPackage').value)||0;
   try{
-    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{}});
+    const acEmail=document.getElementById('acEmail').value.trim().toLowerCase();
+    const created=await db.addClient({first,last:document.getElementById('acLast').value.trim(),age:document.getElementById('acAge').value,level:document.getElementById('acLevel').value,package_size:pkg,remaining:parseInt(document.getElementById('acRemaining').value)||0,schedule:document.getElementById('acSchedule').value.trim(),duration:parseInt(document.getElementById('acDuration').value)||60,goals:document.getElementById('acGoals').value.trim(),injuries:document.getElementById('acInjuries').value.trim(),notes:document.getElementById('acNotes').value.trim(),exercise_history:{},email:acEmail||null});
     if(created&&created[0])clients.push(created[0]);
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
   }catch(e){toast('Error saving — check connection');}
 }
 function openEditClient(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';
+  document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';document.getElementById('ecEmail').value=c.email||'';
   closeModal('clientModal');openModal('editClientModal');
 }
 async function saveEditClient(){
   const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
-  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim()};
+  const ecEmail=document.getElementById('ecEmail').value.trim().toLowerCase();
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null};
   try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
   catch(e){toast('Error updating');}
 }
@@ -1659,6 +1740,17 @@ function startClientPortal(id) {
     .then(function(res) { return res.json(); })
     .then(function(data) {
       var client = data[0];
+      if (!client) { document.body.innerHTML = '<p style="color:red;padding:20px;">Client not found.</p>'; return; }
+
+      // If client has an email, require auth
+      if (client.email) {
+        var raw = localStorage.getItem('bm_client_session');
+        var session = null;
+        try { session = JSON.parse(raw); } catch(e) {}
+        var valid = session && session.client_id === client.id && Date.now()/1000 < (session.expires_at||0) - 60;
+        if (!valid) { showClientAuthScreen(client.first || 'there', client.id); return; }
+      }
+
       window._portalClientId = client.id;
       window._portalClientName = client.first || 'there';
       window._portalHistory = client.exercise_history || {};
