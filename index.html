@@ -53,7 +53,6 @@ var link=document.getElementById(‘appIcon’);
 if(link)link.href=dataURL;
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Baymade Training</title>
@@ -692,10 +691,8 @@ const SB_URL='https://oneykldgivaqcrqmrqha.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 const H={'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'};
 
-// ── AUTH CONFIG ──
-// IMPORTANT: Replace this with your Google email address before using the app
-const COACH_EMAIL = 'akclose23@gmail.com';
-const supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+const AUTH_URL = `${SB_URL}/auth/v1`;
+const AUTH_H = {'apikey':SB_KEY,'Content-Type':'application/json'};
 
 async function sb(method,table,body=null,params=''){
   const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
@@ -749,10 +746,20 @@ function hideAuthScreen() {
 }
 
 async function startApp() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) {
-    showAuthScreen();
-    return;
+  const raw = localStorage.getItem('bm_session');
+  if (!raw) { showAuthScreen(); return; }
+  let session;
+  try { session = JSON.parse(raw); } catch(e) { showAuthScreen(); return; }
+  // Refresh token if within 60s of expiry
+  if (Date.now()/1000 > (session.expires_at||0) - 60) {
+    try {
+      const res = await fetch(`${AUTH_URL}/token?grant_type=refresh_token`, {
+        method:'POST', headers:AUTH_H,
+        body:JSON.stringify({refresh_token:session.refresh_token})
+      });
+      if (!res.ok) throw new Error();
+      localStorage.setItem('bm_session', JSON.stringify(await res.json()));
+    } catch(e) { localStorage.removeItem('bm_session'); showAuthScreen(); return; }
   }
   hideAuthScreen();
   init();
@@ -771,20 +778,32 @@ async function signIn() {
   const btn = document.querySelector('#auth-screen button[onclick="signIn()"]');
   btn.textContent = 'Signing in...';
   btn.disabled = true;
-  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-  if (error) {
+  try {
+    const res = await fetch(`${AUTH_URL}/token?grant_type=password`, {
+      method:'POST', headers:AUTH_H,
+      body:JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) throw new Error();
+    localStorage.setItem('bm_session', JSON.stringify(data));
+    hideAuthScreen();
+    init();
+  } catch(e) {
     errEl.textContent = 'Incorrect email or password.';
     errEl.style.display = 'block';
     btn.textContent = 'Sign In';
     btn.disabled = false;
-    return;
   }
-  hideAuthScreen();
-  init();
 }
 
 async function signOut() {
-  await supabaseClient.auth.signOut();
+  try {
+    const s = JSON.parse(localStorage.getItem('bm_session')||'{}');
+    if (s.access_token) await fetch(`${AUTH_URL}/logout`, {
+      method:'POST', headers:{...AUTH_H,'Authorization':`Bearer ${s.access_token}`}
+    });
+  } catch(e) {}
+  localStorage.removeItem('bm_session');
   window.location.reload();
 }
 
