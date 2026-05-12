@@ -256,29 +256,30 @@ transform:translateY(0);
 
 /* ── PROGRAM BLOCKS ── */
 .prog-day-block{
-border:1px solid var(–border2);border-radius:var(–radius);
+border:1px solid rgba(100,160,255,0.12);border-radius:var(--radius);
 margin-bottom:10px;overflow:hidden;
 }
 .prog-day-header{
-padding:14px 16px;cursor:pointer;
+padding:13px 16px;cursor:pointer;
 display:flex;align-items:center;justify-content:space-between;
-background:var(–surface2);transition:background .2s;
+background:#0f1317;transition:background .2s;
 }
-.prog-day-header:hover{background:var(–surface3);}
-.prog-day-title{font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.prog-day-header:hover{background:#141820;}
+.prog-day-title{font-family:’Syne’,sans-serif;font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;}
 .prog-day-body{display:none;}
 .prog-day-body.open{display:block;}
-.ex-row{padding:12px 16px;border-top:1px solid var(–border);display:flex;align-items:flex-start;gap:10px;transition:background .15s;}
+.ex-row{padding:11px 16px;border-top:1px solid rgba(100,160,255,0.07);display:flex;align-items:flex-start;gap:10px;transition:background .15s;}
 .ex-row:hover{background:rgba(79,163,232,0.03);}
 .ex-row-content{flex:1;}
-.ex-name{font-size:14px;font-weight:500;margin-bottom:3px;color:var(–text);}
-.ex-prescription{font-size:12px;color:var(–accent-bright);margin-bottom:4px;}
-.ex-last{font-size:11px;color:var(–muted);background:rgba(79,163,232,0.06);border:1px solid var(–border);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:3px;}
-.ex-last.has-data{color:var(–accent-bright);background:rgba(79,163,232,0.1);border-color:rgba(79,163,232,0.2);}
-.ex-edit-btn{background:none;border:1px solid var(–border2);border-radius:6px;color:var(–muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;font-family:‘Instrument Sans’,sans-serif;flex-shrink:0;margin-top:2px;transition:all .15s;}
-.ex-edit-btn:hover{color:var(–accent-bright);border-color:var(–accent);}
-.ss-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(–warn);margin-bottom:4px;display:flex;align-items:center;gap:4px;}
-.ss-label::before{content:’’;width:12px;height:1px;background:var(–warn);display:inline-block;}
+.ex-name{font-size:14px;font-weight:600;margin-bottom:2px;color:var(--text);}
+.ex-prescription{font-size:12px;color:var(--accent-bright);margin-bottom:4px;font-weight:500;}
+.ex-last{font-size:11px;color:var(--muted);background:rgba(79,163,232,0.06);border:1px solid rgba(100,160,255,0.1);border-radius:6px;padding:4px 9px;display:inline-block;margin-top:3px;}
+.ex-last.has-data{color:#7ec8ff;background:rgba(79,163,232,0.1);border-color:rgba(79,163,232,0.2);}
+.ex-edit-btn{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;white-space:nowrap;font-family:’Instrument Sans’,sans-serif;flex-shrink:0;margin-top:2px;transition:all .15s;}
+.ex-edit-btn:hover{color:var(--accent-bright);border-color:var(--accent);}
+.ss-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);margin-bottom:4px;display:flex;align-items:center;gap:4px;}
+.ss-label::before{content:’’;width:12px;height:1px;background:var(--warn);display:inline-block;}
+.ex-num{width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;font-family:’Syne’,sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
 
 /* ── LOG SESSION ── */
 .workout-ex-row{
@@ -1277,38 +1278,44 @@ function toggleDay(el){
 function renderStructuredProgram(c){
   const prog=c.structured_program;const history=c.exercise_history||{};
   return prog.days.map((day,di)=>{
+    let exNum=0;
     const exRows=day.exercises.map(ex=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
       const isSuperset=ex.name.match(/^SS/i);
       const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+      if(!isSuperset)exNum++;
+      const numLabel=isSuperset?'':''+exNum;
       const lastHtml=last
-        ?`<div class="ex-last has-data">📊 Last: <b>${last.reps||'—'}</b> · <b>${last.weight||'—'}</b> · <span style="opacity:.6">${last.date}</span></div>`
-        :`<div class="ex-last">No data yet — log first session to track</div>`;
-      return `<div class="ex-row" ${isSuperset?'style="padding-left:22px;border-left:2px solid var(--warn)"':''}>
+        ?`<div class="ex-last has-data">Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;<span style="opacity:.5;font-size:10px">${last.date}</span></div>`
+        :`<div class="ex-last" style="color:rgba(180,200,230,0.25);border-color:rgba(100,160,255,0.06);">No data yet</div>`;
+      return `<div class="ex-row" ${isSuperset?'style="padding-left:28px;border-left:3px solid var(--warn);background:rgba(255,140,71,0.02)"':''}>
+        ${isSuperset
+          ?`<div style="width:20px;flex-shrink:0;margin-top:2px;"><div class="ss-label" style="margin:0;font-size:8px">SS</div></div>`
+          :`<div class="ex-num" style="background:${day.color}18;color:${day.color};border:1px solid ${day.color}33;">${numLabel}</div>`}
         <div class="ex-row-content">
           ${isSuperset?`<div class="ss-label">Superset</div>`:''}
           <div class="ex-name">${displayName}</div>
-          <div class="ex-prescription">${ex.prescription}${ex.load?' · <span style="color:var(--muted)">'+ex.load+'</span>':''}</div>
+          <div class="ex-prescription">${ex.prescription}${ex.load?` <span style="color:rgba(180,200,230,0.4);font-weight:400">· ${ex.load}</span>`:''}</div>
           ${lastHtml}
         </div>
       </div>`;
     }).join('');
     return `<div class="prog-day-block">
+      <div style="height:3px;background:${day.color};opacity:0.7"></div>
       <div class="prog-day-header" onclick="toggleDay(this)">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:10px;height:10px;border-radius:50%;background:${day.color};flex-shrink:0"></div>
           <span class="prog-day-title" style="color:${day.color}">${day.name}</span>
-          <span class="muted" style="font-size:11px">${day.exercises.length} exercises</span>
+          <span style="font-size:11px;color:rgba(180,200,230,0.35);font-weight:400">${day.exercises.length} ex</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="ex-edit-btn" onclick="event.stopPropagation();openEditProgramDay('${c.id}',${di})" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.12);color:rgba(200,215,235,0.5);">✎ Edit</button>
-          <span style="color:var(--muted);font-size:12px">▼</span>
+          <button class="ex-edit-btn" onclick="event.stopPropagation();openEditProgramDay('${c.id}',${di})">✎ Edit</button>
+          <span style="color:rgba(180,200,230,0.3);font-size:11px">▼</span>
         </div>
       </div>
       <div class="prog-day-body">
-        <div style="padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(37,99,235,0.06)">
-          <button onclick="event.stopPropagation();openLogSession('${c.id}',${di})" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:10px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.4)">⚡ LOG THIS WORKOUT</button>
+        <div style="padding:10px 12px;border-bottom:1px solid rgba(100,160,255,0.08);background:rgba(37,99,235,0.05)">
+          <button onclick="event.stopPropagation();openLogSession('${c.id}',${di})" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:12px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.35)">⚡ LOG THIS WORKOUT</button>
         </div>
         ${exRows}
       </div>
