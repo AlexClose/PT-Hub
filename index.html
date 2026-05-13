@@ -694,6 +694,9 @@ to{opacity:1;transform:translateY(0);}
       <button class="btn btn-secondary btn-full" onclick="closeModal('buildProgramModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveBuildProgram()">Save Program</button>
     </div>
+    <div id="buildProgSaveAsTemplateRow" style="margin-top:10px;text-align:center">
+      <button onclick="saveBuildProgramAsTemplate()" style="background:none;border:none;color:rgba(126,200,255,0.6);font-size:12px;font-weight:600;cursor:pointer;font-family:'Instrument Sans',sans-serif;padding:4px 0;letter-spacing:.2px">↑ Also save as Template</button>
+    </div>
   </div>
 </div>
 
@@ -1965,6 +1968,7 @@ function openBuildProgram(clientId){
   buildingDays=c.structured_program?JSON.parse(JSON.stringify(c.structured_program.days)):[];
   document.getElementById('buildProgTitle').textContent=c.structured_program?`Edit Program — ${c.first}`:`Build Program — ${c.first}`;
   document.getElementById('buildProgNameRow').style.display='none';
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='';
   renderBuildDayList();openModal('buildProgramModal');
 }
 
@@ -2035,6 +2039,25 @@ async function saveBuildProgram(){
   }catch(e){toast('Error saving program');}
 }
 
+async function saveBuildProgramAsTemplate(){
+  const c=clients.find(x=>x.id===buildingClientId);if(!c)return;
+  if(buildingDays.length===0){toast('Add at least one day first');return;}
+  const name=prompt('Template name:',`${c.first}'s Program`);
+  if(!name||!name.trim())return;
+  const prog={days:buildingDays};
+  try{
+    // Save program to client first
+    await db.updateClient(buildingClientId,{structured_program:prog});
+    c.structured_program=prog;
+    // Then save as template
+    const res=await db.addTemplate({name:name.trim(),days:JSON.parse(JSON.stringify(buildingDays))});
+    if(res&&res[0])templates.push(res[0]);
+    closeModal('buildProgramModal');
+    renderClientModal(c);renderMonthlyReport(c);
+    toast(`Program saved & "${name.trim()}" added to Templates ✓`);
+  }catch(e){toast('Error saving — check connection');}
+}
+
 // ── PROGRAM TEMPLATES ──
 
 async function loadTemplates(){
@@ -2071,6 +2094,7 @@ function openAddTemplate(){
   document.getElementById('buildProgTitle').textContent='New Template';
   document.getElementById('buildProgNameRow').style.display='';
   document.getElementById('buildProgNameInput').value='';
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='none';
   renderBuildDayList();openModal('buildProgramModal');
 }
 
@@ -2081,6 +2105,7 @@ function openEditTemplate(id){
   document.getElementById('buildProgTitle').textContent='Edit Template';
   document.getElementById('buildProgNameRow').style.display='';
   document.getElementById('buildProgNameInput').value=t.name;
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='none';
   renderBuildDayList();openModal('buildProgramModal');
 }
 
