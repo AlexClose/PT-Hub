@@ -177,9 +177,9 @@ border-radius:var(–radius);padding:18px;margin-bottom:14px;
 .divider{height:1px;background:var(–border);margin:16px 0;}
 
 /* ── ALERTS ── */
-.alert{border-radius:var(–radius);padding:14px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;}
-.alert-warn{background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.2);}
-.alert-danger{background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.2);}
+.alert{border-radius:12px;padding:13px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;}
+.alert-warn{background:linear-gradient(135deg,rgba(255,179,71,0.09),rgba(255,179,71,0.04));border:1px solid rgba(255,179,71,0.2);border-left:3px solid rgba(255,179,71,0.7);}
+.alert-danger{background:linear-gradient(135deg,rgba(255,92,106,0.09),rgba(255,92,106,0.04));border:1px solid rgba(255,92,106,0.2);border-left:3px solid rgba(255,92,106,0.7);}
 .alert-icon{font-size:20px;flex-shrink:0;}
 
 /* ── PROGRESS ── */
@@ -209,11 +209,12 @@ cursor:pointer;transition:all .2s;position:relative;
 .client-card:hover{border-color:var(–accent);box-shadow:0 4px 20px rgba(79,163,232,0.1);transform:translateY(-1px);}
 .client-card:active{transform:translateY(0);}
 .client-avatar{
-width:42px;height:42px;border-radius:12px;
-background:#2563eb;
+width:44px;height:44px;border-radius:14px;
+background:linear-gradient(135deg,#1d4ed8,#2563eb 60%,#3b82f6);
+box-shadow:0 2px 10px rgba(37,99,235,0.35);
 display:flex;align-items:center;justify-content:center;
-font-family:‘Syne’,sans-serif;font-weight:800;font-size:15px;
-flex-shrink:0;color:#ffffff !important;letter-spacing:0;
+font-family:’Syne’,sans-serif;font-weight:800;font-size:15px;
+flex-shrink:0;color:#ffffff !important;letter-spacing:0.5px;
 }
 
 /* ── MODALS ── */
@@ -1011,12 +1012,12 @@ function renderDashboard(){
     const d=new Date(s.date);
     return d.getMonth()===currentMonth && d.getFullYear()===currentYear;
   }).length,0);
-  const statStyle='font-family:Syne,sans-serif;font-size:42px;font-weight:800;line-height:1;letter-spacing:-2px';
-  document.getElementById('dashStats').innerHTML=`
-    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${clients.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Active Clients</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(37,99,235,0.35);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2563eb,transparent)"></div><div style="${statStyle};color:#fff">${totalSess}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Sessions This Month</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(255,179,71,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffb347,transparent)"></div><div style="${statStyle};color:#ffb347">${low.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Low Sessions</div></div>
-    <div style="background:#0d1117;border:1px solid rgba(255,92,106,0.3);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff5c6a,transparent)"></div><div style="${statStyle};color:#ff5c6a">${out.length}</div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.55);margin-top:4px">Invoice Needed</div></div>`;
+  const mkStat=(val,label,col,bg,border)=>`<div style="background:${bg};border:1px solid ${border};border-left:4px solid ${col};border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${col};opacity:0.8;margin-bottom:8px;">${label}</div><div style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
+  document.getElementById('dashStats').innerHTML=
+    mkStat(clients.length,'Active Clients','#4fa3e8','linear-gradient(135deg,rgba(37,99,235,0.14),rgba(79,163,232,0.07))','rgba(79,163,232,0.25)')+
+    mkStat(totalSess,'Sessions This Month','#43d9a2','linear-gradient(135deg,rgba(67,217,162,0.14),rgba(67,217,162,0.06))','rgba(67,217,162,0.25)')+
+    mkStat(low.length,'Low Sessions','#ffb347','linear-gradient(135deg,rgba(255,179,71,0.14),rgba(255,179,71,0.06))','rgba(255,179,71,0.25)')+
+    mkStat(out.length,'Invoice Needed','#ff5c6a','linear-gradient(135deg,rgba(255,92,106,0.14),rgba(255,92,106,0.06))','rgba(255,92,106,0.25)');
   let alerts='';
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
