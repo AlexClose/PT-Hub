@@ -1280,8 +1280,11 @@ function renderClientModal(c){
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
     </div>
 
-    <div style="margin-bottom:16px">
-      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:10px">Monthly Summary</div>
+    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="margin-bottom:14px">
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Monthly Summary</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${new Date().toLocaleString('default',{month:'long',year:'numeric'})}</div>
+      </div>
       <div id="monthly-${c.id}"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
     </div>
 
