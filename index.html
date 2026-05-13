@@ -2361,31 +2361,58 @@ function startClientPortal(id) {
       sheet.id = 'workout-sheet';
       document.body.appendChild(sheet);
     }
+    // Reset any inline styles left from a previous close so CSS transition fires cleanly
+    sheet.style.display = '';
+    sheet.style.transform = '';
+    sheet.style.transition = '';
     sheet.innerHTML = '<div id="workout-sheet-inner" style="padding-bottom:48px;"></div>';
     requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
-    var _swipeTouchStartY = 0, _swipeDragging = false;
-    sheet.addEventListener('touchstart', function(e){ _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
-    sheet.addEventListener('touchmove', function(e){
-      var dy = e.touches[0].clientY - _swipeTouchStartY;
-      if (dy > 0 && sheet.scrollTop === 0) {
-        _swipeDragging = true;
-        sheet.style.transition = 'none';
-        sheet.style.transform = 'translateY(' + Math.min(dy, window.innerHeight * 0.85) + 'px)';
-      }
-    }, {passive:true});
-    sheet.addEventListener('touchend', function(e){
-      var dy = e.changedTouches[0].clientY - _swipeTouchStartY;
-      sheet.style.transition = '';
-      if (_swipeDragging && dy > 100) { window._closeWorkoutSheet(); } else { sheet.style.transform = 'translateY(0)'; }
-      _swipeDragging = false;
-    });
+
+    // Swipe-down to dismiss — attach once per sheet instance
+    if (!sheet._swipeListenersAdded) {
+      sheet._swipeListenersAdded = true;
+      var _swipeTouchStartY = 0, _swipeDragging = false;
+      sheet.addEventListener('touchstart', function(e){ _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
+      sheet.addEventListener('touchmove', function(e){
+        var dy = e.touches[0].clientY - _swipeTouchStartY;
+        if (dy > 0 && sheet.scrollTop === 0) {
+          _swipeDragging = true;
+          sheet.style.transition = 'none';
+          sheet.style.transform = 'translateY(' + Math.min(dy, window.innerHeight * 0.85) + 'px)';
+        }
+      }, {passive:true});
+      sheet.addEventListener('touchend', function(e){
+        var dy = e.changedTouches[0].clientY - _swipeTouchStartY;
+        if (_swipeDragging && dy > 100) {
+          // Explicitly animate to fully off-screen before calling close
+          sheet.style.transition = 'transform .32s cubic-bezier(0.32,0,0.2,1)';
+          sheet.style.transform = 'translateY(100%)';
+          window._closeWorkoutSheet(true);
+        } else {
+          sheet.style.transition = '';
+          sheet.style.transform = '';
+        }
+        _swipeDragging = false;
+      });
+    }
     var portalBody = document.getElementById('workout-sheet-inner');
 
     window._portalDay = day;
-    window._closeWorkoutSheet = function() {
+    // skipAnim=true means swipe already set the transform; just clean up after delay
+    window._closeWorkoutSheet = function(skipAnim) {
       var s = document.getElementById('workout-sheet');
+      if (!s) return;
+      if (!skipAnim) {
+        s.style.transition = 'transform .32s cubic-bezier(0.32,0,0.2,1)';
+        s.style.transform = 'translateY(100%)';
+      }
       s.classList.remove('sheet-open');
-      setTimeout(function(){s.innerHTML='';}, 350);
+      setTimeout(function(){
+        s.innerHTML = '';
+        s.style.transform = '';
+        s.style.transition = '';
+        s.style.display = 'none';
+      }, 350);
     };
 
     var html =
