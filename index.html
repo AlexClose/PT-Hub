@@ -133,6 +133,7 @@ h2{font-family:‘Syne’,sans-serif;font-size:28px;font-weight:800;color:var(�
 .badge-red{background:rgba(255,92,106,0.12);color:var(–danger);}
 .badge-blue{background:rgba(79,163,232,0.12);color:var(–accent-bright);}
 .badge-summer{background:rgba(255,179,71,0.15);color:#ffd47e;}
+.badge-paused{background:rgba(180,200,230,0.08);color:rgba(180,200,230,0.45);}
 
 /* ── BUTTONS ── */
 .btn{
@@ -712,7 +713,7 @@ to{opacity:1;transform:translateY(0);}
     <div class="modal-handle"></div>
     <div class="modal-title" id="renewTitle">Renew Package</div>
     <div class="form-group"><label class="form-label">New Package Size</label>
-      <select id="renewPkg"><option value="8">8 sessions</option><option value="10">10 sessions</option><option value="12" selected>12 sessions</option><option value="16">16 sessions</option><option value="20">20 sessions</option><option value="24">24 sessions</option></select>
+      <select id="renewPkg"><option value="8">8 sessions</option><option value="12" selected>12 sessions</option><option value="16">16 sessions</option><option value="20">20 sessions</option><option value="24">24 sessions</option><option value="30">30 sessions</option></select>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('renewModal')">Cancel</button>
@@ -1045,8 +1046,6 @@ function renderTodaySessions(){
 
 function quickLog(id){
   openLogSession(id);
-  // After logging, refresh today's view
-  const orig=confirmLogSession;
 }
 
 function renderDashboard(){
@@ -1203,16 +1202,16 @@ async function togglePause(id){
 
 async function openClientDetail(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  // Render immediately with cached sessions so there is no black flash
   if(!c._sessions) c._sessions=[];
   renderClientModal(c);
   openModal('clientModal');
-  // Then load sessions in background and refresh
+  renderMonthlyReport(c);
   try{
     const fresh=await db.getSessions(id);
     if(JSON.stringify(fresh)!==JSON.stringify(c._sessions)){
       c._sessions=fresh;
       renderClientModal(c);
+      renderMonthlyReport(c);
     }
   }catch(e){}
 }
@@ -1295,6 +1294,11 @@ function renderClientModal(c){
         </div>
       </div>
       <div id="prog-${c.id}">${progSection}</div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:10px">Monthly Summary</div>
+      <div id="monthly-${c.id}"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
     </div>
 
     <div style="margin-bottom:16px">
