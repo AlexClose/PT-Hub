@@ -111,5 +111,9 @@ git push -u origin claude/check-repo-connection-0JGIq
 # Merge via mcp__github__merge_pull_request (handles conflicts)
 ```
 
+## Final Root Cause Found
+Progress bars were invisible due to a CSS typo: `var(–surface2)` used an en-dash instead of `--`.
+Fixed in PR #43. All bars now render correctly.
+
 ---
-**Last Updated:** May 13, 2026 at session end after full session count/bar fixes
+**Last Updated:** May 13, 2026 — all session count and progress bar issues fully resolved
