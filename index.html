@@ -1002,7 +1002,7 @@ function quickLog(id){
 }
 
 function renderDashboard(){
-  const withPkg=clients.filter(c=>(c.package_size>0||c.remaining>0)&&!c.paused);
+  const withPkg=clients.filter(c=>(c.package_size>0||!!c.remaining)&&!c.paused);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
   const out=clients.filter(c=>!c.paused&&c.remaining<=0&&(c.package_size>0||c.remaining<0));
   const now=new Date();
@@ -1043,10 +1043,10 @@ function renderDashboard(){
 
 function clientRowHtml(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
-  const hasPkg = c.package_size>0 || c.remaining>0 || !!sharedPkg;
+  const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
   const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const effectivePct = hasPkg && displayTotal>0 ? Math.max(0, displayRemaining/displayTotal*100) : 0;
+  const effectivePct = !hasPkg ? 0 : displayTotal>0 ? Math.max(0, displayRemaining/displayTotal*100) : Math.max(0, Math.min((displayRemaining||0)*10, 100));
   const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
   const badge = c.paused
     ? '<span class="badge badge-paused">⏸ Paused</span>'
@@ -1166,10 +1166,10 @@ async function openClientDetail(id){
 
 function renderClientModal(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
-  const hasPkg=c.package_size>0 || c.remaining>0 || !!sharedPkg;
+  const hasPkg=c.package_size>0 || !!c.remaining || !!sharedPkg;
   const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const pct=hasPkg&&displayTotal>0?Math.max(0,displayRem/displayTotal*100):0;
+  const pct=!hasPkg?0:displayTotal>0?Math.max(0,displayRem/displayTotal*100):Math.max(0,Math.min((displayRem||0)*10,100));
   const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
@@ -1216,7 +1216,7 @@ function renderClientModal(c){
             ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
             :c.package_size>0
             ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
-            :c.remaining>0
+            :c.remaining
             ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
             :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
         </div>
@@ -1688,11 +1688,11 @@ async function confirmLogSession(){
   try{
     await db.addSession({client_id:c.id,date:dateStr,note,workout});
     for(const log of exLogs){try{await db.addExLog(log);}catch(e){}}
-    let newRemaining=c.package_size>0?c.remaining-1:c.remaining;
+    let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
     await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
     c.remaining=newRemaining;c.exercise_history=newHistory;
     // Deduct from shared package if linked
-    if(c.package_size>0&&c.remaining<0){
+    if(c.remaining<0&&!c.shared_package_id){
       setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
     } else if(c.shared_package_id){
       const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
@@ -1706,7 +1706,7 @@ async function confirmLogSession(){
     clearDraftCoach();
     closeModal('logModal');renderClientModal(c);renderDashboard();
     showSuccessAnimation(c.first,coachPBs);
-    if(c.package_size>0&&c.remaining<0){
+    if(c.remaining<0&&!c.shared_package_id){
       setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
     } else if(c.shared_package_id){
       const sp=sharedPackages.find(p=>p.id===c.shared_package_id);
@@ -1715,7 +1715,7 @@ async function confirmLogSession(){
         else if(sp.remaining_sessions<=2)setTimeout(()=>toast(`🟡 Shared package: ${sp.remaining_sessions} left`),300);
         else toast(`Session logged ✓ — ${sp.remaining_sessions} shared remaining`);
       }
-    } else if(c.package_size>0){
+    } else if(c.package_size>0||c.remaining>=0){
       if(c.remaining===0)setTimeout(()=>toast(`🔴 ${c.first} is out of sessions — invoice via Square!`),300);
       else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
       else toast(`Session logged ✓ — ${c.remaining} remaining`);
