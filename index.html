@@ -1475,15 +1475,14 @@ function updateLogWorkout(clientId){
   const di=parseInt(document.getElementById('logDaySelect').value)||0;
   const day=c.structured_program.days[di];const history=c.exercise_history||{};
   document.getElementById('logExercises').innerHTML=
-    `<button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(79,163,232,0.2)';this.style.borderColor='rgba(79,163,232,0.5)';" onmouseout="this.style.background='rgba(79,163,232,0.15)';this.style.borderColor='rgba(79,163,232,0.35)';">⚡ Fill Last Session</button>`
-    +(()=>{
+    (()=>{
     const exCount=day.exercises.length;
     window._coachExCount=exCount;
     window._coachExData=day.exercises.map(ex=>{const k=ex.name.toLowerCase().replace(/\s+/g,'_');const l=history[k];return{lastWeight:l?parseFloat(l.weight)||0:0};});
     // Pre-compute superset group first/last indices
     const ssBounds={};
     day.exercises.forEach((ex,ei)=>{const m=ex.name.match(/^SS(\d+)/i);if(m){const g=m[1];if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}});
-    let html=`<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ${exCount}</div></div><div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:4px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div></div></div>`;
+    let html=`<div style="position:sticky;top:0;z-index:5;background:rgba(10,13,18,0.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(100,160,255,0.07);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ${exCount}</div></div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:3px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div></div></div><button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(79,163,232,0.2)';this.style.borderColor='rgba(79,163,232,0.5)';" onmouseout="this.style.background='rgba(79,163,232,0.15)';this.style.borderColor='rgba(79,163,232,0.35)';">⚡ Fill Last Session</button>`;
     day.exercises.forEach((ex,ei)=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
@@ -2338,12 +2337,15 @@ function startClientPortal(id) {
     };
 
     var html =
-      // Sticky top nav bar
-      '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(100,160,255,0.08);">' +
+      // Sticky top nav bar with integrated progress bar
+      '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);">' +
         '<div style="padding:0 20px;max-width:480px;margin:0 auto;display:flex;align-items:center;height:54px;gap:12px;">' +
           '<div onclick="window._closeWorkoutSheet()" style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:rgba(126,200,255,0.7);cursor:pointer;transition:color 0.2s;flex-shrink:0;" onmouseover="this.style.color=\'rgba(126,200,255,1)\';" onmouseout="this.style.color=\'rgba(126,200,255,0.7)\';">&#8592; Back</div>' +
           '<div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;text-align:center;letter-spacing:-0.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + day.name + '</div>' +
-          '<div style="width:48px;flex-shrink:0;"></div>' +
+          '<div id="workout-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;flex-shrink:0;min-width:32px;text-align:right;">0 / ' + exercises.length + '</div>' +
+        '</div>' +
+        '<div style="height:3px;background:rgba(255,255,255,0.05);">' +
+          '<div id="workout-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);transition:width 0.35s cubic-bezier(0.4,0,0.2,1);border-radius:0 2px 2px 0;"></div>' +
         '</div>' +
       '</div>' +
       // Main content with padding
@@ -2361,18 +2363,6 @@ function startClientPortal(id) {
       var ld = window._portalHistory && window._portalHistory[hk];
       return {lastWeight: ld ? parseFloat(ld.weight)||0 : 0};
     });
-
-    html +=
-      '<div style="margin-bottom:16px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-          '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div>' +
-          '<div id="workout-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ' + exercises.length + '</div>' +
-        '</div>' +
-        '<div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;">' +
-          '<div id="workout-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:4px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div>' +
-        '</div>' +
-      '</div>';
-
 
     // Pre-compute superset group first/last indices
     var ssBounds = {};
