@@ -550,6 +550,17 @@ to{opacity:1;transform:translateY(0);}
       </div>
       <div class="equip-grid" id="equipList"></div>
     </div>
+
+    <div style="margin-top:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div class="page-label" style="margin:0">Program Templates</div>
+          <div style="font-size:11px;color:rgba(180,200,230,0.3);margin-top:3px">Save programs to apply to any client instantly</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openAddTemplate()">+ Template</button>
+      </div>
+      <div id="templateList" style="margin-top:14px"></div>
+    </div>
   </div>
 </main>
 
@@ -666,6 +677,59 @@ to{opacity:1;transform:translateY(0);}
   </div>
 </div>
 
+<!-- BUILD / EDIT PROGRAM STRUCTURE -->
+
+<div class="modal-overlay" id="buildProgramModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" style="margin:0" id="buildProgTitle">Build Program</div>
+      <button onclick="openAddProgramDay()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px">+ Day</button>
+    </div>
+    <div id="buildProgNameRow" style="display:none;margin-bottom:14px">
+      <div class="form-group" style="margin:0"><label class="form-label">Template Name</label><input id="buildProgNameInput" placeholder="e.g. PPL 3-Day Split"></div>
+    </div>
+    <div id="buildDayList"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('buildProgramModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveBuildProgram()">Save Program</button>
+    </div>
+    <div id="buildProgSaveAsTemplateRow" style="margin-top:10px;text-align:center">
+      <button onclick="saveBuildProgramAsTemplate()" style="background:none;border:none;color:rgba(126,200,255,0.6);font-size:12px;font-weight:600;cursor:pointer;font-family:'Instrument Sans',sans-serif;padding:4px 0;letter-spacing:.2px">↑ Also save as Template</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PROGRAM DAY -->
+
+<div class="modal-overlay" id="addDayModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="addDayTitle">Add Day</div>
+    <div class="form-group"><label class="form-label">Day Name</label><input id="addDayName" placeholder="e.g. Push Day"></div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <div id="addDayColorPicker" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-secondary btn-full" onclick="closeModal('addDayModal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="confirmAddDay()">Add Day</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPLY TEMPLATE TO CLIENT -->
+
+<div class="modal-overlay" id="applyTemplateModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="applyTemplateTitle">Apply Template</div>
+    <p style="font-size:12px;color:rgba(180,200,230,0.45);margin-bottom:14px">Choose a client to apply this program to. Existing programs will be replaced.</p>
+    <div id="applyClientList" style="max-height:60vh;overflow-y:auto"></div>
+    <button class="btn btn-secondary btn-full" onclick="closeModal('applyTemplateModal')" style="margin-top:12px">Cancel</button>
+  </div>
+</div>
+
 <!-- EDIT PROGRAM DAY -->
 
 <div class="modal-overlay" id="editProgramModal">
@@ -755,12 +819,17 @@ const db={
   addLibEx:     (d)     => sb('POST','exercise_library',d),
   updateLibEx:  (id,d)  => sb('PATCH','exercise_library',d,`?id=eq.${id}`),
   delLibEx:     (id)    => sb('DELETE','exercise_library',null,`?id=eq.${id}`),
+  getTemplates: ()      => sb('GET','program_templates',null,'?order=name.asc'),
+  addTemplate:  (d)     => sb('POST','program_templates',d),
+  updateTemplate:(id,d) => sb('PATCH','program_templates',d,`?id=eq.${id}`),
+  delTemplate:  (id)    => sb('DELETE','program_templates',null,`?id=eq.${id}`),
 };
 
 const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
 
-let clients=[],equipment=[],library=[],sharedPackages=[],pendingLogId=null,pendingRenewId=null;
+let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],pendingLogId=null,pendingRenewId=null;
 let editingClientId=null,editingDayIndex=null,editingExercises=[];
+let buildingDays=[],buildingClientId=null,buildingDayEditing=-1,buildingForTemplate=false,buildingTemplateId=null;
 
 // ── GREETING ──
 function getGreeting(){
@@ -970,7 +1039,7 @@ function showView(name,el){
   if(el)el.classList.add('active');
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
-  if(name==='library'){renderLibrary();renderEquipList();}
+  if(name==='library'){renderLibrary();renderEquipList();loadTemplates();}
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function openModal(id){
@@ -1298,8 +1367,11 @@ function renderClientModal(c){
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
         <div style="flex:1">
           <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
-          <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':''}</div>
+          <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':'No program yet'}</div>
         </div>
+        ${c.structured_program
+          ?`<button onclick="openBuildProgram('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.55);border:1px solid rgba(100,160,255,0.12);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✎ Edit Structure</button>`
+          :`<button onclick="openBuildProgram('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 10px rgba(37,99,235,0.35)">+ Build Program</button>`}
       </div>
       <div id="prog-${c.id}">${progSection}</div>
     </div>
@@ -1470,6 +1542,11 @@ function moveEx(i,dir){const j=i+dir;if(j<0||j>=editingExercises.length)return;[
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
 function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:''});renderEditExerciseList();}
 async function saveProgramDay(){
+  if(window._editProgSaveMode==='build'){
+    buildingDays[buildingDayEditing].exercises=editingExercises;
+    window._editProgSaveMode=null;
+    closeModal('editProgramModal');renderBuildDayList();toast('Exercises updated ✓');return;
+  }
   const c=clients.find(x=>x.id===editingClientId);if(!c||!c.structured_program)return;
   const prog=JSON.parse(JSON.stringify(c.structured_program));
   prog.days[editingDayIndex].exercises=editingExercises;
@@ -1880,7 +1957,237 @@ async function removeEquip(id){
   catch(e){toast('Error removing equipment');}
 }
 
+// ── PROGRAM BUILDER ──
+
+const DAY_COLORS=['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc','#ff8c47','#43d9a2','#7ec8ff'];
+let _selectedDayColor='#4fa3e8';
+
+function openBuildProgram(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  buildingClientId=clientId;buildingForTemplate=false;buildingTemplateId=null;
+  buildingDays=c.structured_program?JSON.parse(JSON.stringify(c.structured_program.days)):[];
+  document.getElementById('buildProgTitle').textContent=c.structured_program?`Edit Program — ${c.first}`:`Build Program — ${c.first}`;
+  document.getElementById('buildProgNameRow').style.display='none';
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='';
+  renderBuildDayList();openModal('buildProgramModal');
+}
+
+function renderBuildDayList(){
+  const el=document.getElementById('buildDayList');if(!el)return;
+  if(buildingDays.length===0){
+    el.innerHTML='<div style="text-align:center;padding:32px 0;color:rgba(180,200,230,0.3);font-size:13px;">No days yet — tap + Day to add one.</div>';return;
+  }
+  el.innerHTML=buildingDays.map((day,i)=>`
+    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${day.color};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:14px;color:#fff;">${day.name}</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.4);">${(day.exercises||[]).length} exercise${(day.exercises||[]).length!==1?'s':''}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+        ${i>0?`<button class="lib-btn" onclick="moveBuildDay(${i},-1)">↑</button>`:''}
+        ${i<buildingDays.length-1?`<button class="lib-btn" onclick="moveBuildDay(${i},1)">↓</button>`:''}
+        <button class="lib-btn" onclick="editBuildDayExercises(${i})" style="white-space:nowrap">✎ Exercises</button>
+        <button class="lib-btn danger" onclick="deleteBuildDay(${i})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function moveBuildDay(i,dir){const j=i+dir;if(j<0||j>=buildingDays.length)return;[buildingDays[i],buildingDays[j]]=[buildingDays[j],buildingDays[i]];renderBuildDayList();}
+function deleteBuildDay(i){buildingDays.splice(i,1);renderBuildDayList();}
+
+function editBuildDayExercises(dayIdx){
+  buildingDayEditing=dayIdx;
+  const day=buildingDays[dayIdx];
+  editingExercises=JSON.parse(JSON.stringify(day.exercises||[]));
+  document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
+  window._editProgSaveMode='build';
+  renderEditExerciseList();openModal('editProgramModal');
+}
+
+function openAddProgramDay(){
+  _selectedDayColor=DAY_COLORS[buildingDays.length%DAY_COLORS.length];
+  document.getElementById('addDayTitle').textContent='Add Day';
+  document.getElementById('addDayName').value='';
+  renderDayColorPicker();openModal('addDayModal');
+}
+
+function renderDayColorPicker(){
+  document.getElementById('addDayColorPicker').innerHTML=DAY_COLORS.map(c=>`
+    <div onclick="selectBuildDayColor('${c}')" style="width:30px;height:30px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${_selectedDayColor===c?'#fff':'transparent'};box-sizing:border-box;transition:border-color .15s;" data-color="${c}"></div>
+  `).join('');
+}
+
+function selectBuildDayColor(color){_selectedDayColor=color;renderDayColorPicker();}
+
+function confirmAddDay(){
+  const name=document.getElementById('addDayName').value.trim();
+  if(!name){toast('Enter a day name');return;}
+  buildingDays.push({name,color:_selectedDayColor,exercises:[]});
+  closeModal('addDayModal');renderBuildDayList();
+}
+
+async function saveBuildProgram(){
+  if(buildingForTemplate){await saveBuildTemplate();return;}
+  const c=clients.find(x=>x.id===buildingClientId);if(!c)return;
+  if(buildingDays.length===0&&!confirm('Save an empty program? The client will see no workout days.'))return;
+  const prog={days:buildingDays};
+  try{
+    await db.updateClient(buildingClientId,{structured_program:prog});
+    c.structured_program=prog;closeModal('buildProgramModal');
+    renderClientModal(c);renderMonthlyReport(c);toast('Program saved ✓');
+  }catch(e){toast('Error saving program');}
+}
+
+async function saveBuildProgramAsTemplate(){
+  const c=clients.find(x=>x.id===buildingClientId);if(!c)return;
+  if(buildingDays.length===0){toast('Add at least one day first');return;}
+  const name=prompt('Template name:',`${c.first}'s Program`);
+  if(!name||!name.trim())return;
+  const prog={days:buildingDays};
+  try{
+    // Save program to client first
+    await db.updateClient(buildingClientId,{structured_program:prog});
+    c.structured_program=prog;
+    // Then save as template
+    const res=await db.addTemplate({name:name.trim(),days:JSON.parse(JSON.stringify(buildingDays))});
+    if(res&&res[0])templates.push(res[0]);
+    closeModal('buildProgramModal');
+    renderClientModal(c);renderMonthlyReport(c);
+    toast(`Program saved & "${name.trim()}" added to Templates ✓`);
+  }catch(e){toast('Error saving — check connection');}
+}
+
+// ── PROGRAM TEMPLATES ──
+
+async function loadTemplates(){
+  try{templates=await db.getTemplates();renderTemplateList();}
+  catch(e){templates=[];renderTemplateList();}
+}
+
+function renderTemplateList(){
+  const el=document.getElementById('templateList');if(!el)return;
+  if(templates.length===0){
+    el.innerHTML='<div style="text-align:center;padding:24px 0;color:rgba(180,200,230,0.3);font-size:13px;">No templates yet. Create one to reuse programs across clients.</div>';return;
+  }
+  el.innerHTML=templates.map(t=>`
+    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.1);border-radius:14px;padding:14px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#fff;">${t.name}</div>
+          <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${(t.days||[]).length} day${(t.days||[]).length!==1?'s':''}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="lib-btn" onclick="openEditTemplate('${t.id}')">✎</button>
+          <button class="lib-btn danger" onclick="deleteTemplate('${t.id}')">✕</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
+        ${(t.days||[]).map(d=>`<span style="background:${d.color}18;color:${d.color};border:1px solid ${d.color}33;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;">${d.name}</span>`).join('')}
+      </div>
+      <button onclick="openApplyTemplate('${t.id}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.4px;box-shadow:0 2px 10px rgba(37,99,235,0.25)">Apply to Client</button>
+    </div>`).join('');
+}
+
+function openAddTemplate(){
+  buildingForTemplate=true;buildingTemplateId=null;buildingDays=[];
+  document.getElementById('buildProgTitle').textContent='New Template';
+  document.getElementById('buildProgNameRow').style.display='';
+  document.getElementById('buildProgNameInput').value='';
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='none';
+  renderBuildDayList();openModal('buildProgramModal');
+}
+
+function openEditTemplate(id){
+  const t=templates.find(x=>x.id===id);if(!t)return;
+  buildingForTemplate=true;buildingTemplateId=id;
+  buildingDays=JSON.parse(JSON.stringify(t.days||[]));
+  document.getElementById('buildProgTitle').textContent='Edit Template';
+  document.getElementById('buildProgNameRow').style.display='';
+  document.getElementById('buildProgNameInput').value=t.name;
+  document.getElementById('buildProgSaveAsTemplateRow').style.display='none';
+  renderBuildDayList();openModal('buildProgramModal');
+}
+
+async function saveBuildTemplate(){
+  const name=document.getElementById('buildProgNameInput').value.trim();
+  if(!name){toast('Enter a template name');return;}
+  try{
+    if(buildingTemplateId){
+      await db.updateTemplate(buildingTemplateId,{name,days:buildingDays});
+      const t=templates.find(x=>x.id===buildingTemplateId);if(t){t.name=name;t.days=buildingDays;}
+    }else{
+      const res=await db.addTemplate({name,days:buildingDays});
+      if(res&&res[0])templates.push(res[0]);
+    }
+    closeModal('buildProgramModal');renderTemplateList();toast('Template saved ✓');
+  }catch(e){toast('Error saving template');}
+}
+
+async function deleteTemplate(id){
+  const t=templates.find(x=>x.id===id);if(!t)return;
+  if(!confirm(`Delete template "${t.name}"?`))return;
+  try{
+    await db.delTemplate(id);
+    templates=templates.filter(x=>x.id!==id);renderTemplateList();toast('Template deleted');
+  }catch(e){toast('Error deleting template');}
+}
+
+function openApplyTemplate(templateId){
+  const t=templates.find(x=>x.id===templateId);if(!t)return;
+  document.getElementById('applyTemplateTitle').textContent=`Apply: ${t.name}`;
+  window._pendingApplyTemplateId=templateId;
+  renderApplyClientList();openModal('applyTemplateModal');
+}
+
+function renderApplyClientList(){
+  const el=document.getElementById('applyClientList');if(!el)return;
+  const active=clients.filter(c=>!c.paused);
+  if(!active.length){el.innerHTML='<p style="color:rgba(180,200,230,0.4);font-size:13px;">No active clients.</p>';return;}
+  el.innerHTML=active.map(c=>`
+    <div onclick="confirmApplyTemplate('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);margin-bottom:8px;cursor:pointer;">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px;color:#fff;">${c.first}${c.last?' '+c.last:''}</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${c.structured_program?`Has program (${c.structured_program.days.length} days) — will replace`:'No program yet'}</div>
+      </div>
+      <div style="font-size:12px;color:#7ec8ff;font-weight:600;white-space:nowrap">Apply →</div>
+    </div>`).join('');
+}
+
+async function confirmApplyTemplate(clientId){
+  const t=templates.find(x=>x.id===window._pendingApplyTemplateId);
+  const c=clients.find(x=>x.id===clientId);
+  if(!t||!c)return;
+  if(c.structured_program&&!confirm(`Replace ${c.first}'s current program with "${t.name}"?`))return;
+  const prog={days:JSON.parse(JSON.stringify(t.days))};
+  try{
+    await db.updateClient(clientId,{structured_program:prog});
+    c.structured_program=prog;closeModal('applyTemplateModal');
+    toast(`"${t.name}" applied to ${c.first} ✓`);
+  }catch(e){toast('Error applying template');}
+}
+
 // ── AI PROGRAM ──
+
+// ── SCHEDULE PARSER (client portal utility) ──
+function parseSchedule(str) {
+  if (!str) return [];
+  var s = str.toLowerCase();
+  var patterns = [
+    [/\b(monday|mon)\b/g, 0], [/\b(tuesday|tue|tues)\b/g, 1], [/\b(wednesday|wed)\b/g, 2],
+    [/\b(thursday|thur|thu)\b/g, 3], [/\b(friday|fri)\b/g, 4],
+    [/\b(saturday|sat)\b/g, 5], [/\b(sunday|sun)\b/g, 6]
+  ];
+  var result = [];
+  patterns.forEach(function(p) { p[0].lastIndex = 0; if (p[0].test(s)) result.push(p[1]); });
+  if (result.length === 0) {
+    var tokens = s.match(/\b(th|sa|su|m|t|w|r|f|s|u)\b/gi) || [];
+    var abbr = {m:0, t:1, w:2, th:3, r:3, f:4, sa:5, s:5, su:6, u:6};
+    tokens.forEach(function(tok) { var v = abbr[tok.toLowerCase()]; if (v !== undefined && result.indexOf(v) === -1) result.push(v); });
+  }
+  return result.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;});
+}
+
 // CLIENT PORTAL
 function startClientPortal(id) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
@@ -1911,6 +2218,9 @@ function startClientPortal(id) {
       window._portalHistory = client.exercise_history || {};
       window._portalPackageSize = client.package_size || 0;
       window._portalRemaining = client.remaining || 0;
+      window._portalScheduleStr = client.schedule || '';
+      window._portalScheduleDays = parseSchedule(client.schedule || '');
+      window._portalDays = [];
       renderClientShell(client);
       loadTodayWorkout(client);
     })
@@ -1978,163 +2288,74 @@ function startClientPortal(id) {
   function renderCalendarStrip() {
     var el = document.getElementById('calendar-strip');
     if (!el) return;
-    var days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    // 0=Sun,1=Mon...6=Sat - remap to Mon-first
-    var todayJS = new Date().getDay(); // 0=Sun
-    var todayIdx = todayJS === 0 ? 6 : todayJS - 1; // Mon=0 ... Sun=6
+    var dayLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var todayJS = new Date().getDay();
+    var todayIdx = todayJS === 0 ? 6 : todayJS - 1;
 
-    // Lift days = Mon(0), Wed(2), Fri(4)
-    // Run days  = Tue(1), Thu(3)
-    var typeMap = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
+    var scheduledDays = window._portalScheduleDays || [];
+    var portalDays = window._portalDays || [];
+    var calDayToProgDay = {};
+    scheduledDays.forEach(function(calIdx, pi) { if (pi < portalDays.length) calDayToProgDay[calIdx] = pi; });
 
-    var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:5px;align-items:center;padding:2px 0;overflow-x:auto;">' +
-      '<div onclick="window._calendarHome()" style="text-align:center;padding:10px 8px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.color=\'rgba(180,200,230,0.7)\';this.style.background=\'rgba(255,255,255,0.06)\';" onmouseout="this.style.color=\'rgba(180,200,230,0.5)\';this.style.background=\'rgba(255,255,255,0.03)\';" title="Home">&#8962;</div>';
+    var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:5px;align-items:center;padding:2px 0;">' +
+      '<div onclick="window._calendarHome()" style="text-align:center;padding:10px 8px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);transition:all 0.2s;" onmouseover="this.style.color=\'rgba(180,200,230,0.7)\';this.style.background=\'rgba(255,255,255,0.06)\';" onmouseout="this.style.color=\'rgba(180,200,230,0.5)\';this.style.background=\'rgba(255,255,255,0.03)\';" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
-      var type = typeMap[i];
-      var dotColor = type === 'lift' ? '#4fa3e8' : type === 'run' ? '#ff8c47' : 'rgba(180,200,230,0.25)';
-      var bgColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.15)' : type === 'run' ? 'rgba(255,140,71,0.15)' : 'rgba(255,255,255,0.05)') : 'transparent';
-      var borderColor = isToday ? (type === 'lift' ? 'rgba(79,163,232,0.5)' : type === 'run' ? 'rgba(255,140,71,0.5)' : 'rgba(255,255,255,0.1)') : 'transparent';
+      var progIdxC = calDayToProgDay[i];
+      var isWorkout = progIdxC !== undefined;
+      var progDayC = isWorkout ? portalDays[progIdxC] : null;
+      var dotColor = isWorkout ? (progDayC && progDayC.color || '#4fa3e8') : 'rgba(180,200,230,0.18)';
+      var bgColor = isToday ? (isWorkout ? (progDayC && progDayC.color ? progDayC.color + '22' : 'rgba(79,163,232,0.15)') : 'rgba(255,255,255,0.05)') : 'transparent';
+      var borderColor = isToday ? (isWorkout ? (progDayC && progDayC.color || '#4fa3e8') + '80' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
-      var cursor = 'cursor:pointer;';
-      html += '<div onclick="window._calendarDayTap(' + i + ')" data-dayidx="' + i + '" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';' + cursor + '">' +
-        '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + days[i] + '</div>' +
+      html += '<div onclick="window._calendarDayTap(' + i + ')" data-dayidx="' + i + '" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';cursor:pointer;">' +
+        '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + dayLabels[i] + '</div>' +
         '<div style="width:6px;height:6px;border-radius:50%;background:' + dotColor + ';margin:0 auto;"></div>' +
       '</div>';
     }
-    html += '</div>' +
-      '<div style="display:flex;gap:14px;margin-top:10px;justify-content:center;">' +
-        '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(180,200,230,0.4);">' +
-          '<div style="width:6px;height:6px;border-radius:50%;background:#4fa3e8;"></div> Lift' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(180,200,230,0.4);">' +
-          '<div style="width:6px;height:6px;border-radius:50%;background:#ff8c47;"></div> Run' +
-        '</div>' +
-      '</div>';
+    html += '</div>';
     el.innerHTML = html;
 
     window._calendarHome = function() {
-      document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(c) {
-        c.style.outline = 'none';
-      });
+      document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(c) { c.style.outline = 'none'; });
       window._showPortalDay(-1);
     };
 
     window._calendarDayTap = function(dayIdx) {
-      // dayIdx: 0=Mon,1=Tue,2=Wed,3=Thu,4=Fri,5=Sat,6=Sun
-      // Workout mapping: Mon=Push(0), Wed=Pull(1), Fri=Leg(2)
-      var liftMap = {0: 0, 2: 1, 4: 2}; // dayIdx -> portalDays index
-      var typeMap2 = {0:'lift', 1:'run', 2:'lift', 3:'run', 4:'lift', 5:'rest', 6:'rest'};
-      var type = typeMap2[dayIdx];
-      var dayNames2 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-      var dayName = dayNames2[dayIdx];
-
-      if (type === 'rest') {
-        var allDayCells2 = document.querySelectorAll('#calendar-strip [data-dayidx]');
-        allDayCells2.forEach(function(cell) { cell.style.outline = 'none'; });
-        var restCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
-        if (restCell) { restCell.style.outline = '2px solid rgba(180,200,230,0.2)'; restCell.style.outlineOffset = '2px'; }
-        var portalBody2 = document.getElementById('portal-body');
-        var dayNames3 = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-        portalBody2.innerHTML =
-          '<div style="text-align:center;padding:52px 20px;">' +
-            '<div style="font-size:64px;margin-bottom:20px;filter:drop-shadow(0 0 20px rgba(67,217,162,0.3));">&#128564;</div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:10px;letter-spacing:0.5px;">Rest Day</div>' +
-            '<div style="font-size:13px;color:rgba(180,200,230,0.5);line-height:1.6;">' + dayNames3[dayIdx] + '<br><span style="display:inline-block;margin-top:6px;padding:8px 16px;background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.2);border-radius:8px;color:#7ec8ff;font-size:12px;">Recovery &amp; Recharge</span></div>' +
-          '</div>';
-        return;
-      }
-
-      // Highlight the tapped day in the calendar
-      var allDayCells = document.querySelectorAll('#calendar-strip [data-dayidx]');
-      allDayCells.forEach(function(cell) {
-        cell.style.outline = 'none';
-      });
-      var tappedCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
-      if (tappedCell) {
-        tappedCell.style.outline = '2px solid ' + (type === 'run' ? '#ff8c47' : '#4fa3e8');
-        tappedCell.style.outlineOffset = '2px';
-      }
-
-      var portalBody = document.getElementById('portal-body');
+      var sched2 = window._portalScheduleDays || [];
+      var pdays2 = window._portalDays || [];
+      var c2p = {};
+      sched2.forEach(function(calIdx, pi) { if (pi < pdays2.length) c2p[calIdx] = pi; });
+      var dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      var dayName = dayNames[dayIdx];
       var todayJS2 = new Date().getDay();
       var todayIdx2 = todayJS2 === 0 ? 6 : todayJS2 - 1;
       var isToday = (dayIdx === todayIdx2);
       var label = isToday ? 'Today' : dayName;
-
-      if (type === 'run') {
-        var isTue = (dayIdx === 1);
-        var rd = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
-        window._currentRunDay = rd;
-        var html =
-          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.6);margin-bottom:12px;">' + label + '</div>' +
-          '<div style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:20px;margin-bottom:16px;">' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;margin-bottom:6px;letter-spacing:0.3px;">' + rd.name + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:18px;">' + rd.description + '</div>';
-        for (var i = 0; i < rd.intervals.length; i++) {
-          var interval = rd.intervals[i];
-          html +=
-            '<div style="border-top:1px solid rgba(255,140,71,0.1);padding:12px 0;display:flex;gap:12px;align-items:flex-start;">' +
-              '<div style="width:6px;height:6px;border-radius:50%;background:rgba(255,140,71,0.5);flex-shrink:0;margin-top:5px;flex-shrink:0;"></div>' +
-              '<div style="flex:1;">' +
-                '<div style="font-weight:700;font-size:14px;color:#fff;margin-bottom:3px;">' + interval.name + ' <span style="color:#ff8c47;font-weight:600;">- ' + interval.detail + '</span></div>' +
-                '<div style="font-size:12px;color:rgba(180,200,230,0.5);line-height:1.6;">' + interval.pace + '</div>' +
-              '</div>' +
-            '</div>';
-        }
-        html += '</div>';
-        if (isToday) {
-          html += '<button onclick="renderRunCard(window._currentRunDay)" style="width:100%;background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 24px rgba(255,140,71,0.45);transition:all 0.2s;" onmouseover="this.style.boxShadow=\'0 8px 32px rgba(255,140,71,0.55)\';" onmouseout="this.style.boxShadow=\'0 4px 24px rgba(255,140,71,0.45)\';">Start This Run</button>';
-        }
-        portalBody.innerHTML = html;
-
-      } else {
-        // Lift day - go directly to the mapped workout
-        if (!window._portalDays) return;
-        var workoutIdx = liftMap[dayIdx];
-        var day = window._portalDays[workoutIdx];
-        if (!day) return;
-
-        var html2 =
-          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:12px;">' + label + '</div>';
-
-        portalBody.innerHTML = html2;
-        renderWorkoutCard(day, day.name);
-        // prepend the day label above what renderWorkoutCard set
-        var existing = portalBody.innerHTML;
-        portalBody.innerHTML = html2 + existing;
+      document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(cell) { cell.style.outline = 'none'; });
+      var tappedCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
+      var progIdx2 = c2p[dayIdx];
+      if (progIdx2 === undefined) {
+        if (tappedCell) { tappedCell.style.outline = '2px solid rgba(180,200,230,0.2)'; tappedCell.style.outlineOffset = '2px'; }
+        document.getElementById('portal-body').innerHTML =
+          '<div style="text-align:center;padding:52px 20px;">' +
+            '<div style="font-size:64px;margin-bottom:20px;filter:drop-shadow(0 0 20px rgba(67,217,162,0.3));">&#128564;</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:10px;letter-spacing:0.5px;">Rest Day</div>' +
+            '<div style="font-size:13px;color:rgba(180,200,230,0.5);line-height:1.6;">' + dayName + '<br><span style="display:inline-block;margin-top:6px;padding:8px 16px;background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.2);border-radius:8px;color:#7ec8ff;font-size:12px;">Recovery &amp; Recharge</span></div>' +
+          '</div>';
+        return;
       }
+      var day = pdays2[progIdx2];
+      if (!day) return;
+      var dayColor = (day && day.color) || '#4fa3e8';
+      if (tappedCell) { tappedCell.style.outline = '2px solid ' + dayColor; tappedCell.style.outlineOffset = '2px'; }
+      var labelHtml = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:' + dayColor + '99;margin-bottom:12px;">' + label + '</div>';
+      var pb = document.getElementById('portal-body');
+      pb.innerHTML = labelHtml;
+      renderWorkoutCard(day, day.name);
+      pb.innerHTML = labelHtml + pb.innerHTML;
     };
   }
-
-  var RUN_PROGRAM = {
-    tuesday: {
-      name: 'Speed Work',
-      type: 'run',
-      description: 'Track / interval session to build speed and lactate threshold',
-      intervals: [
-        {name: 'Warmup', detail: '5 min easy jog', pace: 'Conversational pace'},
-        {name: 'Dynamic stretches', detail: '2-3 min', pace: 'Hip circles, leg swings, high knees'},
-        {name: 'Interval 1', detail: '4 x 400m', pace: 'Hard effort - about 5k race pace, 90 sec rest between each'},
-        {name: 'Recovery jog', detail: '2 min', pace: 'Easy'},
-        {name: 'Interval 2', detail: '2 x 800m', pace: 'Comfortably hard - 10k pace, 2 min rest between'},
-        {name: 'Cooldown', detail: '5 min easy jog', pace: 'Easy, let heart rate come down'},
-        {name: 'Stretch', detail: '3-5 min', pace: 'Calves, quads, hamstrings, hip flexors'}
-      ]
-    },
-    thursday: {
-      name: 'Long Run',
-      type: 'run',
-      description: 'Easy aerobic effort to build endurance base for 10k',
-      intervals: [
-        {name: 'Warmup walk', detail: '3 min', pace: 'Brisk walk to get blood moving'},
-        {name: 'Easy run', detail: '4.5 - 5.5 miles', pace: 'Conversational pace - you should be able to hold a sentence. This builds over time as fitness improves.'},
-        {name: 'Final push', detail: 'Last 0.5 mile', pace: 'Pick up to a comfortable tempo - not all out, just a gear up'},
-        {name: 'Cooldown walk', detail: '3-5 min', pace: 'Slow walk, shake out the legs'},
-        {name: 'Stretch', detail: '5 min', pace: 'Focus on calves, IT band, and hip flexors'}
-      ]
-    }
-  };
 
   function loadTodayWorkout(client) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
@@ -2168,65 +2389,48 @@ function startClientPortal(id) {
 
   function renderDayPicker(days) {
     window._portalDays = days;
-    window._showPortalDay = function(index) {
-      if (index === -1) {
-        renderDayPicker(window._portalDays);
-      } else {
-        var day = window._portalDays[index];
-        renderWorkoutCard(day, day.name);
-      }
-    };
-    var portalBody = document.getElementById('portal-body');
-    var todayJS = new Date().getDay();
-    var isRunDay = (todayJS === 2 || todayJS === 4); // Tue=2, Thu=4
-    var isTuesday = (todayJS === 2);
-    var runData = isTuesday ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
+    var scheduledDays = parseSchedule(window._portalScheduleStr || '');
+    if (scheduledDays.length === 0 && days.length > 0) {
+      for (var di = 0; di < Math.min(days.length, 7); di++) scheduledDays.push(di);
+    }
+    window._portalScheduleDays = scheduledDays;
+    var calDayToProgDay = {};
+    scheduledDays.forEach(function(calIdx, pi) { if (pi < days.length) calDayToProgDay[calIdx] = pi; });
+    renderCalendarStrip();
 
-    // Greeting
+    window._showPortalDay = function(index) {
+      if (index === -1) { renderDayPicker(window._portalDays); return; }
+      var day = window._portalDays[index];
+      if (day) renderWorkoutCard(day, day.name);
+    };
+
+    var portalBody = document.getElementById('portal-body');
     var hour = new Date().getHours();
     var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     var clientFirstName = window._portalClientName || 'there';
 
-    // Week progress - count lift and run sessions this week separately
-    var liftsThisWeek = 0;
-    var runsThisWeek = 0;
-    var runNames = ['Speed Work', 'Long Run'];
+    var thisMonth = 0;
+    var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    if (window._portalRecentSessions) {
+      window._portalRecentSessions.forEach(function(s) { if (new Date(s.created_at || s.date) >= monthStart) thisMonth++; });
+    }
+
+    var sessionsThisWeek = 0;
     if (window._portalRecentSessions) {
       var now = new Date();
-      var dayOfWeek = now.getDay();
       var monday = new Date(now);
-      monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      monday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
       monday.setHours(0,0,0,0);
-      window._portalRecentSessions.forEach(function(s) {
-        var d = new Date(s.created_at || s.date);
-        if (d >= monday) {
-          var isRun = runNames.indexOf(s.note) !== -1;
-          if (isRun) runsThisWeek++; else liftsThisWeek++;
-        }
-      });
+      window._portalRecentSessions.forEach(function(s) { if (new Date(s.created_at || s.date) >= monday) sessionsThisWeek++; });
     }
-    var liftTarget = 3;
-    var runTarget = 2;
-    var liftPct = Math.min(100, (liftsThisWeek / liftTarget) * 100);
-    var runPct = Math.min(100, (runsThisWeek / runTarget) * 100);
-    var liftColor = liftsThisWeek >= liftTarget ? '#43d9a2' : '#4fa3e8';
-    var runColor = runsThisWeek >= runTarget ? '#43d9a2' : '#ff8c47';
-
-    var thisMonth = 0;
-    var monthStart2 = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    if (window._portalRecentSessions) {
-      window._portalRecentSessions.forEach(function(s) {
-        if (new Date(s.created_at || s.date) >= monthStart2) thisMonth++;
-      });
-    }
+    var weekTarget = scheduledDays.length || days.length;
+    var weekColor = sessionsThisWeek >= weekTarget ? '#43d9a2' : '#4fa3e8';
 
     var dayLastDone = {};
     if (window._portalRecentSessions) {
       window._portalRecentSessions.forEach(function(s) {
         var note = s.note || '';
-        if (note && !dayLastDone[note]) {
-          dayLastDone[note] = new Date(s.created_at || s.date);
-        }
+        if (note && !dayLastDone[note]) dayLastDone[note] = new Date(s.created_at || s.date);
       });
     }
     function _fmtAgo(d) {
@@ -2238,81 +2442,49 @@ function startClientPortal(id) {
       return Math.floor(diff/30) + 'mo ago';
     }
 
+    var todayJSH = new Date().getDay();
+    var todayCalIdx = (todayJSH === 0) ? 6 : todayJSH - 1;
+    var todayProgIdx = calDayToProgDay[todayCalIdx];
+    var heroHtml = '';
+    if (todayProgIdx !== undefined && days[todayProgIdx]) {
+      var td = days[todayProgIdx];
+      var tdColor = td.color || '#4fa3e8';
+      var tdExCount = (td.exercises || []).length;
+      heroHtml =
+        '<div style="background:linear-gradient(135deg,' + tdColor + '22,' + tdColor + '10);border:1px solid ' + tdColor + '44;border-left:4px solid ' + tdColor + ';border-radius:16px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:' + tdColor + 'bb;margin-bottom:5px;">Today\'s Workout</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + td.name + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">' + tdExCount + ' exercise' + (tdExCount !== 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<button onclick="window._showPortalDay(' + todayProgIdx + ')" style="background:' + tdColor + ';color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px ' + tdColor + '55;">Start &#8594;</button>' +
+        '</div>';
+    } else {
+      heroHtml =
+        '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:16px 20px;margin-bottom:14px;">' +
+          '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:5px;">Today</div>' +
+          '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
+          '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:4px;">Prioritise sleep, mobility, and nutrition today.</div>' +
+        '</div>';
+    }
+
     var html =
       '<div style="margin-bottom:20px;">' +
         '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:6px;font-weight:500;">' + greeting + ',</div>' +
         '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;color:#fff;margin-bottom:' + (thisMonth > 0 ? '10' : '0') + 'px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
         (thisMonth > 0 ? '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.3px;">🔥 ' + thisMonth + ' session' + (thisMonth===1?'':'s') + ' this month</div>' : '') +
       '</div>' +
-      // TODAY'S FOCUS hero card
-      (function() {
-        var todayJSH = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
-        var liftDays = {1:0, 3:1, 5:2}; // JS day -> days[] index
-        var runDays = {2:true, 4:true};
-        var heroHtml = '';
-        if (liftDays[todayJSH] !== undefined) {
-          var liftIdx = liftDays[todayJSH];
-          var liftDay = days[liftIdx];
-          var liftName = liftDay ? liftDay.name : 'Lift Day';
-          var liftExCount = liftDay && liftDay.exercises ? liftDay.exercises.length : 0;
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(37,99,235,0.18),rgba(79,163,232,0.10));border:1px solid rgba(79,163,232,0.3);border-left:4px solid #4fa3e8;border-radius:16px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
-              '<div>' +
-                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(79,163,232,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
-                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + liftName + '</div>' +
-                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">' + liftExCount + ' exercise' + (liftExCount !== 1 ? 's' : '') + '</div>' +
-              '</div>' +
-              '<button onclick="window._showPortalDay(' + liftIdx + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(37,99,235,0.4);">Start &#8594;</button>' +
-            '</div>';
-        } else if (runDays[todayJSH]) {
-          var isTue = (todayJSH === 2);
-          var rd2 = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(194,65,12,0.18),rgba(255,140,71,0.10));border:1px solid rgba(255,140,71,0.3);border-left:4px solid #ff8c47;border-radius:16px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
-              '<div>' +
-                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,140,71,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
-                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;letter-spacing:-0.2px;line-height:1.1;">' + rd2.name + '</div>' +
-                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">Run day</div>' +
-              '</div>' +
-              '<button onclick="window._showRunDay()" style="background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(255,140,71,0.35);">Start &#8594;</button>' +
-            '</div>';
-        } else {
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:16px 20px;margin-bottom:14px;">' +
-              '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:5px;">Today</div>' +
-              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
-              '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:4px;">Prioritise sleep, mobility, and nutrition today.</div>' +
-            '</div>';
-        }
-        return heroHtml;
-      })() +
+      heroHtml +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:9px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;">' +
         '<span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.3);flex-shrink:0;">This Week</span>' +
         '<span style="width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0;"></span>' +
-        '<span style="font-size:13px;font-weight:700;color:' + liftColor + ';">' + liftsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + liftTarget + ' lifts</span></span>' +
-        '<span style="color:rgba(255,255,255,0.1);font-size:12px;">·</span>' +
-        '<span style="font-size:13px;font-weight:700;color:' + runColor + ';">' + runsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + runTarget + ' runs</span></span>' +
+        '<span style="font-size:13px;font-weight:700;color:' + weekColor + ';">' + sessionsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + weekTarget + ' workouts</span></span>' +
       '</div>' +
       '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
 
-    // Show run card first if it's a run day
-    if (isRunDay) {
-      html += '<div onclick="window._showRunDay()" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(255,140,71,0.3)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(255,140,71,0.2)\';">' +
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<div style="width:10px;height:10px;border-radius:50%;background:#ff8c47;flex-shrink:0;box-shadow:0 0 12px #ff8c4740;"></div>' +
-          '<div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#ff8c47;letter-spacing:0.5px;">' + runData.name + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + runData.description + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="font-size:20px;color:rgba(255,140,71,0.3);transition:all 0.25s;">▸</div>' +
-      '</div>';
-    }
-
     for (var i = 0; i < days.length; i++) {
       var day = days[i];
-      var colors = ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'];
-      var col = colors[i % colors.length];
+      var col = day.color || ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'][i % 5];
       html += '<div onclick="window._showPortalDay(' + i + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(100,160,255,0.25)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(100,160,255,0.15)\';">' +
         '<div style="display:flex;align-items:center;gap:12px;">' +
           '<div style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;box-shadow:0 0 12px ' + col + '40;"></div>' +
@@ -2322,59 +2494,21 @@ function startClientPortal(id) {
             '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-top:3px;">' + (dayLastDone[day.name] ? 'Last · ' + _fmtAgo(dayLastDone[day.name]) : 'Not done yet') + '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="font-size:20px;color:rgba(100,160,255,0.3);transition:all 0.25s;">▸</div>' +
+        '<div style="font-size:20px;color:rgba(100,160,255,0.3);">▸</div>' +
       '</div>';
     }
 
-    window._showRunDay = function() {
-      var todayJS2 = new Date().getDay();
-      var rd = (todayJS2 === 2) ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
-      renderRunCard(rd);
-    };
-
-    // Runs section
     html += '<div style="margin-top:28px;">' +
-      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.7);margin-bottom:12px;">Running</div>';
-
-    var runCards = [
-      { key: 'tuesday', label: 'Tuesday', data: RUN_PROGRAM.tuesday },
-      { key: 'thursday', label: 'Thursday', data: RUN_PROGRAM.thursday }
-    ];
-    for (var r = 0; r < runCards.length; r++) {
-      var rc = runCards[r];
-      html += '<div onclick="window._showRunDayByIdx(' + r + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(255,140,71,0.3)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(255,140,71,0.2)\';">' +
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<div style="width:10px;height:10px;border-radius:50%;background:#ff8c47;flex-shrink:0;box-shadow:0 0 12px #ff8c4740;"></div>' +
-          '<div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#ff8c47;letter-spacing:0.5px;">' + rc.data.name + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + rc.label + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="font-size:20px;color:rgba(255,140,71,0.3);transition:all 0.25s;">▸</div>' +
-      '</div>';
-    }
-    html += '</div>';
-
-    window._showRunDayByIdx = function(idx) {
-      var keys = ['tuesday', 'thursday'];
-      var rd = RUN_PROGRAM[keys[idx]];
-      if (rd) renderRunCard(rd);
-    };
-
-    // Recent sessions
-    html += '<div style="margin-top:28px;">' +
-      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>';
-
-    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
-    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
-
-    html += '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>';
-    html += '</div>';
+      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>' +
+      '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>' +
+    '</div>';
 
     portalBody.innerHTML = html;
     portalBody.classList.add('view-enter');
     setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
 
+    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
     fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=50', {
       headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
     })
@@ -2382,10 +2516,7 @@ function startClientPortal(id) {
     .then(function(sessions) {
       var el = document.getElementById('recent-sessions-list');
       if (!el) return;
-      if (!sessions || sessions.length === 0) {
-        el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet.</p>';
-        return;
-      }
+      if (!sessions || sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet.</p>'; return; }
       window._portalRecentSessions = sessions;
       var sessionRow = function(s) {
         return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.08);">' +
@@ -2406,10 +2537,7 @@ function startClientPortal(id) {
       }
       el.innerHTML = html2;
     })
-    .catch(function() {
-      var el = document.getElementById('recent-sessions-list');
-      if (el) el.innerHTML = '';
-    });
+    .catch(function() { var el = document.getElementById('recent-sessions-list'); if (el) el.innerHTML = ''; });
   }
 
   function renderRunCard(runDay) {
