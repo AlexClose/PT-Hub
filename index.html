@@ -1216,6 +1216,8 @@ function renderClientModal(c){
             ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
             :c.package_size>0
             ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
+            :c.remaining>0
+            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
             :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
