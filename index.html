@@ -439,6 +439,14 @@ animation:tabFadeIn .22s ease forwards;
 from{opacity:0;transform:translateY(10px);}
 to{opacity:1;transform:translateY(0);}
 }
+
+/* ── SKELETON SHIMMER ── */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton{background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 75%);background-size:400px 100%;animation:shimmer 1.4s infinite linear;border-radius:10px;}
+
+/* ── VIEW ENTER ANIMATION ── */
+@keyframes viewIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.view-enter{animation:viewIn 0.22s cubic-bezier(0.4,0,0.2,1) both;}
 </style>
 
 </head>
@@ -1022,7 +1030,12 @@ function renderDashboard(){
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   const dashFiltered=dashQ?sorted.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(dashQ)):sorted;
-  document.getElementById('dashClients').innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:dashFiltered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>No clients match your search</p></div>`:dashFiltered.map(clientRowHtml).join('');
+  const dashClientsEl=document.getElementById('dashClients');
+  if(dashClientsEl){
+    dashClientsEl.innerHTML=clients.length===0?`<div class="empty"><div class="empty-icon">👤</div><p>No clients yet</p></div>`:dashFiltered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>No clients match your search</p></div>`:dashFiltered.map(clientRowHtml).join('');
+    dashClientsEl.classList.add('view-enter');
+    setTimeout(()=>dashClientsEl.classList.remove('view-enter'), 300);
+  }
   renderTodaySessions();
 }
 
@@ -1048,16 +1061,23 @@ function clientRowHtml(c){
   const tierBadge = c.tier === 'gold' ? '<span style="font-size:14px;line-height:1;" title="Gold Client">🥇</span>' : c.tier === 'silver' ? '<span style="font-size:14px;line-height:1;" title="Silver Client">🥈</span>' : c.tier === 'bronze' ? '<span style="font-size:14px;line-height:1;" title="Bronze Client">🥉</span>' : '';
   const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
   const lastSessText = lastSess ? (() => { const d = new Date(lastSess.created_at || lastSess.date); const now = new Date(); const diff = Math.floor((now - d) / (1000*60*60*24)); return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? diff + 'd ago' : diff < 30 ? Math.floor(diff/7) + 'w ago' : Math.floor(diff/30) + 'mo ago'; })() : null;
+  // Tier dot color
+  const _cardTier = (JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
+  const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#9EA3AE' : _cardTier === 'bronze' ? '#cd7f32' : 'rgba(180,200,230,0.2)';
+  const sessionCount = (c._sessions||[]).length;
+  const subLine = lastSessText ? `Last · ${lastSessText}&nbsp;&nbsp;·&nbsp;&nbsp;${sessionCount} session${sessionCount===1?'':'s'}` : 'No sessions yet';
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
       <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="width:8px;height:8px;border-radius:50%;background:${tierDotColor};flex-shrink:0;display:inline-block;"></span>
           ${tierBadge}
           <span style="font-weight:600;font-size:15px">${c.first} ${c.last||''}</span>
           ${isSummer?'<span class="badge badge-summer" style="font-size:9px">☀️ Summer</span>':''}
           ${c.structured_program?'<span class="badge badge-blue" style="font-size:9px">📋 Program</span>':''}
         </div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px;">${subLine}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
           <div class="muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${c.schedule||'No schedule set'}</div>
           ${lastSessText ? `<div style="font-size:11px;color:rgba(180,200,230,0.35);white-space:nowrap;flex-shrink:0">Last: ${lastSessText}</div>` : '<div style="font-size:11px;color:rgba(255,92,106,0.4);white-space:nowrap;flex-shrink:0">No sessions</div>'}
@@ -1072,7 +1092,12 @@ function clientRowHtml(c){
 function renderClientList(){
   const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
   const filtered=clients.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
-  document.getElementById('clientList').innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+  const clEl=document.getElementById('clientList');
+  if(clEl){
+    clEl.innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+    clEl.classList.add('view-enter');
+    setTimeout(()=>clEl.classList.remove('view-enter'), 300);
+  }
 }
 
 // ── ADD/EDIT CLIENT ──
@@ -1530,7 +1555,7 @@ function checkExRowCoach(ei){
     else if(!hasBoth&&cb)cb.remove();
     const exData=window._coachExData&&window._coachExData[ei];
     let pb=row.querySelector('.ex-pb-badge');
-    if(hasBoth&&exData&&exData.lastWeight>0&&wt){const nw=parseFloat(wt.value)||0,isPB=nw>exData.lastWeight;if(isPB&&!pb){const p=document.createElement('div');p.className='ex-pb-badge';p.style.cssText='position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';p.textContent='🏆 PB!';row.appendChild(p);}else if(!isPB&&pb)pb.remove();}
+    if(hasBoth&&exData&&exData.lastWeight>0&&wt){const nw=parseFloat(wt.value)||0,isPB=nw>exData.lastWeight;if(isPB&&!pb){const p=document.createElement('div');p.className='ex-pb-badge';p.style.cssText='position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';p.textContent='🏆 PB!';row.appendChild(p);if(navigator.vibrate){navigator.vibrate([8,30,12]);}}else if(!isPB&&pb)pb.remove();}
     else if(pb&&!hasBoth)pb.remove();
   }
   const total=window._coachExCount||0;let done=0;
@@ -1612,6 +1637,7 @@ function showExHistory(clientId, exName, displayName, ei){
   document.body.appendChild(sheet);
 }
 function showSuccessAnimation(name){
+  if(navigator.vibrate){navigator.vibrate([10,40,20,40,40]);}
   // Remove any existing
   document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
   const overlay = document.createElement('div');
@@ -1859,7 +1885,14 @@ function startClientPortal(id) {
         '<div style="max-width:480px;margin:0 auto;" id="calendar-strip">Loading calendar...</div>' +
       '</div>' +
       '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
-        '<div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);">Loading your workouts...</div>' +
+        '<div class="skeleton" style="height:100px;margin-bottom:16px;border-radius:16px;"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+          '<div class="skeleton" style="height:72px;border-radius:12px;"></div>' +
+          '<div class="skeleton" style="height:72px;border-radius:12px;"></div>' +
+        '</div>' +
+        '<div class="skeleton" style="height:64px;margin-bottom:10px;border-radius:14px;"></div>' +
+        '<div class="skeleton" style="height:64px;margin-bottom:10px;border-radius:14px;"></div>' +
+        '<div class="skeleton" style="height:64px;border-radius:14px;"></div>' +
       '</div>' +
       '<div style="text-align:center;padding:32px 20px 48px;opacity:0.15;">' +
         '<svg viewBox="0 0 400 300" width="160" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
@@ -2167,6 +2200,49 @@ function startClientPortal(id) {
           '</div>' +
         '</div>' +
       '</div>' +
+      // TODAY'S FOCUS hero card
+      (function() {
+        var todayJSH = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
+        var liftDays = {1:0, 3:1, 5:2}; // JS day -> days[] index
+        var runDays = {2:true, 4:true};
+        var restDays = {0:true, 6:true};
+        var heroHtml = '';
+        if (liftDays[todayJSH] !== undefined) {
+          var liftIdx = liftDays[todayJSH];
+          var liftDay = days[liftIdx];
+          var liftName = liftDay ? liftDay.name : 'Lift Day';
+          var liftExCount = liftDay && liftDay.exercises ? liftDay.exercises.length : 0;
+          heroHtml =
+            '<div style="background:linear-gradient(135deg,rgba(37,99,235,0.18),rgba(79,163,232,0.10));border:1px solid rgba(79,163,232,0.3);border-left:4px solid #4fa3e8;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(79,163,232,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
+                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + liftName + '</div>' +
+                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">' + liftExCount + ' exercise' + (liftExCount !== 1 ? 's' : '') + '</div>' +
+              '</div>' +
+              '<button onclick="window._showPortalDay(' + liftIdx + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(37,99,235,0.4);">Start &#8594;</button>' +
+            '</div>';
+        } else if (runDays[todayJSH]) {
+          var isTue = (todayJSH === 2);
+          var rd2 = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
+          heroHtml =
+            '<div style="background:linear-gradient(135deg,rgba(194,65,12,0.18),rgba(255,140,71,0.10));border:1px solid rgba(255,140,71,0.3);border-left:4px solid #ff8c47;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,140,71,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
+                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;letter-spacing:-0.2px;line-height:1.1;">' + rd2.name + '</div>' +
+                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">Run day</div>' +
+              '</div>' +
+              '<button onclick="window._showRunDay()" style="background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(255,140,71,0.35);">Start &#8594;</button>' +
+            '</div>';
+        } else {
+          heroHtml =
+            '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:16px 20px;margin-bottom:20px;">' +
+              '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:5px;">Today</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
+              '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:4px;">Prioritise sleep, mobility, and nutrition today.</div>' +
+            '</div>';
+        }
+        return heroHtml;
+      })() +
       '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
 
     // Show run card first if it's a run day
@@ -2246,6 +2322,8 @@ function startClientPortal(id) {
     html += '</div>';
 
     portalBody.innerHTML = html;
+    portalBody.classList.add('view-enter');
+    setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
 
     fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=50', {
       headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
@@ -2545,6 +2623,7 @@ function startClientPortal(id) {
       // Let the spinner render for one frame before replacing the whole body
       var portalBody = document.getElementById('workout-sheet-inner') || document.getElementById('portal-body');
       setTimeout(function() {
+      if(navigator.vibrate){navigator.vibrate([10,40,20,40,40]);}
       var pbHtml = '';
       if (window._newPBs && window._newPBs.length > 0) {
         pbHtml = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;">' +
@@ -2771,6 +2850,7 @@ function startClientPortal(id) {
           pb.style.cssText = 'position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';
           pb.textContent = '🏆 PB!';
           row.appendChild(pb);
+          if(navigator.vibrate){navigator.vibrate([8,30,12]);}
         } else if (!isPB && pbBadge) {
           pbBadge.remove();
         }
