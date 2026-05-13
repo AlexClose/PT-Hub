@@ -827,6 +827,9 @@ const db={
 
 const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
 
+// Extracts highest numeric value from weight strings like "55,65,75" or "135"
+function maxWeight(str){if(!str)return 0;return Math.max(0,...String(str).split(/[,\/\s]+/).map(v=>parseFloat(v)||0));}
+
 let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],pendingLogId=null,pendingRenewId=null;
 let editingClientId=null,editingDayIndex=null,editingExercises=[];
 let buildingDays=[],buildingClientId=null,buildingDayEditing=-1,buildingForTemplate=false,buildingTemplateId=null;
@@ -1640,7 +1643,7 @@ function updateLogWorkout(clientId){
     (()=>{
     const exCount=day.exercises.length;
     window._coachExCount=exCount;
-    window._coachExData=day.exercises.map(ex=>{const k=ex.name.toLowerCase().replace(/\s+/g,'_');const l=history[k];return{lastWeight:l?parseFloat(l.weight)||0:0};});
+    window._coachExData=day.exercises.map(ex=>{const k=ex.name.toLowerCase().replace(/\s+/g,'_');const l=history[k];return{lastWeight:l?maxWeight(l.weight):0};});
     // Pre-compute superset group first/last indices
     const ssBounds={};
     day.exercises.forEach((ex,ei)=>{const m=ex.name.match(/^SS(\d+)/i);if(m){const g=m[1];if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}});
@@ -1692,7 +1695,7 @@ function checkExRowCoach(ei){
     else if(!hasBoth&&cb)cb.remove();
     const exData=window._coachExData&&window._coachExData[ei];
     let pb=row.querySelector('.ex-pb-badge');
-    if(hasBoth&&exData&&exData.lastWeight>0&&wt){const nw=parseFloat(wt.value)||0,isPB=nw>exData.lastWeight;if(isPB&&!pb){const p=document.createElement('div');p.className='ex-pb-badge';p.style.cssText='position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';p.textContent='🏆 PB!';row.appendChild(p);if(navigator.vibrate){navigator.vibrate([8,30,12]);}}else if(!isPB&&pb)pb.remove();}
+    if(hasBoth&&exData&&exData.lastWeight>0&&wt){const nw=maxWeight(wt.value),isPB=nw>exData.lastWeight;if(isPB&&!pb){const p=document.createElement('div');p.className='ex-pb-badge';p.style.cssText='position:absolute;top:10px;right:36px;background:linear-gradient(135deg,rgba(245,158,11,0.95),rgba(234,88,12,0.95));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.5px;padding:4px 9px;border-radius:20px;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;box-shadow:0 2px 8px rgba(245,158,11,0.4);white-space:nowrap;';p.textContent='🏆 PB!';row.appendChild(p);if(navigator.vibrate){navigator.vibrate([8,30,12]);}}else if(!isPB&&pb)pb.remove();}
     else if(pb&&!hasBoth)pb.remove();
   }
   const total=window._coachExCount||0;let done=0;
@@ -1813,8 +1816,8 @@ async function confirmLogSession(){
       const wt=document.getElementById('wt-'+ei)?.value.trim();
       if(wr||wt){
         const key=ex.name.toLowerCase().replace(/\s+/g,'_');
-        const prev=c.exercise_history&&c.exercise_history[key]?parseFloat(c.exercise_history[key].weight):0;
-        const newW=parseFloat(wt)||0,isPB=newW>0&&newW>prev;
+        const prev=c.exercise_history&&c.exercise_history[key]?maxWeight(c.exercise_history[key].weight):0;
+        const newW=maxWeight(wt),isPB=newW>0&&newW>prev;
         if(isPB)coachPBs.push(ex.name.replace(/^SS\w+:\s*/i,''));
         newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?wt:(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
         workout.push({name:ex.name,reps:wr||'',weight:wt||''});
@@ -2696,7 +2699,7 @@ function startClientPortal(id) {
     window._portalExerciseData = exercises.map(function(ex) {
       var hk = (ex.name||'').toLowerCase().replace(/\s+/g,'_');
       var ld = window._portalHistory && window._portalHistory[hk];
-      return {lastWeight: ld ? parseFloat(ld.weight)||0 : 0};
+      return {lastWeight: ld ? maxWeight(ld.weight) : 0};
     });
 
     // Pre-compute superset group first/last indices
@@ -2788,8 +2791,8 @@ function startClientPortal(id) {
         var weight = wt ? wt.value.trim() : '';
         if (reps || weight) {
           var key = exercises[i].name.toLowerCase().replace(/\s+/g, '_');
-          var prevWeight = window._portalHistory && window._portalHistory[key] ? parseFloat(window._portalHistory[key].weight) : 0;
-          var newWeight = parseFloat(weight) || 0;
+          var prevWeight = window._portalHistory && window._portalHistory[key] ? maxWeight(window._portalHistory[key].weight) : 0;
+          var newWeight = maxWeight(weight);
           var isPB = newWeight > 0 && newWeight > prevWeight;
           if (isPB) newPBs.push(exercises[i].name.replace(/^SS\w+:\s*/i, ''));
           workout.push({name: exercises[i].name, reps: reps, weight: weight, pb: isPB});
@@ -3020,7 +3023,7 @@ function startClientPortal(id) {
       var exData = window._portalExerciseData && window._portalExerciseData[idx];
       var pbBadge = row.querySelector('.ex-pb-badge');
       if (hasBoth && exData && exData.lastWeight > 0 && wt) {
-        var newW = parseFloat(wt.value) || 0;
+        var newW = maxWeight(wt.value);
         var isPB = newW > exData.lastWeight;
         if (isPB && !pbBadge) {
           var pb = document.createElement('div');
