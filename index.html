@@ -1280,6 +1280,11 @@ function renderClientModal(c){
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
     </div>
 
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:10px">Monthly Summary</div>
+      <div id="monthly-${c.id}"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
+    </div>
+
     ${c.goals||c.injuries?`<div style="margin-bottom:14px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:var(--radius-sm);padding:12px 14px">
       ${c.goals?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:5px">Goals</div><div style="font-size:13px;line-height:1.6;color:rgba(232,237,245,0.8)">${c.goals}</div>`:''}
       ${c.goals&&c.injuries?`<div style="height:1px;background:rgba(100,160,255,0.07);margin:10px 0"></div>`:''}
@@ -1294,11 +1299,6 @@ function renderClientModal(c){
         </div>
       </div>
       <div id="prog-${c.id}">${progSection}</div>
-    </div>
-
-    <div style="margin-bottom:16px">
-      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:10px">Monthly Summary</div>
-      <div id="monthly-${c.id}"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
     </div>
 
     <div style="margin-bottom:16px">
