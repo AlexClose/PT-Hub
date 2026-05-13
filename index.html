@@ -2230,49 +2230,6 @@ function startClientPortal(id) {
         '<span style="color:rgba(255,255,255,0.1);font-size:12px;">·</span>' +
         '<span style="font-size:13px;font-weight:700;color:' + runColor + ';">' + runsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + runTarget + ' runs</span></span>' +
       '</div>' +
-      // TODAY'S FOCUS hero card
-      (function() {
-        var todayJSH = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
-        var liftDays = {1:0, 3:1, 5:2}; // JS day -> days[] index
-        var runDays = {2:true, 4:true};
-        var restDays = {0:true, 6:true};
-        var heroHtml = '';
-        if (liftDays[todayJSH] !== undefined) {
-          var liftIdx = liftDays[todayJSH];
-          var liftDay = days[liftIdx];
-          var liftName = liftDay ? liftDay.name : 'Lift Day';
-          var liftExCount = liftDay && liftDay.exercises ? liftDay.exercises.length : 0;
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(37,99,235,0.18),rgba(79,163,232,0.10));border:1px solid rgba(79,163,232,0.3);border-left:4px solid #4fa3e8;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">' +
-              '<div>' +
-                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(79,163,232,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
-                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + liftName + '</div>' +
-                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">' + liftExCount + ' exercise' + (liftExCount !== 1 ? 's' : '') + '</div>' +
-              '</div>' +
-              '<button onclick="window._showPortalDay(' + liftIdx + ')" style="background:#2563eb;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(37,99,235,0.4);">Start &#8594;</button>' +
-            '</div>';
-        } else if (runDays[todayJSH]) {
-          var isTue = (todayJSH === 2);
-          var rd2 = isTue ? RUN_PROGRAM.tuesday : RUN_PROGRAM.thursday;
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(194,65,12,0.18),rgba(255,140,71,0.10));border:1px solid rgba(255,140,71,0.3);border-left:4px solid #ff8c47;border-radius:16px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">' +
-              '<div>' +
-                '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,140,71,0.7);margin-bottom:5px;">Today\'s Workout</div>' +
-                '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;letter-spacing:-0.2px;line-height:1.1;">' + rd2.name + '</div>' +
-                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">Run day</div>' +
-              '</div>' +
-              '<button onclick="window._showRunDay()" style="background:linear-gradient(135deg,#c2410c,#ff8c47);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px rgba(255,140,71,0.35);">Start &#8594;</button>' +
-            '</div>';
-        } else {
-          heroHtml =
-            '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:16px 20px;margin-bottom:20px;">' +
-              '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:5px;">Today</div>' +
-              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
-              '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:4px;">Prioritise sleep, mobility, and nutrition today.</div>' +
-            '</div>';
-        }
-        return heroHtml;
-      })() +
       '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
 
     // Show run card first if it's a run day
