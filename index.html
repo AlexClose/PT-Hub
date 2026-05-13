@@ -1046,7 +1046,7 @@ function clientRowHtml(c){
   const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
   const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const effectivePct = !hasPkg ? 0 : displayTotal>0 ? Math.max(0, displayRemaining/displayTotal*100) : Math.max(0, Math.min((displayRemaining||0)*10, 100));
+  const effectivePct = !hasPkg ? 0 : displayRemaining<=0 ? 100 : displayTotal>0 ? Math.min(displayRemaining/displayTotal*100, 100) : Math.min((displayRemaining||0)*10, 100);
   const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
   const badge = c.paused
     ? '<span class="badge badge-paused">⏸ Paused</span>'
@@ -1169,7 +1169,7 @@ function renderClientModal(c){
   const hasPkg=c.package_size>0 || !!c.remaining || !!sharedPkg;
   const displayRem = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
-  const pct=!hasPkg?0:displayTotal>0?Math.max(0,displayRem/displayTotal*100):Math.max(0,Math.min((displayRem||0)*10,100));
+  const pct=!hasPkg?0:displayRem<=0?100:displayTotal>0?Math.min(displayRem/displayTotal*100,100):Math.min((displayRem||0)*10,100);
   const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
