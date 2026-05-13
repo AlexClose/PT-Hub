@@ -1302,6 +1302,11 @@ function renderClientModal(c){
     </div>
 
     <div style="margin-bottom:16px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:10px">Monthly Summary</div>
+      <div id="monthly-${c.id}"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
+    </div>
+
+    <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600">Session History</div>
         <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
