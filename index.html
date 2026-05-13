@@ -507,6 +507,7 @@ to{opacity:1;transform:translateY(0);}
     <div id="dashAlerts"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="page-label" style="margin:0">All Clients</div>
+      <button onclick="openSessionBackup()" style="background:none;border:none;color:rgba(180,200,230,0.35);font-size:11px;cursor:pointer;padding:4px 0;font-family:inherit;" title="View & restore session count backup">🔒 Backup</button>
     </div>
     <div style="position:relative;margin-bottom:14px;">
       <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;opacity:0.5;">🔍</span>
@@ -554,6 +555,10 @@ to{opacity:1;transform:translateY(0);}
 <!-- CLIENT DETAIL -->
 
 <div class="modal-overlay" id="clientModal"><div class="modal" id="clientModalBody"></div></div>
+
+<!-- SESSION BACKUP -->
+
+<div class="modal-overlay" id="backupModal"><div class="modal" id="backupModalBody"></div></div>
 
 <!-- ADD CLIENT -->
 
@@ -907,9 +912,52 @@ async function init(){
     await Promise.all(clients.map(c=>db.getSessions(c.id).then(s=>{c._sessions=s;}).catch(()=>{c._sessions=[];})));
     renderDashboard();
     restoreDraftCoach();
+    saveSessionBackup();
   }catch(e){
     document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
   }
+}
+
+function saveSessionBackup(){
+  if(!clients||clients.length===0)return;
+  const snap={ts:new Date().toISOString(),clients:clients.map(c=>({id:c.id,first:c.first,last:c.last||'',remaining:c.remaining,package_size:c.package_size}))};
+  const curr=localStorage.getItem('pt_backup_curr');
+  if(curr)localStorage.setItem('pt_backup_prev',curr);
+  localStorage.setItem('pt_backup_curr',JSON.stringify(snap));
+}
+
+function openSessionBackup(){
+  const curr=JSON.parse(localStorage.getItem('pt_backup_curr')||'null');
+  const prev=JSON.parse(localStorage.getItem('pt_backup_prev')||'null');
+  if(!curr&&!prev){toast('No backup found — load clients first');return;}
+  let tabs='';
+  if(curr)tabs+=`<button id="bkTabCurr" class="btn btn-secondary" style="flex:1;font-size:12px;" onclick="renderBackupTab('curr')" >This session</button>`;
+  if(prev)tabs+=`<button id="bkTabPrev" class="btn btn-secondary" style="flex:1;font-size:12px;" onclick="renderBackupTab('prev')">Previous</button>`;
+  document.getElementById('backupModalBody').innerHTML=`<div class="modal-handle"></div><div class="modal-title">🔒 Session Backup</div><p style="font-size:12px;color:rgba(180,200,230,0.45);margin-bottom:12px;">Auto-saved on each page load. Use to recover if session counts are lost.</p><div style="display:flex;gap:8px;margin-bottom:16px;">${tabs}</div><div id="backupTabContent"></div><button class="btn btn-secondary btn-full" onclick="closeModal('backupModal')" style="margin-top:12px">Close</button>`;
+  openModal('backupModal');
+  renderBackupTab('curr');
+}
+
+function renderBackupTab(which){
+  const snap=JSON.parse(localStorage.getItem(which==='curr'?'pt_backup_curr':'pt_backup_prev')||'null');
+  if(!snap){document.getElementById('backupTabContent').innerHTML='<p style="color:rgba(180,200,230,0.4);font-size:13px">No snapshot available.</p>';return;}
+  const ts=new Date(snap.ts).toLocaleString();
+  const rows=snap.clients.filter(c=>c.remaining!==0||c.package_size>0).map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="font-weight:600;font-size:14px">${c.first} ${c.last}</span><span style="color:rgba(180,200,230,0.55);font-size:13px">${c.package_size>0?`${c.remaining} / ${c.package_size}`:c.remaining!==0?`${c.remaining} sessions`:''}</span></div>`).join('');
+  document.getElementById('backupTabContent').innerHTML=`<p style="font-size:11px;color:rgba(180,200,230,0.35);margin-bottom:10px">Saved: ${ts}</p><div style="max-height:55vh;overflow-y:auto;">${rows||'<p style="color:rgba(180,200,230,0.4);font-size:13px">No clients with session counts in this snapshot.</p>'}</div><button class="btn btn-danger btn-full" style="margin-top:14px" onclick="restoreSessionCounts('${which}')">Restore These Values to Database</button>`;
+}
+
+async function restoreSessionCounts(which){
+  const snap=JSON.parse(localStorage.getItem(which==='curr'?'pt_backup_curr':'pt_backup_prev')||'null');
+  if(!snap){toast('No backup found');return;}
+  if(!confirm(`Restore session counts from ${new Date(snap.ts).toLocaleString()}?\n\nThis will overwrite current values in the database for ${snap.clients.length} clients.`))return;
+  let ok=0,fail=0;
+  for(const bc of snap.clients){
+    try{await db.updateClient(bc.id,{remaining:bc.remaining,package_size:bc.package_size});const live=clients.find(c=>c.id===bc.id);if(live){live.remaining=bc.remaining;live.package_size=bc.package_size;}ok++;}
+    catch(e){fail++;}
+  }
+  closeModal('backupModal');
+  renderClientList();renderDashboard();
+  toast(fail===0?`Restored ${ok} clients ✓`:`Restored ${ok}, failed ${fail} — check connection`);
 }
 
 function showLoading(id){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="loading"><div class="spinner"></div><div>Loading...</div></div>`;}
