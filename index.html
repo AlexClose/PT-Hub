@@ -1109,6 +1109,8 @@ function openAddClient(){
 async function saveClient(){
   const first=document.getElementById('acFirst').value.trim();if(!first){toast('Please enter a name');return;}
   const pkg=parseInt(document.getElementById('acPackage').value)||0;
+  const rem=parseInt(document.getElementById('acRemaining').value)||0;
+  if(pkg===0&&rem>0&&!confirm(`${first} has ${rem} session${rem===1?'':'s'} remaining but no package size is set.\n\nSave as pay-per-session tracking, or cancel to set a package size?`))return;
   try{
     const acEmail=document.getElementById('acEmail').value.trim().toLowerCase();
     const acTier=document.getElementById('acTier').value||'';
@@ -1124,6 +1126,9 @@ function openEditClient(id){
 }
 async function saveEditClient(){
   const id=document.getElementById('ecId').value;const c=clients.find(x=>x.id===id);if(!c)return;
+  const ePkg=parseInt(document.getElementById('ecPackage').value)||0;
+  const eRem=parseInt(document.getElementById('ecRemaining').value)||0;
+  if(ePkg===0&&eRem>0&&!confirm(`${c.first} has ${eRem} session${eRem===1?'':'s'} remaining but no package size is set.\n\nSave as pay-per-session tracking, or cancel to set a package size?`))return;
   const ecEmail=document.getElementById('ecEmail').value.trim().toLowerCase();
   const ecTierVal=document.getElementById('ecTier').value||'';
   const tiers=JSON.parse(localStorage.getItem('bm_tiers')||'{}');
