@@ -1364,12 +1364,33 @@ function clientRowHtml(c){
   </div>`;
 }
 
+function clientCompactRowHtml(c){
+  const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
+  const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
+  const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
+  const badgeCol = !hasPkg?'rgba(79,163,232,0.7)':displayRemaining<=0?'#ff5c6a':displayRemaining<=2?'#ffb347':'#43d9a2';
+  const badgeBg = !hasPkg?'rgba(79,163,232,0.1)':displayRemaining<=0?'rgba(255,92,106,0.1)':displayRemaining<=2?'rgba(255,179,71,0.1)':'rgba(67,217,162,0.1)';
+  const badgeText = c.paused?'Paused':!hasPkg?'Pay/session':displayRemaining<=0?'Out':displayRemaining+' left';
+  const lastSess = c._sessions&&c._sessions.length>0?c._sessions[0]:null;
+  const lastText = lastSess?(()=>{const d=new Date(lastSess.created_at||lastSess.date);const diff=Math.floor((new Date()-d)/(1000*60*60*24));return diff===0?'Today':diff===1?'Yesterday':diff<7?diff+'d ago':Math.floor(diff/7)+'w ago';})():'—';
+  const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
+  const dotCol=_ct==='gold'?'#FFD700':_ct==='silver'?'#C0C8D0':_ct==='bronze'?'#FF8C47':'rgba(180,200,230,0.15)';
+  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:12px;margin-bottom:7px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.2)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.08)'">
+    <div style="width:8px;height:8px;border-radius:50%;background:${dotCol};flex-shrink:0;"></div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:14px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.first} ${c.last||''}</div>
+      <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px;">${c.level||''}${c.level&&lastText?' · ':''}${lastText}</div>
+    </div>
+    <span style="font-size:11px;font-weight:700;color:${badgeCol};background:${badgeBg};border-radius:20px;padding:3px 10px;white-space:nowrap;flex-shrink:0;">${badgeText}</span>
+  </div>`;
+}
+
 function renderClientList(){
   const q=(document.getElementById('clientSearch')?.value||'').toLowerCase();
-  const filtered=clients.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
+  const filtered=[...clients].sort((a,b)=>a.first.localeCompare(b.first)).filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(q));
   const clEl=document.getElementById('clientList');
   if(clEl){
-    clEl.innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientRowHtml).join('');
+    clEl.innerHTML=filtered.length===0?`<div class="empty"><div class="empty-icon">🔍</div><p>${clients.length===0?'No clients yet — tap + Add Client to get started':'No clients match your search'}</p></div>`:filtered.map(clientCompactRowHtml).join('');
     clEl.classList.add('view-enter');
     setTimeout(()=>clEl.classList.remove('view-enter'), 300);
   }
@@ -2353,23 +2374,18 @@ function renderTemplateList(){
   if(templates.length===0){
     el.innerHTML='<div style="text-align:center;padding:24px 0;color:rgba(180,200,230,0.3);font-size:13px;">No templates yet. Create one to reuse programs across clients.</div>';return;
   }
-  el.innerHTML=templates.map(t=>`
-    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.1);border-radius:14px;padding:14px 16px;margin-bottom:10px;">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#fff;">${t.name}</div>
-          <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${(t.days||[]).length} day${(t.days||[]).length!==1?'s':''}</div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <button class="lib-btn" onclick="openEditTemplate('${t.id}')">✎</button>
-          <button class="lib-btn danger" onclick="deleteTemplate('${t.id}')">✕</button>
-        </div>
+  el.innerHTML=templates.map(t=>{
+    const dayDots=(t.days||[]).map(d=>`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${d.color};flex-shrink:0;" title="${d.name}"></span>`).join('');
+    return `<div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.1);border-radius:12px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px;"><span style="font-size:11px;color:rgba(180,200,230,0.35);">${(t.days||[]).length} day${(t.days||[]).length!==1?'s':''}</span><span style="color:rgba(180,200,230,0.15);font-size:10px;">·</span><div style="display:flex;gap:3px;align-items:center;">${dayDots}</div></div>
       </div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">
-        ${(t.days||[]).map(d=>`<span style="background:${d.color}18;color:${d.color};border:1px solid ${d.color}33;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;">${d.name}</span>`).join('')}
-      </div>
-      <button onclick="openApplyTemplate('${t.id}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:10px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.4px;box-shadow:0 2px 10px rgba(37,99,235,0.25)">Apply to Client</button>
-    </div>`).join('');
+      <button onclick="openApplyTemplate('${t.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:7px 13px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;box-shadow:0 2px 8px rgba(37,99,235,0.25);">Apply</button>
+      <button class="lib-btn" onclick="openEditTemplate('${t.id}')">✎</button>
+      <button class="lib-btn danger" onclick="deleteTemplate('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
 }
 
 function openAddTemplate(){
