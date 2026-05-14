@@ -4064,15 +4064,17 @@ async function renderMonthlyReport(c) {
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
   // Get exercise logs from Supabase for this client
-  let logs = [];
-  let lastMonthLogs = [];
+  let logs = [], lastMonthLogs = [], prevLogs = [];
   try {
     const monthStr = monthStart.toISOString().split('T')[0];
     const lastStr = lastMonthStart.toISOString().split('T')[0];
     const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
-    logs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`);
-    lastMonthLogs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`);
-  } catch(e) { logs = []; lastMonthLogs = []; }
+    [logs, lastMonthLogs, prevLogs] = await Promise.all([
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`),
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`),
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${monthStr}`)
+    ]);
+  } catch(e) { logs = []; lastMonthLogs = []; prevLogs = []; }
 
   const sessions = c._sessions || [];
   const monthlySessions = sessions.filter(s => {
@@ -4119,6 +4121,17 @@ async function renderMonthlyReport(c) {
     }
   });
 
+  // PR detection — compare this month's max vs all-time max before this month
+  const allTimeMax = {};
+  prevLogs.forEach(l => {
+    const weight = parseFloat(l.weight) || 0;
+    if (!allTimeMax[l.exercise_name] || weight > allTimeMax[l.exercise_name]) allTimeMax[l.exercise_name] = weight;
+  });
+  let prCount = 0;
+  Object.keys(exMaxWeight).forEach(ex => {
+    if (exMaxWeight[ex] > 0 && exMaxWeight[ex] > (allTimeMax[ex] || 0)) prCount++;
+  });
+
   // Top exercises by volume (top 3)
   const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,3);
 
@@ -4148,11 +4161,14 @@ async function renderMonthlyReport(c) {
     return;
   }
 
-  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
     ${statTile('Sessions', monthlySessions.length, now.toLocaleString('default',{month:'short'}), '#4fa3e8', sessionTrend)}
-    ${statTile('Volume', totalVolume > 0 ? (totalVolume >= 1000 ? (Math.round(totalVolume/100)/10)+'k' : Math.round(totalVolume).toLocaleString()) : '--', totalVolume > 0 ? 'lbs lifted' : 'log weights', '#93c5fd', volTrend)}
-    ${bestLiftEntry ? statTile('Best Lift', bestLiftEntry[1]+'<span style="font-size:13px;font-weight:500;"> lbs</span>', bestLiftEntry[0], '#c084fc') : ''}
-    ${mostImproved ? statTile('Most Improved', '+'+biggestGain+'<span style="font-size:13px;font-weight:500;"> lbs</span>', mostImproved, '#43d9a2') : ''}
+    ${statTile('Volume', totalVolume > 0 ? (totalVolume >= 1000 ? (Math.round(totalVolume/100)/10)+'k' : Math.round(totalVolume).toLocaleString()) : '--', totalVolume > 0 ? 'lbs' : 'log weights', '#93c5fd', volTrend)}
+    ${statTile('PRs Hit', prCount || '--', prCount === 1 ? 'exercise' : 'exercises', '#ff8c47')}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    ${bestLiftEntry ? statTile('Best Lift', bestLiftEntry[1]+'<span style="font-size:13px;font-weight:500;"> lbs</span>', bestLiftEntry[0], '#c084fc') : '<div></div>'}
+    ${mostImproved ? statTile('Most Improved', '+'+biggestGain+'<span style="font-size:13px;font-weight:500;"> lbs</span>', mostImproved, '#43d9a2') : '<div></div>'}
   </div>`;
 
   if (topEx.length > 0) {
