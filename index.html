@@ -559,17 +559,79 @@ to{opacity:1;transform:translateY(0);}
   <!-- PROGRAMS -->
 
   <div class="view" id="view-programs">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div class="page-header" style="margin:0">
-        <div class="page-label">Saved Programs</div>
-        <h2>Programs</h2>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddTemplate()">+ New</button>
+    <div class="page-header" style="margin-bottom:24px">
+      <div class="page-label">Coaching</div>
+      <h2>Programs</h2>
     </div>
-    <div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:20px;">Build programs here and apply them to any client instantly.</div>
-    <div id="templateList"></div>
+
+    <!-- Lift Programs -->
+    <div style="margin-bottom:36px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="page-label" style="margin:0">Lift Programs</div>
+        <button class="btn btn-primary btn-sm" onclick="openAddTemplate()">+ New</button>
+      </div>
+      <div style="font-size:12px;color:rgba(180,200,230,0.3);margin-bottom:14px;">Structured weekly programs you can apply to any client instantly.</div>
+      <div id="templateList"></div>
+    </div>
+
+    <!-- Run Programming -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="page-label" style="margin:0;color:#ff8c47">Run Programming</div>
+        <button class="btn btn-sm" style="background:rgba(255,140,71,0.12);color:#ff8c47;border:1px solid rgba(255,140,71,0.3);" onclick="openBuildRunProgram(null)">+ New</button>
+      </div>
+      <div style="font-size:12px;color:rgba(180,200,230,0.3);margin-bottom:14px;">Multi-week run programs with distances, intervals, and pacing.</div>
+      <div id="runProgramList"></div>
+    </div>
   </div>
 </main>
+
+<!-- BUILD RUN PROGRAM -->
+
+<div class="modal-overlay" id="buildRunProgramModal">
+  <div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-title" style="margin:0;color:#ff8c47">Run Program</div>
+      <button onclick="closeModal('buildRunProgramModal')" style="background:none;border:none;color:rgba(180,200,230,0.4);font-size:22px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
+    </div>
+    <div class="form-group" style="margin-bottom:18px">
+      <label class="form-label">Program Name</label>
+      <input id="rpName" placeholder="e.g. 5K Base Build" style="width:100%;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:18px">
+      <label class="form-label" style="margin-bottom:10px;display:block;">Number of Weeks</label>
+      <div id="rpWeekCountBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="rpWeekTabs" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px;scrollbar-width:none;"></div>
+    <div id="rpWeekContent"></div>
+    <div style="margin-top:24px;">
+      <button onclick="saveRunProgram()" class="btn btn-primary" style="width:100%;background:#ff8c47;border-color:#ff8c47;">Save Program</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RUN DAY -->
+
+<div class="modal-overlay" id="editRunDayModal">
+  <div class="modal" style="max-height:88vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit Run</div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Label</label>
+      <input id="rdLabel" placeholder="e.g. Tuesday Run, Speed Session, Long Run" style="width:100%;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="form-label" style="margin-bottom:10px;display:block;">Type</label>
+      <div id="rdTypeBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    </div>
+    <div id="rdFields"></div>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button onclick="closeModal('editRunDayModal')" class="btn btn-secondary" style="flex:1">Cancel</button>
+      <button onclick="saveRunDay()" class="btn btn-primary" style="flex:1">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- CLIENT DETAIL -->
 
@@ -830,6 +892,10 @@ const db={
   addTemplate:  (d)     => sb('POST','program_templates',d),
   updateTemplate:(id,d) => sb('PATCH','program_templates',d,`?id=eq.${id}`),
   delTemplate:  (id)    => sb('DELETE','program_templates',null,`?id=eq.${id}`),
+  getRunPrograms:  ()    => sb('GET','run_programs',null,'?order=name.asc'),
+  addRunProgram:   (d)   => sb('POST','run_programs',d),
+  updateRunProgram:(id,d)=> sb('PATCH','run_programs',d,`?id=eq.${id}`),
+  delRunProgram:   (id)  => sb('DELETE','run_programs',null,`?id=eq.${id}`),
 };
 
 const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
@@ -837,7 +903,8 @@ const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4
 // Extracts highest numeric value from weight strings like "55,65,75" or "135"
 function maxWeight(str){if(!str)return 0;return Math.max(0,...String(str).split(/[,\/\s]+/).map(v=>parseFloat(v)||0));}
 
-let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],pendingLogId=null,pendingRenewId=null;
+let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],runPrograms=[],pendingLogId=null,pendingRenewId=null;
+let _rp=null,_rpRunEditing=null;
 let editingClientId=null,editingDayIndex=null,editingExercises=[];
 let buildingDays=[],buildingClientId=null,buildingDayEditing=-1,buildingForTemplate=false,buildingTemplateId=null;
 
@@ -1050,7 +1117,7 @@ function showView(name,el){
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
   if(name==='library'){renderLibrary();renderEquipList();}
-  if(name==='programs'){loadTemplates();}
+  if(name==='programs'){loadTemplates();loadRunPrograms();}
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function openModal(id){
@@ -1909,7 +1976,7 @@ function renderLibrary(){
         </div>
         <span style="color:var(--muted);font-size:12px">▼</span>
       </div>
-      <div class="muscle-body ${gi===0?'open':''}">
+      <div class="muscle-body">
         ${exes.map(e=>`<div class="lib-exercise">
           <div>
             <div class="lib-ex-name">${e.name}</div>
@@ -2142,6 +2209,217 @@ async function deleteTemplate(id){
     await db.delTemplate(id);
     templates=templates.filter(x=>x.id!==id);renderTemplateList();toast('Template deleted');
   }catch(e){toast('Error deleting template');}
+}
+
+// ===== RUN PROGRAMS =====
+
+async function loadRunPrograms(){
+  try{runPrograms=await db.getRunPrograms()||[];}catch(e){runPrograms=[];}
+  renderRunProgramList();
+}
+
+function renderRunProgramList(){
+  const el=document.getElementById('runProgramList');
+  if(!el)return;
+  if(runPrograms.length===0){
+    el.innerHTML='<div class="empty"><div class="empty-icon">🏃</div><p>No run programs yet<br>Tap + New to create one</p></div>';
+    return;
+  }
+  el.innerHTML=runPrograms.map(p=>{
+    const wc=(p.weeks||[]).length;
+    const rc=(p.weeks&&p.weeks[0]?p.weeks[0].length:0);
+    return `<div onclick="openBuildRunProgram('${p.id}')" style="background:rgba(255,140,71,0.06);border:1px solid rgba(255,140,71,0.2);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-weight:600;color:#e8edf5;font-size:14px;">${p.name}</div>
+        <div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:3px;">${wc} week${wc!==1?'s':''} · ${rc} run${rc!==1?'s':''}/week</div>
+      </div>
+      <button onclick="event.stopPropagation();deleteRunProgram('${p.id}')" style="background:none;border:none;color:rgba(255,92,106,0.5);font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;">×</button>
+    </div>`;
+  }).join('');
+}
+
+function openBuildRunProgram(id){
+  const ex=id?runPrograms.find(p=>p.id===id):null;
+  if(ex){
+    _rp={id:ex.id,name:ex.name,weeks:JSON.parse(JSON.stringify(ex.weeks)),editingWeek:0};
+  } else {
+    _rp={id:null,name:'',weeks:[[]],editingWeek:0};
+  }
+  document.getElementById('rpName').value=_rp.name;
+  renderRunProgramBuilder();
+  openModal('buildRunProgramModal');
+}
+
+function renderRunProgramBuilder(){
+  const wc=_rp.weeks.length;
+  const wi=_rp.editingWeek;
+  // Week count buttons
+  const wcEl=document.getElementById('rpWeekCountBtns');
+  if(wcEl) wcEl.innerHTML=[1,2,3,4,5,6,7,8].map(n=>{
+    const active=n===wc;
+    return `<button onclick="rpSetWeeks(${n})" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid ${active?'rgba(255,140,71,0.6)':'rgba(100,160,255,0.12)'};background:${active?'rgba(255,140,71,0.15)':'rgba(255,255,255,0.03)'};color:${active?'#ff8c47':'rgba(180,200,230,0.5)'};">${n}wk</button>`;
+  }).join('');
+  // Week tabs
+  const tabEl=document.getElementById('rpWeekTabs');
+  if(tabEl) tabEl.innerHTML=Array.from({length:wc},(_,i)=>{
+    const active=i===wi;
+    return `<button onclick="rpSetWeek(${i})" style="padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ${active?'rgba(255,140,71,0.5)':'rgba(100,160,255,0.12)'};background:${active?'rgba(255,140,71,0.12)':'rgba(255,255,255,0.02)'};color:${active?'#ff8c47':'rgba(180,200,230,0.45)'};">Week ${i+1}</button>`;
+  }).join('');
+  // Week content
+  const contentEl=document.getElementById('rpWeekContent');
+  if(!contentEl)return;
+  const runs=_rp.weeks[wi]||[];
+  const typeColors={easy:'#43d9a2',tempo:'#4fa3e8',intervals:'#e05252',long:'#ff8c47',recovery:'#c084fc'};
+  let html='';
+  if(wi>0){
+    html+=`<div onclick="rpCopyPrevWeek(${wi})" style="font-size:12px;color:rgba(255,140,71,0.5);cursor:pointer;margin-bottom:14px;text-align:right;user-select:none;">↑ Copy from Week ${wi}</div>`;
+  }
+  if(runs.length===0){
+    html+='<div style="text-align:center;padding:24px 0;color:rgba(180,200,230,0.3);font-size:13px;">No runs this week yet</div>';
+  }
+  runs.forEach((run,ri)=>{
+    const col=typeColors[run.type]||'#ff8c47';
+    const summary=run.type==='intervals'
+      ?((run.segments&&run.segments.length)?run.segments.map(s=>`${s.reps||'?'}×${s.distance||'?'} @ ${s.pace||'?'}`).join(', '):'No segments')
+      :([run.distance,run.pace].filter(Boolean).join(' · ')||'—');
+    html+=`<div style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.1);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+          <span style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${col};background:${col}18;border-radius:5px;padding:2px 7px;white-space:nowrap;">${run.type}</span>
+          <span style="font-weight:600;color:#e8edf5;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${run.label||'Run '+(ri+1)}</span>
+        </div>
+        <div style="font-size:12px;color:rgba(180,200,230,0.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${summary}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-left:10px;flex-shrink:0;">
+        <button onclick="openEditRunDay(${wi},${ri})" style="background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.2);border-radius:8px;color:#4fa3e8;font-size:12px;padding:5px 10px;cursor:pointer;">Edit</button>
+        <button onclick="rpDeleteRun(${wi},${ri})" style="background:rgba(255,92,106,0.08);border:1px solid rgba(255,92,106,0.2);border-radius:8px;color:#ff5c6a;font-size:13px;padding:5px 9px;cursor:pointer;line-height:1;">×</button>
+      </div>
+    </div>`;
+  });
+  if(runs.length<4){
+    html+=`<button onclick="openEditRunDay(${wi},-1)" style="width:100%;padding:12px;border:1px dashed rgba(255,140,71,0.3);border-radius:12px;background:rgba(255,140,71,0.04);color:rgba(255,140,71,0.6);font-size:13px;font-weight:600;cursor:pointer;">+ Add Run</button>`;
+  }
+  contentEl.innerHTML=html;
+}
+
+function rpSetWeeks(n){
+  while(_rp.weeks.length<n)_rp.weeks.push([]);
+  if(_rp.weeks.length>n)_rp.weeks=_rp.weeks.slice(0,n);
+  if(_rp.editingWeek>=n)_rp.editingWeek=n-1;
+  renderRunProgramBuilder();
+}
+
+function rpSetWeek(i){_rp.editingWeek=i;renderRunProgramBuilder();}
+
+function rpCopyPrevWeek(wi){
+  if(wi===0)return;
+  _rp.weeks[wi]=JSON.parse(JSON.stringify(_rp.weeks[wi-1]));
+  renderRunProgramBuilder();
+  toast('Copied from Week '+wi+' ✓');
+}
+
+function rpDeleteRun(wi,ri){_rp.weeks[wi].splice(ri,1);renderRunProgramBuilder();}
+
+const RUN_TYPES=['easy','tempo','intervals','long','recovery'];
+const RUN_TYPE_COLORS={easy:'#43d9a2',tempo:'#4fa3e8',intervals:'#e05252',long:'#ff8c47',recovery:'#c084fc'};
+
+function openEditRunDay(wi,ri){
+  _rpRunEditing={wi,ri};
+  const existing=ri>=0?_rp.weeks[wi][ri]:null;
+  window._rdRun=existing?JSON.parse(JSON.stringify(existing)):{label:'',type:'easy',distance:'',pace:'',notes:'',warmup:'',cooldown:'',segments:[]};
+  document.getElementById('rdLabel').value=window._rdRun.label||'';
+  renderRdTypeAndFields();
+  openModal('editRunDayModal');
+}
+
+function rdSetType(t){window._rdRun.type=t;renderRdTypeAndFields();}
+
+function renderRdTypeAndFields(){
+  const run=window._rdRun;
+  const tbEl=document.getElementById('rdTypeBtns');
+  if(tbEl) tbEl.innerHTML=RUN_TYPES.map(t=>{
+    const col=RUN_TYPE_COLORS[t];const active=run.type===t;
+    return `<button onclick="rdSetType('${t}')" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-transform:capitalize;border:1px solid ${active?col+'80':'rgba(100,160,255,0.12)'};background:${active?col+'20':'rgba(255,255,255,0.02)'};color:${active?col:'rgba(180,200,230,0.5)'};">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`;
+  }).join('');
+  const fEl=document.getElementById('rdFields');
+  if(!fEl)return;
+  const inp=(id,val,ph,extra='')=>`<input id="${id}" value="${(val||'').replace(/"/g,'&quot;')}" placeholder="${ph}" oninput="window._rdRun.${id.replace('rd','')}=this.value" style="width:100%;box-sizing:border-box;${extra}">`;
+  if(run.type==='intervals'){
+    const segs=run.segments||[];
+    const segRows=segs.map((seg,si)=>`
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;">
+        <input value="${seg.reps||''}" onchange="window._rdRun.segments[${si}].reps=this.value" placeholder="Reps" type="number" min="1" style="width:48px;padding:8px 6px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;text-align:center;">
+        <span style="color:rgba(180,200,230,0.35);font-size:12px;flex-shrink:0;">×</span>
+        <input value="${seg.distance||''}" onchange="window._rdRun.segments[${si}].distance=this.value" placeholder="400m" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <span style="color:rgba(180,200,230,0.35);font-size:12px;flex-shrink:0;">@</span>
+        <input value="${seg.pace||''}" onchange="window._rdRun.segments[${si}].pace=this.value" placeholder="5k pace" style="flex:1.2;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <input value="${seg.rest||''}" onchange="window._rdRun.segments[${si}].rest=this.value" placeholder="90s rest" style="width:68px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <button onclick="rdRemoveSeg(${si})" style="background:rgba(255,92,106,0.1);border:1px solid rgba(255,92,106,0.2);border-radius:6px;color:#ff5c6a;padding:7px 8px;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">×</button>
+      </div>`).join('');
+    fEl.innerHTML=`
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">Warmup</label>${inp('rdWarmup',run.warmup,'e.g. 5 min easy jog','')}</div>
+      <div style="margin-bottom:14px">
+        <label class="form-label" style="margin-bottom:8px;display:block;">Intervals</label>
+        <div style="font-size:10px;color:rgba(180,200,230,0.3);margin-bottom:8px;display:flex;gap:5px;padding:0 2px;"><span style="width:48px;text-align:center;">Reps</span><span style="margin:0 2px;"> </span><span style="flex:1">Dist</span><span style="margin:0 2px;"> </span><span style="flex:1.2">Pace</span><span style="width:68px">Rest</span><span style="width:30px"></span></div>
+        <div id="rdSegList">${segRows}</div>
+        <button onclick="rdAddSeg()" style="width:100%;padding:8px;border:1px dashed rgba(229,92,106,0.3);border-radius:8px;background:rgba(229,92,106,0.04);color:rgba(229,92,106,0.7);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;">+ Add Interval</button>
+      </div>
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">Cooldown</label>${inp('rdCooldown',run.cooldown,'e.g. 5 min easy jog','')}</div>
+      <div class="form-group"><label class="form-label">Notes (optional)</label>${inp('rdNotes',run.notes,'Any additional notes','')}</div>`;
+  } else {
+    fEl.innerHTML=`
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">Distance</label>${inp('rdDistance',run.distance,'e.g. 3 miles, 5k, 8 miles','')}</div>
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">Pace / Effort</label>${inp('rdPace',run.pace,'e.g. Conversational, 7:30/mile, Tempo effort','')}</div>
+      <div class="form-group"><label class="form-label">Notes (optional)</label>${inp('rdNotes',run.notes,'Any additional notes','')}</div>`;
+  }
+}
+
+function rdAddSeg(){
+  if(!window._rdRun.segments)window._rdRun.segments=[];
+  window._rdRun.segments.push({reps:'',distance:'',pace:'',rest:''});
+  renderRdTypeAndFields();
+}
+
+function rdRemoveSeg(i){window._rdRun.segments.splice(i,1);renderRdTypeAndFields();}
+
+function saveRunDay(){
+  const run=window._rdRun;
+  run.label=document.getElementById('rdLabel').value.trim();
+  const{wi,ri}=_rpRunEditing;
+  if(!_rp.weeks[wi])_rp.weeks[wi]=[];
+  if(ri>=0){_rp.weeks[wi][ri]=run;}else{_rp.weeks[wi].push(run);}
+  closeModal('editRunDayModal');
+  renderRunProgramBuilder();
+}
+
+async function saveRunProgram(){
+  const name=(document.getElementById('rpName').value||'').trim();
+  if(!name){toast('Enter a program name');return;}
+  const prog={name,weeks:_rp.weeks};
+  try{
+    if(_rp.id){
+      await db.updateRunProgram(_rp.id,prog);
+      const idx=runPrograms.findIndex(p=>p.id===_rp.id);
+      if(idx>=0)runPrograms[idx]={...runPrograms[idx],...prog};
+    } else {
+      const res=await db.addRunProgram(prog);
+      if(res&&res[0])runPrograms.push(res[0]);
+    }
+    closeModal('buildRunProgramModal');
+    renderRunProgramList();
+    toast('Run program saved ✓');
+  }catch(e){toast('Error saving — check connection');}
+}
+
+async function deleteRunProgram(id){
+  const p=runPrograms.find(x=>x.id===id);
+  if(!confirm(`Delete "${p?p.name:'this program'}"?`))return;
+  try{
+    await db.delRunProgram(id);
+    runPrograms=runPrograms.filter(x=>x.id!==id);
+    renderRunProgramList();
+    toast('Deleted');
+  }catch(e){toast('Error deleting');}
 }
 
 function openApplyTemplate(templateId){
