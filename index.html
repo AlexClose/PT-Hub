@@ -1109,7 +1109,7 @@ async function init(){
   setupSwipeGestures();
   showLoading('dashClients');
   try{
-    [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
+    [clients,equipment,library,sharedPackages,runPrograms]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[]),db.getRunPrograms().catch(()=>[])]);
     const _tiers=JSON.parse(localStorage.getItem('bm_tiers')||'{}');
     clients.forEach(c=>{if(_tiers[c.id])c.tier=_tiers[c.id];});
     document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
@@ -1467,6 +1467,39 @@ function renderClientModal(c){
     <div style="font-size:13px;color:rgba(180,200,230,0.3)">No program built yet</div>
   </div>`;
 
+  // Run program section
+  const assignedRp=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
+  const rpWeek=c.run_program_week||1;
+  const rpWeekRuns=assignedRp?((assignedRp.weeks||[])[rpWeek-1]||[]):[];
+  const rpMaxWeek=assignedRp?(assignedRp.weeks||[]).length:0;
+  const rpRunCardHtml=r=>{
+    const tc={easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'rgba(255,255,255,0.4)'};
+    const col=tc[r.type]||'#ff8c47';
+    const detail=r.type==='intervals'?`${(r.segments||[]).length} interval set${(r.segments||[]).length!==1?'s':''}`:`${r.distance||''}km${r.pace?' · '+r.pace+'/km':''}`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(0,0,0,0.15);border-radius:9px;margin-bottom:6px;"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div><div><div style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.9);">${r.label||''}</div><div style="font-size:11px;color:rgba(180,200,230,0.45);">${detail}</div></div></div>`;
+  };
+  let runProgramSection='';
+  if(assignedRp){
+    runProgramSection=`<div style="background:rgba(255,140,71,0.07);border:1px solid rgba(255,140,71,0.18);border-radius:16px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;">Run Program</div>
+        <div style="font-size:11px;color:rgba(255,140,71,0.5);margin-top:2px;">${assignedRp.name} · ${rpMaxWeek} week${rpMaxWeek!==1?'s':''}</div></div>
+        <button onclick="unassignRunProgram('${c.id}')" style="background:rgba(255,92,106,0.08);border:1px solid rgba(255,92,106,0.2);border-radius:7px;color:rgba(255,92,106,0.7);font-size:11px;font-weight:600;cursor:pointer;padding:5px 10px;font-family:'Instrument Sans',sans-serif;">Remove</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <button onclick="changeRunWeek('${c.id}',-1)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.12);border-radius:7px;color:rgba(180,200,230,0.6);font-size:18px;line-height:1;cursor:pointer;padding:4px 10px;font-family:inherit;">&#8249;</button>
+        <span style="flex:1;text-align:center;font-size:13px;font-weight:700;color:rgba(255,140,71,0.9);">Week ${rpWeek} of ${rpMaxWeek}</span>
+        <button onclick="changeRunWeek('${c.id}',1)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.12);border-radius:7px;color:rgba(180,200,230,0.6);font-size:18px;line-height:1;cursor:pointer;padding:4px 10px;font-family:inherit;">&#8250;</button>
+      </div>
+      ${rpWeekRuns.length>0?rpWeekRuns.map(rpRunCardHtml).join(''):'<div style="font-size:12px;color:rgba(180,200,230,0.3);">No runs this week.</div>'}
+    </div>`;
+  }else{
+    runProgramSection=`<div style="background:rgba(255,140,71,0.04);border:1px dashed rgba(255,140,71,0.15);border-radius:16px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;margin-bottom:8px;">Run Program</div>
+      ${runPrograms.length>0?`<select onchange="if(this.value)assignRunProgram('${c.id}',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,140,71,0.2);border-radius:8px;color:rgba(232,237,245,0.8);font-size:13px;padding:9px 12px;font-family:'Instrument Sans',sans-serif;cursor:pointer;outline:none;"><option value="">Assign a run program...</option>${runPrograms.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>`:'<div style="font-size:12px;color:rgba(180,200,230,0.3);">No run programs yet — build one in the Programs tab.</div>'}
+    </div>`;
+  }
+
   document.getElementById('clientModalBody').innerHTML=`
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
@@ -1536,6 +1569,8 @@ function renderClientModal(c){
       </div>
       <div id="prog-${c.id}">${progSection}</div>
     </div>
+
+    ${runProgramSection}
 
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -2301,6 +2336,36 @@ async function loadRunPrograms(){
   renderRunProgramList();
 }
 
+async function assignRunProgram(clientId,programId){
+  if(!programId)return;
+  await db.updateClient(clientId,{run_program_id:programId,run_program_week:1});
+  const c=clients.find(x=>x.id===clientId);
+  if(c){c.run_program_id=programId;c.run_program_week=1;}
+  if(c){renderClientModal(c);openModal('clientModal');}
+  toast('Run program assigned ✓');
+}
+
+async function unassignRunProgram(clientId){
+  await db.updateClient(clientId,{run_program_id:null,run_program_week:1});
+  const c=clients.find(x=>x.id===clientId);
+  if(c){c.run_program_id=null;c.run_program_week=1;}
+  if(c){renderClientModal(c);openModal('clientModal');}
+  toast('Run program removed');
+}
+
+async function changeRunWeek(clientId,delta){
+  const c=clients.find(x=>x.id===clientId);
+  if(!c||!c.run_program_id)return;
+  const prog=runPrograms.find(p=>p.id===c.run_program_id);
+  if(!prog)return;
+  const maxWeek=(prog.weeks||[]).length;
+  const newWeek=Math.max(1,Math.min(maxWeek,(c.run_program_week||1)+delta));
+  if(newWeek===(c.run_program_week||1))return;
+  await db.updateClient(clientId,{run_program_week:newWeek});
+  c.run_program_week=newWeek;
+  renderClientModal(c);openModal('clientModal');
+}
+
 function renderRunProgramList(){
   const el=document.getElementById('runProgramList');
   if(!el)return;
@@ -2593,6 +2658,9 @@ function startClientPortal(id) {
       window._portalScheduleStr = client.schedule || '';
       window._portalScheduleDays = parseSchedule(client.schedule || '');
       window._portalDays = [];
+      window._portalRunProgramId = client.run_program_id || null;
+      window._portalRunProgramWeek = client.run_program_week || 1;
+      window._portalRunProgram = null;
       renderClientShell(client);
       loadTodayWorkout(client);
     })
@@ -2742,30 +2810,35 @@ function startClientPortal(id) {
   function loadTodayWorkout(client) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
+    var H = {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY};
 
-    fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + client.id + '&select=structured_program', {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
-    })
+    fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + client.id + '&select=structured_program', {headers: H})
     .then(function(res) { return res.json(); })
     .then(function(rows) {
-      var portalBody = document.getElementById('portal-body');
       var prog = rows && rows[0] && rows[0].structured_program;
+      var hasDays = prog && prog.days && prog.days.length > 0;
 
-      if (!prog || !prog.days || prog.days.length === 0) {
-        portalBody.innerHTML = '<p style="color:#555;font-size:15px;">No program set up yet. Ask your coach!</p>';
-        return;
+      var finish = function() {
+        var portalBody = document.getElementById('portal-body');
+        if (!hasDays && !window._portalRunProgram) {
+          portalBody.innerHTML = '<p style="color:rgba(180,200,230,0.4);font-size:15px;padding:20px 0;">No program set up yet. Ask your coach!</p>';
+          return;
+        }
+        renderDayPicker(hasDays ? prog.days : []);
+      };
+
+      if (window._portalRunProgramId) {
+        fetch(SUPABASE_URL + '/rest/v1/run_programs?id=eq.' + window._portalRunProgramId + '&select=*', {headers: H})
+          .then(function(r) { return r.json(); })
+          .then(function(rpData) { window._portalRunProgram = (rpData && rpData[0]) || null; finish(); })
+          .catch(function() { finish(); });
+      } else {
+        finish();
       }
-
-      renderDayPicker(prog.days);
     })
     .catch(function(err) {
       var portalBody = document.getElementById('portal-body');
-      if (portalBody) {
-        portalBody.innerHTML = '<p style="color:red;">Error loading workout: ' + err.message + '</p>';
-      }
+      if (portalBody) portalBody.innerHTML = '<p style="color:rgba(255,92,106,0.7);font-size:14px;">Error loading workout. Please refresh.</p>';
     });
   }
 
@@ -2900,8 +2973,45 @@ function startClientPortal(id) {
       for (var ri = 0; ri < runDays.length; ri++) { html += makeDayCard(runDays[ri]); }
     }
 
-    if (days.length === 0) {
+    if (days.length === 0 && !window._portalRunProgram) {
       html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
+    }
+
+    // Run program section (from assigned run_programs table)
+    if (window._portalRunProgram) {
+      var rp = window._portalRunProgram;
+      var rpWeekNum = window._portalRunProgramWeek || 1;
+      var rpWeekRuns2 = (rp.weeks || [])[rpWeekNum - 1] || [];
+      var rpTotalWeeks = (rp.weeks || []).length;
+      var hasLiftContent = liftDays.length > 0 || runDays.length > 0;
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:' + (hasLiftContent ? '24px' : '0') + ';margin-bottom:14px;">' +
+        '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);">Running — Week ' + rpWeekNum + ' of ' + rpTotalWeeks + '</div>' +
+      '</div>';
+      window._showRunDay = function(ri) {
+        var run2 = ((rp.weeks || [])[rpWeekNum - 1] || [])[ri];
+        if (run2) renderRunDetail(run2);
+      };
+      for (var ri2 = 0; ri2 < rpWeekRuns2.length; ri2++) {
+        var rrun = rpWeekRuns2[ri2];
+        var rtc = {easy:'#43d9a2', tempo:'#4fa3e8', long:'#c084fc', intervals:'#ff8c47', recovery:'#43d9a2'};
+        var rcol = rtc[rrun.type] || '#ff8c47';
+        var rSub = rrun.type === 'intervals'
+          ? (rrun.segments||[]).length + ' interval set' + ((rrun.segments||[]).length !== 1 ? 's' : '')
+          : (rrun.distance ? rrun.distance + 'km' : '') + (rrun.pace ? ' · ' + rrun.pace + '/km' : '');
+        html += '<div onclick="window._showRunDay(' + ri2 + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\'" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\'">' +
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<div style="width:10px;height:10px;border-radius:50%;background:' + rcol + ';flex-shrink:0;box-shadow:0 0 12px ' + rcol + '40;"></div>' +
+            '<div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;">' + (rrun.label || 'Run') + '</div>' +
+              '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + rSub + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:20px;color:rgba(255,140,71,0.4);">&#9658;</div>' +
+        '</div>';
+      }
+      if (rpWeekRuns2.length === 0) {
+        html += '<div style="font-size:13px;color:rgba(180,200,230,0.3);padding:8px 0;">No runs scheduled for this week.</div>';
+      }
     }
 
     html += '<div style="margin-top:28px;">' +
@@ -3011,6 +3121,62 @@ function startClientPortal(id) {
         alert('Error: ' + err.message);
       });
     };
+  }
+
+  function renderRunDetail(run) {
+    var pb = document.getElementById('portal-body');
+    if (!pb) return;
+    var rtc = {easy:'#43d9a2', tempo:'#4fa3e8', long:'#c084fc', intervals:'#ff8c47', recovery:'#43d9a2'};
+    var col = rtc[run.type] || '#ff8c47';
+    var typeName = run.type ? (run.type.charAt(0).toUpperCase() + run.type.slice(1)) : 'Run';
+
+    var html = '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:22px;">&#8592; Back</div>';
+    html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:' + col + 'bb;margin-bottom:8px;">' + typeName + ' Run</div>';
+    html += '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:20px;letter-spacing:-0.2px;">' + (run.label || 'Run') + '</div>';
+
+    html += '<div style="background:rgba(255,140,71,0.06);border:1px solid rgba(255,140,71,0.15);border-radius:14px;padding:16px;margin-bottom:16px;">';
+    if (run.type === 'intervals') {
+      if (run.warmup) {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+          '<div style="font-size:16px;">&#128293;</div>' +
+          '<div><div style="font-size:10px;color:rgba(255,140,71,0.6);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">Warmup</div>' +
+          '<div style="font-size:14px;color:rgba(232,237,245,0.9);">' + run.warmup + '</div></div></div>';
+      }
+      var segs = run.segments || [];
+      for (var si = 0; si < segs.length; si++) {
+        var seg = segs[si];
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+          '<div style="background:rgba(255,140,71,0.2);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#ff8c47;flex-shrink:0;">' + (si + 1) + '</div>' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px;">' + seg.reps + ' &times; ' + seg.distance + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.5);">@ ' + seg.pace + '/km &middot; ' + seg.rest + ' rest</div>' +
+          '</div></div>';
+      }
+      if (run.cooldown) {
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;">' +
+          '<div style="font-size:16px;">&#10052;&#65039;</div>' +
+          '<div><div style="font-size:10px;color:rgba(79,163,232,0.6);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">Cooldown</div>' +
+          '<div style="font-size:14px;color:rgba(232,237,245,0.9);">' + run.cooldown + '</div></div></div>';
+      }
+    } else {
+      if (run.distance) {
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+          '<span style="font-size:11px;color:rgba(180,200,230,0.45);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Distance</span>' +
+          '<span style="font-size:18px;font-weight:700;color:#fff;">' + run.distance + ' km</span></div>';
+      }
+      if (run.pace) {
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">' +
+          '<span style="font-size:11px;color:rgba(180,200,230,0.45);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Target Pace</span>' +
+          '<span style="font-size:18px;font-weight:700;color:' + col + ';">' + run.pace + '/km</span></div>';
+      }
+    }
+    html += '</div>';
+
+    if (run.notes) {
+      html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.08);border-radius:10px;padding:12px 14px;font-size:13px;color:rgba(232,237,245,0.7);line-height:1.6;margin-bottom:16px;">' + run.notes + '</div>';
+    }
+
+    pb.innerHTML = html;
   }
 
   function renderWorkoutCard(day, todayName) {
