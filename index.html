@@ -1446,6 +1446,28 @@ async function openClientDetail(id){
   }catch(e){}
 }
 
+async function toggleScheduleDay(clientId, type, dayIdx) {
+  const c = clients.find(x => x.id === clientId);
+  if (!c) return;
+  const field = type === 'run' ? 'run_schedule' : 'schedule';
+  const current = parseSchedule(c[field] || '');
+  const has = current.indexOf(dayIdx) >= 0;
+  const updated = has ? current.filter(d => d !== dayIdx) : [...current, dayIdx].sort((a,b)=>a-b);
+  const NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const newStr = updated.map(i => NAMES[i]).join(' ');
+  await db.updateClient(clientId, {[field]: newStr});
+  c[field] = newStr;
+  const btn = document.getElementById('sched-' + type + '-' + dayIdx + '-' + clientId);
+  if (btn) {
+    const on = updated.includes(dayIdx);
+    const col = type === 'lift' ? '79,163,232' : '255,140,71';
+    btn.style.background = on ? `rgba(${col},0.18)` : 'rgba(255,255,255,0.04)';
+    btn.style.borderColor = on ? `rgba(${col},0.4)` : 'rgba(255,255,255,0.08)';
+    btn.style.color = on ? `rgba(${col},1)` : 'rgba(180,200,230,0.28)';
+  }
+  toast('Schedule updated');
+}
+
 function renderClientModal(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
   const hasPkg=c.package_size>0 || !!c.remaining || !!sharedPkg;
@@ -1515,13 +1537,24 @@ function renderClientModal(c){
       <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
 
-    ${c.schedule?`<div style="margin-bottom:14px;padding:10px 14px;background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.12);border-radius:var(--radius-sm);display:flex;align-items:center;gap:10px">
-      <div style="font-size:18px;opacity:.6">📅</div>
-      <div>
-        <div style="font-size:13px;color:rgba(232,237,245,0.9);font-weight:500">${c.schedule}</div>
-        ${c.notes?`<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px">${c.notes}</div>`:''}
-      </div>
-    </div>`:''}
+    ${(()=>{
+      const SD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const liftOn=parseSchedule(c.schedule||'');
+      const runOn=parseSchedule(c.run_schedule||'');
+      const btn=(type,i)=>{
+        const active=(type==='lift'?liftOn:runOn).includes(i);
+        const col=type==='lift'?'79,163,232':'255,140,71';
+        return `<button id="sched-${type}-${i}-${c.id}" onclick="toggleScheduleDay('${c.id}','${type}',${i})" style="width:100%;padding:6px 0;border-radius:6px;border:1px solid ${active?`rgba(${col},0.4)`:'rgba(255,255,255,0.08)'};background:${active?`rgba(${col},0.18)`:'rgba(255,255,255,0.04)'};color:${active?`rgba(${col},1)`:'rgba(180,200,230,0.28)'};font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;">${type==='lift'?'Lift':'Run'}</button>`;
+      };
+      return `<div style="margin-bottom:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;">
+        <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.35);font-weight:700;text-transform:uppercase;margin-bottom:10px;">Weekly Schedule</div>
+        <div style="display:grid;grid-template-columns:28px repeat(7,1fr);gap:4px;align-items:center;">
+          <div></div>${SD.map(d=>`<div style="text-align:center;font-size:10px;font-weight:600;color:rgba(180,200,230,0.4);">${d}</div>`).join('')}
+          <div style="font-size:10px;color:rgba(79,163,232,0.7);font-weight:700;">Lift</div>${[0,1,2,3,4,5,6].map(i=>`<div>${btn('lift',i)}</div>`).join('')}
+          <div style="font-size:10px;color:rgba(255,140,71,0.7);font-weight:700;">Run</div>${[0,1,2,3,4,5,6].map(i=>`<div>${btn('run',i)}</div>`).join('')}
+        </div>
+      </div>`;
+    })()}
 
     <div class="card card-glow" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
@@ -2847,6 +2880,7 @@ function startClientPortal(id) {
       window._portalRemaining = client.remaining || 0;
       window._portalScheduleStr = client.schedule || '';
       window._portalScheduleDays = parseSchedule(client.schedule || '');
+      window._portalRunScheduleDays = parseSchedule(client.run_schedule || '');
       window._portalDays = [];
       window._portalRunProgramId = client.run_program_id || null;
       window._portalRunProgramWeek = client.run_program_week || 1;
@@ -2926,17 +2960,24 @@ function startClientPortal(id) {
     var portalDays = window._portalDays || [];
     var calDayToProgDay = {};
     scheduledDays.forEach(function(calIdx, pi) { if (pi < portalDays.length) calDayToProgDay[calIdx] = pi; });
+    var runScheduledDays = window._portalRunScheduleDays || [];
+    var calDayToRunSession = {};
+    runScheduledDays.forEach(function(calIdx, si) { calDayToRunSession[calIdx] = si; });
 
     var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:5px;align-items:center;padding:2px 0;">' +
       '<div onclick="window._calendarHome()" style="text-align:center;padding:10px 8px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);transition:all 0.2s;" onmouseover="this.style.color=\'rgba(180,200,230,0.7)\';this.style.background=\'rgba(255,255,255,0.06)\';" onmouseout="this.style.color=\'rgba(180,200,230,0.5)\';this.style.background=\'rgba(255,255,255,0.03)\';" title="Home">&#8962;</div>';
     for (var i = 0; i < 7; i++) {
       var isToday = (i === todayIdx);
       var progIdxC = calDayToProgDay[i];
-      var isWorkout = progIdxC !== undefined;
-      var progDayC = isWorkout ? portalDays[progIdxC] : null;
-      var dotColor = isWorkout ? (progDayC && progDayC.color || '#4fa3e8') : 'rgba(180,200,230,0.18)';
-      var bgColor = isToday ? (isWorkout ? (progDayC && progDayC.color ? progDayC.color + '22' : 'rgba(79,163,232,0.15)') : 'rgba(255,255,255,0.05)') : 'transparent';
-      var borderColor = isToday ? (isWorkout ? (progDayC && progDayC.color || '#4fa3e8') + '80' : 'rgba(255,255,255,0.1)') : 'transparent';
+      var runSessionC = calDayToRunSession[i];
+      var isLift = progIdxC !== undefined;
+      var isRun = runSessionC !== undefined && window._portalRunProgram;
+      var isWorkout = isLift || isRun;
+      var progDayC = isLift ? portalDays[progIdxC] : null;
+      var dotColor = isRun ? '#ff8c47' : isLift ? (progDayC && progDayC.color || '#4fa3e8') : 'rgba(180,200,230,0.18)';
+      var accentColor = isRun ? '#ff8c47' : (progDayC && progDayC.color || '#4fa3e8');
+      var bgColor = isToday ? (isWorkout ? accentColor + '22' : 'rgba(255,255,255,0.05)') : 'transparent';
+      var borderColor = isToday ? (isWorkout ? accentColor + '80' : 'rgba(255,255,255,0.1)') : 'transparent';
       var labelColor = isToday ? '#fff' : 'rgba(180,200,230,0.4)';
       html += '<div onclick="window._calendarDayTap(' + i + ')" data-dayidx="' + i + '" style="text-align:center;padding:8px 4px;border-radius:8px;background:' + bgColor + ';border:1px solid ' + borderColor + ';cursor:pointer;">' +
         '<div style="font-size:10px;font-weight:600;letter-spacing:0.5px;color:' + labelColor + ';margin-bottom:5px;">' + dayLabels[i] + '</div>' +
@@ -2956,6 +2997,9 @@ function startClientPortal(id) {
       var pdays2 = window._portalDays || [];
       var c2p = {};
       sched2.forEach(function(calIdx, pi) { if (pi < pdays2.length) c2p[calIdx] = pi; });
+      var runSched2 = window._portalRunScheduleDays || [];
+      var c2run = {};
+      runSched2.forEach(function(calIdx, si) { c2run[calIdx] = si; });
       var dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
       var dayName = dayNames[dayIdx];
       var todayJS2 = new Date().getDay();
@@ -2964,6 +3008,17 @@ function startClientPortal(id) {
       var label = isToday ? 'Today' : dayName;
       document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(cell) { cell.style.outline = 'none'; });
       var tappedCell = document.querySelector('#calendar-strip [data-dayidx="' + dayIdx + '"]');
+      // Check run day first
+      var runSessionIdx = c2run[dayIdx];
+      if (runSessionIdx !== undefined && window._portalRunProgram) {
+        var weekRuns = (window._portalRunProgram.weeks || [])[(window._portalRunProgramWeek||1)-1] || [];
+        var run = weekRuns[runSessionIdx];
+        if (run) {
+          if (tappedCell) { tappedCell.style.outline = '2px solid #ff8c4780'; tappedCell.style.outlineOffset = '2px'; }
+          renderRunDetail(run);
+          return;
+        }
+      }
       var progIdx2 = c2p[dayIdx];
       if (progIdx2 === undefined) {
         if (tappedCell) { tappedCell.style.outline = '2px solid rgba(180,200,230,0.2)'; tappedCell.style.outlineOffset = '2px'; }
