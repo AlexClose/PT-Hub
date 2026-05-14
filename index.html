@@ -2693,7 +2693,7 @@ function downloadFIT(run) {
   // Try Web Share API first (Android)
   if(window.File&&navigator.share&&navigator.canShare){
     try{
-      var file=new File([fitData],fname,{type:'application/octet-stream'});
+      var file=new File([fitData],fname,{type:'application/vnd.ant.fit'});
       if(navigator.canShare({files:[file]})){
         navigator.share({files:[file],title:run.label||'Workout'})
           .then(function(){setTimeout(function(){showGarminHelp(fname);},600);})
@@ -2714,9 +2714,7 @@ function downloadFIT(run) {
     var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
     document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
   }
-  // Show a quick prompt first, then full instructions after iOS dialog clears
-  toast('Tap “Save to Files” in the dialog ↗');
-  setTimeout(function(){showGarminHelp(fname);},2200);
+  setTimeout(function(){showGarminHelp(fname);},1000);
 }
 
 function showGarminHelp(fname) {
