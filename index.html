@@ -1345,8 +1345,24 @@ function clientRowHtml(c){
   const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : 'rgba(180,200,230,0.2)';
   const sessionCount = (c._sessions||[]).length;
   const subLine = lastSessText ? `Last · ${lastSessText}&nbsp;&nbsp;·&nbsp;&nbsp;${sessionCount} session${sessionCount===1?'':'s'}` : 'No sessions yet';
+  const runStrip = (() => {
+    if (!c.run_program_id) return '';
+    const rp = runPrograms.find(p => p.id === c.run_program_id);
+    if (!rp) return '';
+    const wNum = c.run_program_week || 1;
+    const totalWeeks = (rp.weeks || []).length;
+    const weekRuns = (rp.weeks || [])[wNum - 1] || [];
+    if (!weekRuns.length) return '';
+    const done = c.run_week_done || 0;
+    const runLabels = weekRuns.map((r, i) => {
+      const isDone = i < done;
+      return `<span style="color:${isDone ? '#43d9a2' : 'rgba(255,140,71,0.8)'};">${isDone ? '&#10003;' : '&#8226;'} ${r.label || 'Run ' + (i + 1)}</span>`;
+    }).join('<span style="color:rgba(180,200,230,0.18)"> &middot; </span>');
+    return `<div style="font-size:11px;margin-top:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 8px;background:rgba(255,140,71,0.05);border-radius:6px;border:1px solid rgba(255,140,71,0.1);"><span style="color:rgba(255,140,71,0.5);font-weight:700;letter-spacing:0.5px;">WK ${wNum}/${totalWeeks}</span><span style="color:rgba(180,200,230,0.18)">&middot;</span>${runLabels}</div>`;
+  })();
+  const hasBottom = hasPkg || runStrip;
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasBottom?'10':'0'}px">
       <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1357,6 +1373,7 @@ function clientRowHtml(c){
         </div>
         <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px;">${subLine}</div>
         <div class="muted" style="font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.schedule||'No schedule set'}</div>
+        ${runStrip}
       </div>
       ${badge}
     </div>
@@ -2939,6 +2956,7 @@ function startClientPortal(id) {
       window._portalDays = [];
       window._portalRunProgramId = client.run_program_id || null;
       window._portalRunProgramWeek = client.run_program_week || 1;
+      window._portalRunWeekDone = client.run_week_done || 0;
       window._portalRunProgram = null;
       renderClientShell(client);
       loadTodayWorkout(client);
@@ -3392,19 +3410,50 @@ function startClientPortal(id) {
       })
       .then(function(res) {
         if (!res.ok) throw new Error('Failed');
+
         var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
         window._portalRemaining = newRemaining;
+
+        // Auto-progress run week
+        var clientPatch = {remaining: newRemaining};
+        var weekAdvanced = false;
+        var completedWeekNum = window._portalRunProgramWeek || 1;
+
+        if (window._portalRunProgram) {
+          var prog = window._portalRunProgram;
+          var currentWeek = window._portalRunProgramWeek || 1;
+          var weekRuns = (prog.weeks || [])[currentWeek - 1] || [];
+          var newDone = (window._portalRunWeekDone || 0) + 1;
+
+          if (newDone >= weekRuns.length && currentWeek < (prog.weeks || []).length) {
+            // Finished all runs for this week — advance
+            clientPatch.run_program_week = currentWeek + 1;
+            clientPatch.run_week_done = 0;
+            window._portalRunProgramWeek = currentWeek + 1;
+            window._portalRunWeekDone = 0;
+            weekAdvanced = true;
+          } else {
+            clientPatch.run_week_done = newDone;
+            window._portalRunWeekDone = newDone;
+          }
+        }
+
         return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
           method: 'PATCH', headers: H,
-          body: JSON.stringify({remaining: newRemaining})
-        });
+          body: JSON.stringify(clientPatch)
+        }).then(function() { return {weekAdvanced: weekAdvanced, completedWeekNum: completedWeekNum}; });
       })
-      .then(function() {
+      .then(function(result) {
+        var weekBanner = '';
+        if (result && result.weekAdvanced) {
+          weekBanner = '<div style="background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.3);border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#43d9a2;font-weight:600;text-align:center;">&#10004; Week ' + result.completedWeekNum + ' complete &mdash; moving to Week ' + (result.completedWeekNum + 1) + '</div>';
+        }
         portalBody.innerHTML =
           '<div style="text-align:center;padding:60px 20px;">' +
             '<div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#c2410c,#ff8c47);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px;box-shadow:0 0 50px rgba(255,140,71,0.4);">&#127939;</div>' +
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Run Logged!</div>' +
-            '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:40px;">' + name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
+            '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:24px;">' + name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
+            weekBanner +
             '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
           '</div>';
       })
