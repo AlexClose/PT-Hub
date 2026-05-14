@@ -1047,7 +1047,61 @@ async function verifyClientEmail(clientId) {
   }
 }
 
+function setupSwipeGestures(){
+  if(window._swipeSetup)return;
+  window._swipeSetup=true;
+  const TABS=['dashboard','clients','library','programs'];
+  window._activeView='dashboard';
+
+  // Tab swipe left/right
+  var mainEl=document.querySelector('main');
+  var _tx=0,_ty=0;
+  mainEl.addEventListener('touchstart',function(e){
+    _tx=e.touches[0].clientX;_ty=e.touches[0].clientY;
+  },{passive:true});
+  mainEl.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].clientX-_tx;
+    var dy=e.changedTouches[0].clientY-_ty;
+    if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
+    var ci=TABS.indexOf(window._activeView||'dashboard');
+    var ni=dx<0?ci+1:ci-1;
+    if(ni<0||ni>=TABS.length)return;
+    var nextBtn=document.querySelector('.nav-tab[onclick*="\''+TABS[ni]+'\'"]');
+    showView(TABS[ni],nextBtn);
+  },{passive:true});
+
+  // Client modal swipe-down to close
+  var overlay=document.getElementById('clientModal');
+  var body=document.getElementById('clientModalBody');
+  var _my=0,_mActive=false;
+  overlay.addEventListener('touchstart',function(e){
+    _my=e.touches[0].clientY;_mActive=false;
+    if(body)body.style.transition='none';
+  },{passive:true});
+  overlay.addEventListener('touchmove',function(e){
+    if(!overlay.classList.contains('open'))return;
+    var dy=e.touches[0].clientY-_my;
+    if(dy>0&&(body.scrollTop||0)<=0){
+      _mActive=true;
+      body.style.transform='translateY('+Math.min(dy*0.7,280)+'px)';
+    }
+  },{passive:true});
+  overlay.addEventListener('touchend',function(e){
+    if(!_mActive){if(body){body.style.transition='';body.style.transform='';}return;}
+    var dy=e.changedTouches[0].clientY-_my;
+    if(dy>90){
+      body.style.transition='transform 0.22s ease';body.style.transform='translateY(100%)';
+      setTimeout(function(){closeModal('clientModal');body.style.transition='';body.style.transform='';},210);
+    }else{
+      body.style.transition='transform 0.2s ease';body.style.transform='';
+      setTimeout(function(){body.style.transition='';},200);
+    }
+    _mActive=false;
+  },{passive:true});
+}
+
 async function init(){
+  setupSwipeGestures();
   showLoading('dashClients');
   try{
     [clients,equipment,library,sharedPackages]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[])]);
@@ -1114,6 +1168,7 @@ function showView(name,el){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   if(el)el.classList.add('active');
+  window._activeView=name;
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
   if(name==='library'){renderLibrary();renderEquipList();}
