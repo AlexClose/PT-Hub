@@ -1475,7 +1475,7 @@ function renderClientModal(c){
   const rpRunCardHtml=r=>{
     const tc={easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'rgba(255,255,255,0.4)'};
     const col=tc[r.type]||'#ff8c47';
-    const detail=r.type==='intervals'?`${(r.segments||[]).length} interval set${(r.segments||[]).length!==1?'s':''}`:`${r.distance||''}km${r.pace?' · '+r.pace+'/km':''}`;
+    const detail=r.type==='intervals'?`${(r.segments||[]).length} interval set${(r.segments||[]).length!==1?'s':''}`:`${r.distance||''}mi${r.pace?' · '+r.pace+'/mi':''}`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(0,0,0,0.15);border-radius:9px;margin-bottom:6px;"><div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;"></div><div><div style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.9);">${r.label||''}</div><div style="font-size:11px;color:rgba(180,200,230,0.45);">${detail}</div></div></div>`;
   };
   let runProgramSection='';
@@ -2707,10 +2707,10 @@ function showRunSteps(run) {
     for (var i = 0; i < segs.length; i++) {
       var s = segs[i]; var reps = parseInt(s.reps)||1;
       stepsHtml += stepRow('#ff9500','Repeat '+reps+' Times','', false);
-      stepsHtml += stepRow('#0a84ff','Run', s.distance+(s.pace?' · '+s.pace+'/km':''), true);
+      stepsHtml += stepRow('#0a84ff','Run', s.distance+(s.pace?' · '+s.pace+'/mi':''), true);
       stepsHtml += stepRow('#8e8e93','Rest', s.rest, true);
       textLines.push('Repeat '+reps+' Times:');
-      textLines.push('  Run: '+s.distance+(s.pace?' @ '+s.pace+'/km':''));
+      textLines.push('  Run: '+s.distance+(s.pace?' @ '+s.pace+'/mi':''));
       textLines.push('  Rest: '+s.rest);
     }
     if (run.cooldown) {
@@ -2719,7 +2719,7 @@ function showRunSteps(run) {
     }
   } else {
     stepsHtml += stepRow('#ff3b30','Warm Up','Lap Button Press', false);
-    var sub = (run.distance?run.distance+' km':'') + (run.pace?(run.distance?' · ':'')+run.pace+'/km':'');
+    var sub = (run.distance?run.distance+' mi':'') + (run.pace?(run.distance?' · ':'')+run.pace+'/mi':'');
     stepsHtml += stepRow('#0a84ff','Run', sub, false);
     stepsHtml += stepRow('#30d158','Cool Down','Lap Button Press', false);
     textLines.push('Warm Up: Lap Button Press');
@@ -3187,7 +3187,7 @@ function startClientPortal(id) {
         var rcol = rtc[rrun.type] || '#ff8c47';
         var rSub = rrun.type === 'intervals'
           ? (rrun.segments||[]).length + ' interval set' + ((rrun.segments||[]).length !== 1 ? 's' : '')
-          : (rrun.distance ? rrun.distance + 'km' : '') + (rrun.pace ? ' · ' + rrun.pace + '/km' : '');
+          : (rrun.distance ? rrun.distance + ' mi' : '') + (rrun.pace ? ' · ' + rrun.pace + '/mi' : '');
         html += '<div onclick="window._showRunDay(' + ri2 + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\'" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\'">' +
           '<div style="display:flex;align-items:center;gap:12px;">' +
             '<div style="width:10px;height:10px;border-radius:50%;background:' + rcol + ';flex-shrink:0;box-shadow:0 0 12px ' + rcol + '40;"></div>' +
@@ -3339,7 +3339,7 @@ function startClientPortal(id) {
           '<div style="background:rgba(255,140,71,0.2);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#ff8c47;flex-shrink:0;">' + (si + 1) + '</div>' +
           '<div>' +
             '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px;">' + seg.reps + ' &times; ' + seg.distance + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);">@ ' + seg.pace + '/km &middot; ' + seg.rest + ' rest</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.5);">@ ' + seg.pace + '/mi &middot; ' + seg.rest + ' rest</div>' +
           '</div></div>';
       }
       if (run.cooldown) {
@@ -3352,12 +3352,12 @@ function startClientPortal(id) {
       if (run.distance) {
         html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
           '<span style="font-size:11px;color:rgba(180,200,230,0.45);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Distance</span>' +
-          '<span style="font-size:18px;font-weight:700;color:#fff;">' + run.distance + ' km</span></div>';
+          '<span style="font-size:18px;font-weight:700;color:#fff;">' + run.distance + ' mi</span></div>';
       }
       if (run.pace) {
         html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">' +
           '<span style="font-size:11px;color:rgba(180,200,230,0.45);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Target Pace</span>' +
-          '<span style="font-size:18px;font-weight:700;color:' + col + ';">' + run.pace + '/km</span></div>';
+          '<span style="font-size:18px;font-weight:700;color:' + col + ';">' + run.pace + '/mi</span></div>';
       }
     }
     html += '</div>';
