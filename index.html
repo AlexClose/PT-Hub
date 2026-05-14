@@ -2690,31 +2690,31 @@ function generateGarminFIT(run) {
 function downloadFIT(run) {
   var fitData=generateGarminFIT(run);
   var fname=((run.label||'workout').replace(/[^a-zA-Z0-9]/g,'_'))+'.fit';
-  // Try Web Share API first (Android)
-  if(window.File&&navigator.share&&navigator.canShare){
+  // Show instructions immediately — iOS native sheet appears on top of our overlay
+  // so there's no visual conflict. Instructions are waiting when the sheet closes.
+  showGarminHelp(fname);
+  setTimeout(function(){
+    if(window.File&&navigator.share&&navigator.canShare){
+      try{
+        var file=new File([fitData],fname,{type:'application/vnd.ant.fit'});
+        if(navigator.canShare({files:[file]})){
+          navigator.share({files:[file],title:run.label||'Workout'}).catch(function(){});
+          return;
+        }
+      }catch(e){}
+    }
     try{
-      var file=new File([fitData],fname,{type:'application/vnd.ant.fit'});
-      if(navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:run.label||'Workout'})
-          .then(function(){setTimeout(function(){showGarminHelp(fname);},600);})
-          .catch(function(){setTimeout(function(){showGarminHelp(fname);},400);});
-        return;
-      }
-    }catch(e){}
-  }
-  // Blob URL download — iOS saves to Files/Downloads
-  try{
-    var blob=new Blob([fitData],{type:'application/octet-stream'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download=fname;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(function(){URL.revokeObjectURL(url);},3000);
-  }catch(e){
-    var bin='';for(var i=0;i<fitData.length;i++)bin+=String.fromCharCode(fitData[i]);
-    var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
-    document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
-  }
-  setTimeout(function(){showGarminHelp(fname);},1000);
+      var blob=new Blob([fitData],{type:'application/octet-stream'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download=fname;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+    }catch(e){
+      var bin='';for(var i=0;i<fitData.length;i++)bin+=String.fromCharCode(fitData[i]);
+      var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
+      document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
+    }
+  },80);
 }
 
 function showGarminHelp(fname) {
