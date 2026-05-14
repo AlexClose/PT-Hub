@@ -2741,10 +2741,7 @@ function showRunSteps(run) {
       '</div>' +
       '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">Steps</div>' +
       stepsHtml +
-      '<div style="display:flex;gap:10px;margin-top:16px;">' +
-        '<button onclick="document.getElementById(\'garmin-steps-ov\').remove()" style="flex:1;background:rgba(255,255,255,0.08);border:none;border-radius:10px;padding:13px;color:rgba(180,200,230,0.7);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Close</button>' +
-        '<button onclick="navigator.clipboard.writeText('+JSON.stringify(text)+').then(function(){var b=document.getElementById(\'garmin-copy-btn\');b.textContent=\'Copied!\';setTimeout(function(){b.textContent=\'Copy Steps\';},2000);})" id="garmin-copy-btn" style="flex:2;background:#0a84ff;border:none;border-radius:10px;padding:13px;color:#fff;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Copy Steps</button>' +
-      '</div>' +
+      '<button onclick="document.getElementById(\'garmin-steps-ov\').remove()" style="width:100%;background:rgba(255,255,255,0.08);border:none;border-radius:10px;padding:13px;color:rgba(180,200,230,0.7);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-top:16px;">Close</button>' +
     '</div>';
   document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
