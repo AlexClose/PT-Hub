@@ -2690,10 +2690,7 @@ function generateGarminFIT(run) {
 function downloadFIT(run) {
   var fitData=generateGarminFIT(run);
   var fname=((run.label||'workout').replace(/[^a-zA-Z0-9]/g,'_'))+'.fit';
-  // Show instructions immediately — iOS native sheet appears on top of our overlay
-  // so there's no visual conflict. Instructions are waiting when the sheet closes.
-  showGarminHelp(fname);
-  setTimeout(function(){
+  showGarminHelp(fname,function(){
     if(window.File&&navigator.share&&navigator.canShare){
       try{
         var file=new File([fitData],fname,{type:'application/vnd.ant.fit'});
@@ -2714,10 +2711,10 @@ function downloadFIT(run) {
       var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
       document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
     }
-  },80);
+  });
 }
 
-function showGarminHelp(fname) {
+function showGarminHelp(fname,onDownload) {
   var old=document.getElementById('garmin-help-ov');if(old)old.remove();
   var ov=document.createElement('div');
   ov.id='garmin-help-ov';
@@ -2729,7 +2726,7 @@ function showGarminHelp(fname) {
       '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">1</div>' +
-          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">In the share sheet, tap <b style="color:#fff;">Save to Files</b> → <b style="color:#fff;">Downloads</b></div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap <b style="color:#fff;">Download File</b> below → when prompted, tap <b style="color:#fff;">Save to Files</b> → <b style="color:#fff;">Downloads</b></div>' +
         '</div>' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">2</div>' +
@@ -2744,10 +2741,18 @@ function showGarminHelp(fname) {
           '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Workout appears in your list — sync your watch to send it over</div>' +
         '</div>' +
       '</div>' +
-      '<button onclick="document.getElementById(\'garmin-help-ov\').remove()" style="width:100%;background:rgba(0,200,80,0.12);border:1px solid rgba(0,200,80,0.25);border-radius:10px;padding:13px;color:rgba(60,220,120,0.9);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Got it</button>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button onclick="document.getElementById(\'garmin-help-ov\').remove()" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:13px;color:rgba(180,200,230,0.6);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>' +
+        '<button id="garmin-dl-btn" style="flex:2;background:rgba(0,200,80,0.15);border:1px solid rgba(0,200,80,0.35);border-radius:10px;padding:13px;color:rgba(60,220,120,0.95);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">&#8659; Download File</button>' +
+      '</div>' +
     '</div>';
   document.body.appendChild(ov);
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  if(onDownload){
+    document.getElementById('garmin-dl-btn').addEventListener('click',function(){
+      onDownload();
+    });
+  }
 }
 
 // CLIENT PORTAL
