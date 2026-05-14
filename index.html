@@ -2690,15 +2690,62 @@ function generateGarminFIT(run) {
 function downloadFIT(run) {
   var fitData=generateGarminFIT(run);
   var fname=((run.label||'workout').replace(/[^a-zA-Z0-9]/g,'_'))+'.fit';
-  // Try Web Share API (iOS/Android — opens Garmin Connect directly)
+  // Try Web Share API first (works on some Android devices)
   if(window.File&&navigator.share&&navigator.canShare){
-    var file=new File([fitData],fname,{type:'application/octet-stream'});
-    if(navigator.canShare({files:[file]})){navigator.share({files:[file],title:run.label||'Workout'}).catch(function(){});return;}
+    try{
+      var file=new File([fitData],fname,{type:'application/octet-stream'});
+      if(navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:run.label||'Workout'}).catch(function(){});
+        showGarminHelp(fname);return;
+      }
+    }catch(e){}
   }
-  // Fallback: data URL download
-  var bin='';for(var i=0;i<fitData.length;i++)bin+=String.fromCharCode(fitData[i]);
-  var a=document.createElement('a');a.href='data:application/octet-stream;base64,'+btoa(bin);a.download=fname;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  // Blob URL download (works on desktop; on iOS saves to Files/Downloads)
+  try{
+    var blob=new Blob([fitData],{type:'application/octet-stream'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;a.download=fname;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  }catch(e){
+    var bin='';for(var i=0;i<fitData.length;i++)bin+=String.fromCharCode(fitData[i]);
+    var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
+    document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
+  }
+  showGarminHelp(fname);
+}
+
+function showGarminHelp(fname) {
+  var old=document.getElementById('garmin-help-ov');if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.id='garmin-help-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box;';
+  ov.innerHTML=
+    '<div style="background:#141820;border:1px solid rgba(0,200,80,0.25);border-radius:20px;padding:22px;width:100%;max-width:480px;margin:0 auto;">' +
+      '<div style="font-size:10px;letter-spacing:2px;color:rgba(0,200,80,0.7);font-weight:700;text-transform:uppercase;margin-bottom:8px;">&#8987; Garmin Import</div>' +
+      '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:16px;">How to add to your watch</div>' +
+      '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">' +
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">1</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Open the <b style="color:#fff;">Files</b> app → <b style="color:#fff;">Downloads</b></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">2</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap <b style="color:#fff;">' + fname + '</b></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">3</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap <b style="color:#fff;">Share &#8599;</b> → <b style="color:#fff;">Open in Garmin Connect</b></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:flex-start;gap:12px;">' +
+          '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">4</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Workout syncs to your watch on next Garmin Connect open</div>' +
+        '</div>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'garmin-help-ov\').remove()" style="width:100%;background:rgba(0,200,80,0.12);border:1px solid rgba(0,200,80,0.25);border-radius:10px;padding:13px;color:rgba(60,220,120,0.9);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Got it</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
 }
 
 // CLIENT PORTAL
@@ -3253,8 +3300,8 @@ function startClientPortal(id) {
     }
 
     window._currentRunForGarmin = run;
-    html += '<button onclick="downloadFIT(window._currentRunForGarmin)" style="width:100%;background:rgba(0,175,80,0.1);border:1px solid rgba(0,200,80,0.3);color:rgba(60,220,120,0.9);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">&#8987; Send to Garmin</button>';
-    html += '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:8px;">Downloads a .FIT file — open in Garmin Connect to sync to your watch</div>';
+    html += '<button onclick="downloadFIT(window._currentRunForGarmin)" style="width:100%;background:rgba(0,175,80,0.1);border:1px solid rgba(0,200,80,0.3);color:rgba(60,220,120,0.9);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">&#8987; Download for Garmin</button>';
+    html += '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:8px;">Instructions shown after download</div>';
 
     pb.innerHTML = html;
   }
