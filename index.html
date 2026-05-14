@@ -2687,6 +2687,51 @@ function generateGarminFIT(run) {
   return new Uint8Array(full);
 }
 
+function showRunSteps(run) {
+  var lines = [];
+  if (run.type === 'intervals') {
+    if (run.warmup) lines.push('WARMUP\n' + run.warmup + ' easy jog');
+    var segs = run.segments || [];
+    for (var i = 0; i < segs.length; i++) {
+      var s = segs[i];
+      lines.push('INTERVAL ' + (i+1) + '\n' + s.reps + ' x ' + s.distance + ' @ ' + s.pace + '/km\nRest: ' + s.rest + ' between each');
+    }
+    if (run.cooldown) lines.push('COOLDOWN\n' + run.cooldown + ' easy jog');
+  } else {
+    if (run.distance) lines.push('DISTANCE\n' + run.distance + ' km');
+    if (run.pace) lines.push('TARGET PACE\n' + run.pace + '/km');
+    if (run.notes) lines.push('NOTES\n' + run.notes);
+  }
+  var text = (run.label || 'Run') + '\n' + '─'.repeat(28) + '\n' + lines.join('\n\n');
+
+  var old = document.getElementById('garmin-steps-ov'); if(old) old.remove();
+  var ov = document.createElement('div');
+  ov.id = 'garmin-steps-ov';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box;';
+  var stepsHtml = lines.map(function(l) {
+    var parts = l.split('\n');
+    var label = parts[0];
+    var detail = parts.slice(1).join('\n');
+    return '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:rgba(0,200,80,0.7);text-transform:uppercase;margin-bottom:3px;">' + label + '</div>' +
+      '<div style="font-size:14px;color:rgba(232,237,245,0.9);white-space:pre-line;">' + detail + '</div>' +
+    '</div>';
+  }).join('');
+  ov.innerHTML =
+    '<div style="background:#141820;border:1px solid rgba(0,200,80,0.2);border-radius:20px;padding:22px;width:100%;max-width:480px;margin:0 auto;max-height:80vh;overflow-y:auto;">' +
+      '<div style="font-size:10px;letter-spacing:2px;color:rgba(0,200,80,0.7);font-weight:700;text-transform:uppercase;margin-bottom:6px;">&#8987; Garmin Entry Guide</div>' +
+      '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:4px;">' + (run.label || 'Run') + '</div>' +
+      '<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-bottom:16px;">Open Garmin Connect → More → Training & Planning → Workouts → Create a Workout</div>' +
+      '<div style="margin-bottom:18px;">' + stepsHtml + '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button onclick="document.getElementById(\'garmin-steps-ov\').remove()" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:13px;color:rgba(180,200,230,0.6);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Close</button>' +
+        '<button onclick="navigator.clipboard.writeText(' + JSON.stringify(text) + ').then(function(){var b=document.getElementById(\'garmin-copy-btn\');b.textContent=\'Copied!\';setTimeout(function(){b.textContent=\'Copy Steps\';},2000);})" id="garmin-copy-btn" style="flex:2;background:rgba(0,200,80,0.15);border:1px solid rgba(0,200,80,0.35);border-radius:10px;padding:13px;color:rgba(60,220,120,0.95);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Copy Steps</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function(e){if(e.target===ov)ov.remove();});
+}
+
 function downloadFIT(run) {
   var fitData=generateGarminFIT(run);
   var fname=((run.label||'workout').replace(/[^a-zA-Z0-9]/g,'_'))+'.fit';
@@ -3307,8 +3352,8 @@ function startClientPortal(id) {
     }
 
     window._currentRunForGarmin = run;
-    html += '<button onclick="downloadFIT(window._currentRunForGarmin)" style="width:100%;background:rgba(0,175,80,0.1);border:1px solid rgba(0,200,80,0.3);color:rgba(60,220,120,0.9);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">&#8987; Download for Garmin</button>';
-    html += '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:8px;">Instructions shown after download</div>';
+    html += '<button onclick="showRunSteps(window._currentRunForGarmin)" style="width:100%;background:rgba(0,175,80,0.1);border:1px solid rgba(0,200,80,0.3);color:rgba(60,220,120,0.9);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">&#8987; Send to Garmin</button>';
+    html += '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:8px;">Manual entry guide for Garmin Connect</div>';
 
     pb.innerHTML = html;
   }
