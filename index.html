@@ -1446,26 +1446,48 @@ async function openClientDetail(id){
   }catch(e){}
 }
 
-async function toggleScheduleDay(clientId, type, dayIdx) {
-  const c = clients.find(x => x.id === clientId);
-  if (!c) return;
-  const field = type === 'run' ? 'run_schedule' : 'schedule';
-  const current = parseSchedule(c[field] || '');
-  const has = current.indexOf(dayIdx) >= 0;
-  const updated = has ? current.filter(d => d !== dayIdx) : [...current, dayIdx].sort((a,b)=>a-b);
-  const NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const newStr = updated.map(i => NAMES[i]).join(' ');
-  await db.updateClient(clientId, {[field]: newStr});
-  c[field] = newStr;
-  const btn = document.getElementById('sched-' + type + '-' + dayIdx + '-' + clientId);
-  if (btn) {
-    const on = updated.includes(dayIdx);
-    const col = type === 'lift' ? '79,163,232' : '255,140,71';
-    btn.style.background = on ? `rgba(${col},0.18)` : 'rgba(255,255,255,0.04)';
-    btn.style.borderColor = on ? `rgba(${col},0.4)` : 'rgba(255,255,255,0.08)';
-    btn.style.color = on ? `rgba(${col},1)` : 'rgba(180,200,230,0.28)';
-  }
-  toast('Schedule updated');
+function parseScheduleMap(str) {
+  if (!str) return {};
+  try {
+    var obj = JSON.parse(str);
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+      var DI = {Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6};
+      var r = {};
+      Object.keys(obj).forEach(function(d){ if(DI[d]!==undefined) r[DI[d]]=parseInt(obj[d]); });
+      return r;
+    }
+  } catch(e) {}
+  var days = parseSchedule(str);
+  var r2 = {};
+  days.forEach(function(d,i){ r2[d]=i; });
+  return r2;
+}
+function schedMapToStr(map) {
+  var N=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  var obj={};
+  Object.keys(map).forEach(function(i){ obj[N[parseInt(i)]]=map[i]; });
+  return JSON.stringify(obj);
+}
+async function cycleScheduleDay(clientId, dayIdx) {
+  var c=clients.find(x=>x.id===clientId); if(!c) return;
+  var lm=parseScheduleMap(c.schedule||'');
+  var rm=parseScheduleMap(c.run_schedule||'');
+  var isLift=lm.hasOwnProperty(dayIdx), isRun=rm.hasOwnProperty(dayIdx);
+  var upd={};
+  if(!isLift&&!isRun){ lm[dayIdx]=0; upd.schedule=schedMapToStr(lm); c.schedule=upd.schedule; }
+  else if(isLift){ delete lm[dayIdx]; rm[dayIdx]=0; upd.schedule=schedMapToStr(lm); upd.run_schedule=schedMapToStr(rm); c.schedule=upd.schedule; c.run_schedule=upd.run_schedule; }
+  else { delete rm[dayIdx]; upd.run_schedule=schedMapToStr(rm); c.run_schedule=upd.run_schedule; }
+  await db.updateClient(clientId,upd);
+  renderClientModal(c); openModal('clientModal');
+}
+async function setScheduleAssignment(clientId, type, dayIdx, assignIdx) {
+  var c=clients.find(x=>x.id===clientId); if(!c) return;
+  var field=type==='run'?'run_schedule':'schedule';
+  var m=parseScheduleMap(c[field]||'');
+  m[dayIdx]=assignIdx;
+  c[field]=schedMapToStr(m);
+  await db.updateClient(clientId,{[field]:c[field]});
+  toast('Saved');
 }
 
 function renderClientModal(c){
@@ -1538,21 +1560,53 @@ function renderClientModal(c){
     </div>
 
     ${(()=>{
-      const SD=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      const liftOn=parseSchedule(c.schedule||'');
-      const runOn=parseSchedule(c.run_schedule||'');
-      const btn=(type,i)=>{
-        const active=(type==='lift'?liftOn:runOn).includes(i);
-        const col=type==='lift'?'79,163,232':'255,140,71';
-        return `<button id="sched-${type}-${i}-${c.id}" onclick="toggleScheduleDay('${c.id}','${type}',${i})" style="width:100%;padding:6px 0;border-radius:6px;border:1px solid ${active?`rgba(${col},0.4)`:'rgba(255,255,255,0.08)'};background:${active?`rgba(${col},0.18)`:'rgba(255,255,255,0.04)'};color:${active?`rgba(${col},1)`:'rgba(180,200,230,0.28)'};font-size:10px;font-weight:700;cursor:pointer;transition:all .15s;">${type==='lift'?'Lift':'Run'}</button>`;
-      };
-      return `<div style="margin-bottom:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;">
-        <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.35);font-weight:700;text-transform:uppercase;margin-bottom:10px;">Weekly Schedule</div>
-        <div style="display:grid;grid-template-columns:28px repeat(7,1fr);gap:4px;align-items:center;">
-          <div></div>${SD.map(d=>`<div style="text-align:center;font-size:10px;font-weight:600;color:rgba(180,200,230,0.4);">${d}</div>`).join('')}
-          <div style="font-size:10px;color:rgba(79,163,232,0.7);font-weight:700;">Lift</div>${[0,1,2,3,4,5,6].map(i=>`<div>${btn('lift',i)}</div>`).join('')}
-          <div style="font-size:10px;color:rgba(255,140,71,0.7);font-weight:700;">Run</div>${[0,1,2,3,4,5,6].map(i=>`<div>${btn('run',i)}</div>`).join('')}
-        </div>
+      const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      const lm=parseScheduleMap(c.schedule||'');
+      const rm=parseScheduleMap(c.run_schedule||'');
+      const liftDays=(c.structured_program&&c.structured_program.days)||[];
+      const prog=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
+      const runWeek=prog?(prog.weeks||[])[(c.run_program_week||1)-1]||[]:[];
+      const liftKeys=Object.keys(lm).map(Number).sort((a,b)=>a-b);
+      const runKeys=Object.keys(rm).map(Number).sort((a,b)=>a-b);
+      const hasSched=liftKeys.length>0||runKeys.length>0;
+      const summary=hasSched
+        ?[liftKeys.length?liftKeys.map(i=>DN[i]).join('/')+ ' Lift':'',runKeys.length?runKeys.map(i=>DN[i]).join('/')+' Run':''].filter(Boolean).join(' · ')
+        :'Not set';
+      const exp=window['_se_'+c.id]||false;
+      let rows='';
+      if(exp){
+        for(let di=0;di<7;di++){
+          const isLift=lm.hasOwnProperty(di),isRun=rm.hasOwnProperty(di);
+          const type=isLift?'lift':isRun?'run':'off';
+          const col=type==='lift'?'79,163,232':type==='run'?'255,140,71':'180,200,230';
+          const typeBg=type!=='off'?`rgba(${col},0.15)`:'rgba(255,255,255,0.03)';
+          const typeLabel=type==='lift'?'Lift':type==='run'?'Run':'Off';
+          let dropHtml='';
+          if(isLift&&liftDays.length){
+            const sel=lm[di]??0;
+            dropHtml=`<select onchange="setScheduleAssignment('${c.id}','lift',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(79,163,232,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${liftDays.map((d,i)=>`<option value="${i}"${i===sel?' selected':''}>${d.name||'Day '+(i+1)}</option>`).join('')}</select>`;
+          } else if(isRun&&runWeek.length){
+            const sel=rm[di]??0;
+            dropHtml=`<select onchange="setScheduleAssignment('${c.id}','run',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(255,140,71,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${runWeek.map((r,i)=>`<option value="${i}"${i===(rm[di]??0)?' selected':''}>${r.label||'Session '+(i+1)}</option>`).join('')}</select>`;
+          } else if(isLift||isRun){
+            dropHtml=`<div style="flex:1;font-size:12px;color:rgba(180,200,230,0.3);">No ${isLift?'program':'run program'} assigned</div>`;
+          }
+          rows+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div style="width:32px;font-size:12px;font-weight:600;color:rgba(180,200,230,0.5);">${DN[di]}</div>
+            <button onclick="cycleScheduleDay('${c.id}',${di})" style="min-width:40px;padding:5px 8px;border-radius:6px;border:1px solid rgba(${col},${type!=='off'?'0.35':'0.15'});background:${typeBg};color:rgba(${col},${type!=='off'?'1':'0.4'});font-size:11px;font-weight:700;cursor:pointer;">${typeLabel}</button>
+            ${dropHtml}
+          </div>`;
+        }
+      }
+      return `<div style="margin-bottom:14px;">
+        <button onclick="window['_se_${c.id}']=!window['_se_${c.id}'];renderClientModal(clients.find(x=>x.id==='${c.id}'));openModal('clientModal');" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:${exp?'12px 12px 0 0':'12px'};padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;">
+          <div>
+            <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.3);font-weight:700;text-transform:uppercase;margin-bottom:2px;">Weekly Schedule</div>
+            <div style="font-size:13px;color:${hasSched?'rgba(232,237,245,0.75)':'rgba(180,200,230,0.25)'};">${summary}</div>
+          </div>
+          <div style="color:rgba(180,200,230,0.35);font-size:11px;padding-left:8px;">${exp?'▲':'▼'}</div>
+        </button>
+        ${exp?`<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-top:none;border-radius:0 0 12px 12px;padding:6px 14px 10px;">${rows}</div>`:''}
       </div>`;
     })()}
 
@@ -2879,6 +2933,7 @@ function startClientPortal(id) {
       window._portalPackageSize = client.package_size || 0;
       window._portalRemaining = client.remaining || 0;
       window._portalScheduleStr = client.schedule || '';
+      window._portalRunScheduleStr = client.run_schedule || '';
       window._portalScheduleDays = parseSchedule(client.schedule || '');
       window._portalRunScheduleDays = parseSchedule(client.run_schedule || '');
       window._portalDays = [];
@@ -2956,13 +3011,9 @@ function startClientPortal(id) {
     var todayJS = new Date().getDay();
     var todayIdx = todayJS === 0 ? 6 : todayJS - 1;
 
-    var scheduledDays = window._portalScheduleDays || [];
     var portalDays = window._portalDays || [];
-    var calDayToProgDay = {};
-    scheduledDays.forEach(function(calIdx, pi) { if (pi < portalDays.length) calDayToProgDay[calIdx] = pi; });
-    var runScheduledDays = window._portalRunScheduleDays || [];
-    var calDayToRunSession = {};
-    runScheduledDays.forEach(function(calIdx, si) { calDayToRunSession[calIdx] = si; });
+    var calDayToProgDay = parseScheduleMap(window._portalScheduleStr || '');
+    var calDayToRunSession = parseScheduleMap(window._portalRunScheduleStr || '');
 
     var html = '<div style="display:grid;grid-template-columns:auto repeat(7,1fr);gap:5px;align-items:center;padding:2px 0;">' +
       '<div onclick="window._calendarHome()" style="text-align:center;padding:10px 8px;border-radius:8px;cursor:pointer;color:rgba(180,200,230,0.5);font-size:18px;line-height:1;border:1px solid rgba(180,200,230,0.15);background:rgba(255,255,255,0.03);transition:all 0.2s;" onmouseover="this.style.color=\'rgba(180,200,230,0.7)\';this.style.background=\'rgba(255,255,255,0.06)\';" onmouseout="this.style.color=\'rgba(180,200,230,0.5)\';this.style.background=\'rgba(255,255,255,0.03)\';" title="Home">&#8962;</div>';
@@ -2993,13 +3044,9 @@ function startClientPortal(id) {
     };
 
     window._calendarDayTap = function(dayIdx) {
-      var sched2 = window._portalScheduleDays || [];
       var pdays2 = window._portalDays || [];
-      var c2p = {};
-      sched2.forEach(function(calIdx, pi) { if (pi < pdays2.length) c2p[calIdx] = pi; });
-      var runSched2 = window._portalRunScheduleDays || [];
-      var c2run = {};
-      runSched2.forEach(function(calIdx, si) { c2run[calIdx] = si; });
+      var c2p = parseScheduleMap(window._portalScheduleStr || '');
+      var c2run = parseScheduleMap(window._portalRunScheduleStr || '');
       var dayNames = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
       var dayName = dayNames[dayIdx];
       var todayJS2 = new Date().getDay();
