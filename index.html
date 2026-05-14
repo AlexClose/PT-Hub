@@ -117,9 +117,9 @@ display:flex;align-items:center;gap:5px;
 
 /* ── MAIN ── */
 main{padding-top:64px;height:100vh;overflow:hidden;box-sizing:border-box;}
-#view-scroll{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-#view-scroll::-webkit-scrollbar{display:none;}
-.view{flex-shrink:0;width:100vw;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scroll-snap-align:start;padding:24px max(16px,calc((100vw - 720px) / 2)) 100px;box-sizing:border-box;display:block;}
+#view-scroll{position:relative;height:100%;overflow:hidden;}
+.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) 100px;box-sizing:border-box;will-change:transform;}
+.view.active{transform:translateX(0%);}
 
 /* ── TYPOGRAPHY ── */
 .page-header{margin-bottom:24px;}
@@ -426,24 +426,6 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 .client-card:active{transform:scale(0.99);transition:transform .1s;}
 .stat-num{transition:color .3s ease;}
 
-/* Tab transitions */
-.view{
-opacity:0;
-pointer-events:none;
-position:absolute;
-top:56px;left:0;right:0;
-}
-.view.active{
-opacity:1;
-pointer-events:all;
-position:relative;
-top:auto;
-animation:tabFadeIn .22s ease forwards;
-}
-@keyframes tabFadeIn{
-from{opacity:0;transform:translateY(10px);}
-to{opacity:1;transform:translateY(0);}
-}
 
 /* ── SKELETON SHIMMER ── */
 @keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
@@ -1057,30 +1039,33 @@ function setupSwipeGestures(){
   var TABS=['dashboard','clients','library','programs'];
   window._activeView='dashboard';
 
-  // Native scroll-snap handles tab swiping — just sync the nav tab on settle
+  // Touch-based horizontal swipe to navigate tabs
   var sc=document.getElementById('view-scroll');
-  function onTabSettle(){
-    if(!sc)return;
-    var idx=Math.round(sc.scrollLeft/sc.offsetWidth);
-    if(idx<0||idx>=TABS.length)return;
-    var name=TABS[idx];
-    if(name===window._activeView)return;
-    window._activeView=name;
-    document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-    var btn=document.querySelector('.nav-tab[onclick*="\''+name+'\'"]');
-    if(btn)btn.classList.add('active');
-    if(name==='dashboard')renderDashboard();
-    if(name==='clients')renderClientList();
-    if(name==='library'){renderLibrary();renderEquipList();}
-    if(name==='programs'){loadTemplates();loadRunPrograms();}
-  }
+  var _stx=0,_sty=0,_horizSwipe=false;
   if(sc){
-    sc.addEventListener('scrollend',function(){clearTimeout(sc._st);onTabSettle();});
-    sc.addEventListener('scroll',function(){clearTimeout(sc._st);sc._st=setTimeout(onTabSettle,200);});
+    sc.addEventListener('touchstart',function(e){
+      _stx=e.touches[0].clientX;_sty=e.touches[0].clientY;_horizSwipe=false;
+    },{passive:true});
+    sc.addEventListener('touchmove',function(e){
+      if(_horizSwipe)return;
+      var dx=Math.abs(e.touches[0].clientX-_stx);
+      var dy=Math.abs(e.touches[0].clientY-_sty);
+      if(dx>dy&&dx>10)_horizSwipe=true;
+    },{passive:true});
+    sc.addEventListener('touchend',function(e){
+      if(!_horizSwipe)return;
+      var dx=e.changedTouches[0].clientX-_stx;
+      if(Math.abs(dx)<60){_horizSwipe=false;return;}
+      var cidx=TABS.indexOf(window._activeView||'dashboard');
+      var nidx=dx<0?cidx+1:cidx-1;
+      nidx=Math.max(0,Math.min(TABS.length-1,nidx));
+      if(nidx!==cidx){
+        var btn=document.querySelector('.nav-tab[onclick*="\''+TABS[nidx]+'\'"]');
+        showView(TABS[nidx],btn);
+      }
+      _horizSwipe=false;
+    },{passive:true});
   }
-
-  // Placeholder to satisfy old touch variable refs (unused now)
-  var _tx=0,_ty=0; // kept for reference, unused
 
   // Client modal swipe-down to close
   var overlay=document.getElementById('clientModal');
@@ -1186,8 +1171,8 @@ function showView(name,el){
   if(!el&&typeof event!=='undefined')el=event.currentTarget;
   var TABS=['dashboard','clients','library','programs'];
   var idx=TABS.indexOf(name);if(idx<0)return;
-  var sc=document.getElementById('view-scroll');
-  if(sc)sc.scrollTo({left:idx*sc.offsetWidth,behavior:'smooth'});
+  var currentName=window._activeView||'dashboard';
+  var currentIdx=TABS.indexOf(currentName);
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
   if(el)el.classList.add('active');
   window._activeView=name;
@@ -1195,6 +1180,27 @@ function showView(name,el){
   if(name==='clients')renderClientList();
   if(name==='library'){renderLibrary();renderEquipList();}
   if(name==='programs'){loadTemplates();loadRunPrograms();}
+  if(idx===currentIdx)return;
+  var forward=idx>currentIdx;
+  var cv=document.getElementById('view-'+currentName);
+  var tv=document.getElementById('view-'+name);
+  if(!cv||!tv)return;
+  tv.style.transition='none';
+  tv.style.transform='translateX('+(forward?'100%':'-100%')+')';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    tv.style.transition='';
+    tv.style.transform='translateX(0%)';
+    tv.classList.add('active');
+    cv.style.transform=forward?'translateX(-100%)':'translateX(100%)';
+    cv.classList.remove('active');
+    setTimeout(function(){
+      if(!cv.classList.contains('active')){
+        cv.style.transition='none';
+        cv.style.transform='translateX(100%)';
+        requestAnimationFrame(function(){cv.style.transition='';});
+      }
+    },350);
+  });});
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function openModal(id){
