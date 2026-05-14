@@ -550,22 +550,24 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     </div>
 
     <!-- Lift Programs -->
-    <div style="margin-bottom:36px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div class="page-label" style="margin:0">Lift Programs</div>
+    <div style="margin-bottom:32px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:4px;height:22px;background:#4fa3e8;border-radius:2px;flex-shrink:0;"></div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:#fff;letter-spacing:-0.2px;">Lift Programs</div>
+        <div style="flex:1;height:1px;background:rgba(79,163,232,0.15);"></div>
         <button class="btn btn-primary btn-sm" onclick="openAddTemplate()">+ New</button>
       </div>
-      <div style="margin-bottom:14px;"></div>
       <div id="templateList"></div>
     </div>
 
     <!-- Run Programming -->
     <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div class="page-label" style="margin:0;color:#ff8c47">Run Programming</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:4px;height:22px;background:#ff8c47;border-radius:2px;flex-shrink:0;"></div>
+        <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:#fff;letter-spacing:-0.2px;">Run Programs</div>
+        <div style="flex:1;height:1px;background:rgba(255,140,71,0.18);"></div>
         <button class="btn btn-sm" style="background:rgba(255,140,71,0.12);color:#ff8c47;border:1px solid rgba(255,140,71,0.3);" onclick="openBuildRunProgram(null)">+ New</button>
       </div>
-      <div style="margin-bottom:14px;"></div>
       <div id="runProgramList"></div>
     </div>
   </div>
@@ -4078,11 +4080,15 @@ async function renderMonthlyReport(c) {
     const d = new Date(s.date);
     return d >= monthStart;
   });
+  const lastMonthSessions = sessions.filter(s => {
+    if (!s.date) return false;
+    const d = new Date(s.date);
+    return d >= lastMonthStart && d <= lastMonthEnd;
+  });
 
-  // Calculate total volume from logs
-  let totalVolume = 0;
-  const exVolume = {};
-  const exMaxWeight = {};
+  // Calculate volume for this month and last month
+  let totalVolume = 0, lastMonthVolume = 0;
+  const exVolume = {}, exMaxWeight = {}, lastMonthMax = {};
   logs.forEach(l => {
     const sets = parseInt((l.reps||'').split('x')[0]) || 0;
     const reps = parseInt((l.reps||'').split('x')[1]) || 0;
@@ -4091,22 +4097,21 @@ async function renderMonthlyReport(c) {
     totalVolume += vol;
     if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
     exVolume[l.exercise_name] += vol;
-    if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) {
-      exMaxWeight[l.exercise_name] = weight;
-    }
+    if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) exMaxWeight[l.exercise_name] = weight;
   });
-
-  // Find most improved vs last month
-  const lastMonthMax = {};
   lastMonthLogs.forEach(l => {
+    const sets = parseInt((l.reps||'').split('x')[0]) || 0;
+    const reps = parseInt((l.reps||'').split('x')[1]) || 0;
     const weight = parseFloat(l.weight) || 0;
-    if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) {
-      lastMonthMax[l.exercise_name] = weight;
-    }
+    lastMonthVolume += sets * reps * weight;
+    if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) lastMonthMax[l.exercise_name] = weight;
   });
 
-  let mostImproved = null;
-  let biggestGain = 0;
+  // Best lift this month
+  const bestLiftEntry = Object.entries(exMaxWeight).sort((a,b) => b[1]-a[1])[0] || null;
+
+  // Most improved vs last month
+  let mostImproved = null, biggestGain = 0;
   Object.keys(exMaxWeight).forEach(ex => {
     if (lastMonthMax[ex]) {
       const gain = exMaxWeight[ex] - lastMonthMax[ex];
@@ -4114,53 +4119,56 @@ async function renderMonthlyReport(c) {
     }
   });
 
-  // Top exercises by volume
-  const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,4);
+  // Top exercises by volume (top 3)
+  const topEx = Object.entries(exVolume).sort((a,b) => b[1]-a[1]).slice(0,3);
 
-  const monthName = now.toLocaleString('default',{month:'long'});
+  // Trend helpers
+  const trendBadge = (val, prev, unit='') => {
+    if (!prev) return '';
+    const diff = val - prev;
+    if (diff === 0) return '';
+    const col = diff > 0 ? '#43d9a2' : '#ff5c6a';
+    const arrow = diff > 0 ? '▲' : '▼';
+    const display = unit === 'lbs' ? Math.abs(Math.round(diff/1000*10)/10)+'k' : Math.abs(diff);
+    return `<span style="font-size:10px;color:${col};font-weight:700;">${arrow} ${display}${unit?'':''}</span>`;
+  };
 
-  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
-      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Sessions</div>
-      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${monthlySessions.length}</div>
-      <div class="muted" style="font-size:11px;margin-top:2px">${monthName}</div>
-    </div>
-    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px">
-      <div class="muted" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">Volume</div>
-      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff">${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : '--'}</div>
-      <div class="muted" style="font-size:11px;margin-top:2px">${totalVolume > 0 ? 'lbs lifted' : 'Log weights to track'}</div>
-    </div>
-  </div>`;
-
-  if (mostImproved) {
-    html += `<div style="background:rgba(67,217,162,0.07);border:1px solid rgba(67,217,162,0.2);border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:24px">&#127942;</div>
-      <div>
-        <div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#43d9a2;margin-bottom:3px">Most Improved</div>
-        <div style="font-size:14px;font-weight:600;color:#fff">${mostImproved}</div>
-        <div class="muted" style="font-size:12px">+${biggestGain} lbs vs last month</div>
-      </div>
+  const statTile = (label, value, sub, accent, extra='') => `
+    <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:13px;">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${accent};opacity:0.7;margin-bottom:6px;">${label}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff;line-height:1;">${value}</div>
+      <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:4px;display:flex;align-items:center;gap:5px;">${sub}${extra}</div>
     </div>`;
+
+  const sessionTrend = trendBadge(monthlySessions.length, lastMonthSessions.length);
+  const volTrend = totalVolume > 0 && lastMonthVolume > 0 ? trendBadge(totalVolume, lastMonthVolume, 'lbs') : '';
+
+  if (monthlySessions.length === 0 && logs.length === 0) {
+    el.innerHTML = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
+    return;
   }
 
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+    ${statTile('Sessions', monthlySessions.length, now.toLocaleString('default',{month:'short'}), '#4fa3e8', sessionTrend)}
+    ${statTile('Volume', totalVolume > 0 ? (totalVolume >= 1000 ? (Math.round(totalVolume/100)/10)+'k' : Math.round(totalVolume).toLocaleString()) : '--', totalVolume > 0 ? 'lbs lifted' : 'log weights', '#93c5fd', volTrend)}
+    ${bestLiftEntry ? statTile('Best Lift', bestLiftEntry[1]+'<span style="font-size:13px;font-weight:500;"> lbs</span>', bestLiftEntry[0], '#c084fc') : ''}
+    ${mostImproved ? statTile('Most Improved', '+'+biggestGain+'<span style="font-size:13px;font-weight:500;"> lbs</span>', mostImproved, '#43d9a2') : ''}
+  </div>`;
+
   if (topEx.length > 0) {
-    html += `<div style="font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Top Exercises by Volume</div>`;
+    html += `<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);margin-bottom:8px;margin-top:4px;">Top by Volume</div>`;
     topEx.forEach(([name, vol]) => {
       const pct = Math.round((vol / totalVolume) * 100);
-      html += `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <div style="font-size:13px;color:var(--text)">${name}</div>
-          <div style="font-size:12px;color:var(--muted)">${Math.round(vol).toLocaleString()} lbs</div>
+      html += `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <div style="font-size:12px;color:rgba(232,237,245,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%">${name}</div>
+          <div style="font-size:11px;color:rgba(180,200,230,0.4);">${pct}%</div>
         </div>
-        <div style="background:var(--surface2);border-radius:20px;height:4px;overflow:hidden">
-          <div style="width:${pct}%;height:100%;border-radius:20px;background:var(--accent)"></div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:20px;height:3px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;border-radius:20px;background:linear-gradient(90deg,#4fa3e8,#c084fc);"></div>
         </div>
       </div>`;
     });
-  }
-
-  if (monthlySessions.length === 0 && logs.length === 0) {
-    html = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
   }
 
   el.innerHTML = html;
