@@ -2625,6 +2625,82 @@ function parseSchedule(str) {
   return result.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;});
 }
 
+// ── GARMIN FIT EXPORT ──
+function generateGarminFIT(run) {
+  function crc16(data) {
+    var t=[0x0000,0xCC01,0xD801,0x1400,0xF001,0x3C00,0x2800,0xE401,0xA001,0x6C00,0x7800,0xB401,0x5000,0x9C01,0x8801,0x4400];
+    var crc=0;
+    for(var i=0;i<data.length;i++){var b=data[i];var tmp=t[crc&0xF];crc=(crc>>4)&0x0FFF;crc^=tmp^t[b&0xF];tmp=t[crc&0xF];crc=(crc>>4)&0x0FFF;crc^=tmp^t[(b>>4)&0xF];}
+    return crc;
+  }
+  function u16le(v){return[v&0xFF,(v>>8)&0xFF];}
+  function u32le(v){return[(v>>>0)&0xFF,((v>>>0)>>8)&0xFF,((v>>>0)>>16)&0xFF,((v>>>0)>>24)&0xFF];}
+  function str16(s){var a=[];for(var i=0;i<16;i++)a.push(i<s.length?s.charCodeAt(i):0);return a;}
+  // Parsers
+  function distCm(s){if(!s)return 0;s=String(s).trim().toLowerCase();var m;if((m=s.match(/^([\d.]+)\s*km?$/)))return Math.round(parseFloat(m[1])*100000);if((m=s.match(/^([\d.]+)\s*m$/)))return Math.round(parseFloat(m[1])*100);if((m=s.match(/^([\d.]+)$/)))return Math.round(parseFloat(m[1])*100000);return 0;}
+  function timeMs(s){if(!s)return 0;s=String(s).trim().toLowerCase();var m;if((m=s.match(/^(\d+)\s*s/)))return parseInt(m[1])*1000;if((m=s.match(/^(\d+)\s*min/)))return parseInt(m[1])*60000;if((m=s.match(/^(\d+):(\d+)$/)))return(parseInt(m[1])*60+parseInt(m[2]))*1000;return 0;}
+  function paceToMms(p){if(!p)return 0;var m=p.match(/^(\d+):(\d{2})$/);if(!m)return 0;var spk=parseInt(m[1])*60+parseInt(m[2]);return Math.round(1000000/spk);}
+  var INV=0xFFFFFFFF,D_TIME=0,D_DIST=1,D_OPEN=5,D_REPEAT=6,T_SPEED=0,T_OPEN=2,I_ACT=0,I_REST=1,I_WU=2,I_CD=3;
+  // Build steps array
+  var steps=[];
+  function step(dt,dv,tt,lo,hi,intens){steps.push([steps.length,dt,dv>>>0,tt,lo>>>0,hi>>>0,intens]);}
+  if(run.type==='intervals'){
+    var segs=run.segments||[];
+    if(run.warmup){var d=distCm(run.warmup);step(d>0?D_DIST:D_OPEN,d,T_OPEN,INV,INV,I_WU);}
+    for(var si=0;si<segs.length;si++){
+      var seg=segs[si];var reps=parseInt(seg.reps)||1;
+      var iDist=distCm(seg.distance);var spd=paceToMms(seg.pace);
+      var rs=steps.length;
+      step(iDist>0?D_DIST:D_OPEN,iDist,spd>0?T_SPEED:T_OPEN,spd>0?Math.round(spd*0.97):INV,spd>0?Math.round(spd*1.03):INV,I_ACT);
+      step(timeMs(seg.rest)>0?D_TIME:D_OPEN,timeMs(seg.rest),T_OPEN,INV,INV,I_REST);
+      if(reps>1)step(D_REPEAT,(reps<<16)|rs,T_OPEN,INV,INV,I_ACT);
+    }
+    if(run.cooldown){var dc=distCm(run.cooldown);step(dc>0?D_DIST:D_OPEN,dc,T_OPEN,INV,INV,I_CD);}
+  } else {
+    var dist2=distCm(run.distance);var spd2=paceToMms(run.pace);
+    step(dist2>0?D_DIST:D_OPEN,dist2,spd2>0?T_SPEED:T_OPEN,spd2>0?Math.round(spd2*0.97):INV,spd2>0?Math.round(spd2*1.03):INV,I_ACT);
+  }
+  // Build messages
+  var msgs=[];
+  // Def: File ID (local 0, global 0)
+  msgs=msgs.concat([0x40,0,0,0,0,2, 0,1,0x00, 4,4,0x86]);
+  // Data: File ID — type=5(workout), time_created
+  var ge=Math.max(0,Math.floor(Date.now()/1000)-631065600);
+  msgs=msgs.concat([0x00,5].concat(u32le(ge)));
+  // Def: Workout (local 1, global 26)
+  msgs=msgs.concat([0x41,0,0,26,0,3, 4,1,0x00, 6,2,0x84, 8,16,0x07]);
+  // Data: Workout — sport=1(run), num_steps, name
+  msgs=msgs.concat([0x01,1].concat(u16le(steps.length)).concat(str16(run.label||run.name||'Workout')));
+  // Def: Workout Step (local 2, global 27)
+  msgs=msgs.concat([0x42,0,0,27,0,8, 0,2,0x84, 2,1,0x00, 3,4,0x86, 4,1,0x00, 5,4,0x86, 6,4,0x86, 7,4,0x86, 8,1,0x00]);
+  // Data: steps
+  for(var i=0;i<steps.length;i++){
+    var s=steps[i];
+    msgs=msgs.concat([0x02].concat(u16le(s[0])).concat([s[1]]).concat(u32le(s[2])).concat([s[3]]).concat(u32le(0)).concat(u32le(s[4])).concat(u32le(s[5])).concat([s[6]]));
+  }
+  // Header
+  var hdr=[14,0x10].concat(u16le(2082)).concat(u32le(msgs.length)).concat([0x2E,0x46,0x49,0x54]);
+  hdr=hdr.concat(u16le(crc16(hdr)));
+  // File CRC
+  var full=hdr.concat(msgs);
+  full=full.concat(u16le(crc16(msgs)));
+  return new Uint8Array(full);
+}
+
+function downloadFIT(run) {
+  var fitData=generateGarminFIT(run);
+  var fname=((run.label||'workout').replace(/[^a-zA-Z0-9]/g,'_'))+'.fit';
+  // Try Web Share API (iOS/Android — opens Garmin Connect directly)
+  if(window.File&&navigator.share&&navigator.canShare){
+    var file=new File([fitData],fname,{type:'application/octet-stream'});
+    if(navigator.canShare({files:[file]})){navigator.share({files:[file],title:run.label||'Workout'}).catch(function(){});return;}
+  }
+  // Fallback: data URL download
+  var bin='';for(var i=0;i<fitData.length;i++)bin+=String.fromCharCode(fitData[i]);
+  var a=document.createElement('a');a.href='data:application/octet-stream;base64,'+btoa(bin);a.download=fname;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
 // CLIENT PORTAL
 function startClientPortal(id) {
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
@@ -3175,6 +3251,10 @@ function startClientPortal(id) {
     if (run.notes) {
       html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.08);border-radius:10px;padding:12px 14px;font-size:13px;color:rgba(232,237,245,0.7);line-height:1.6;margin-bottom:16px;">' + run.notes + '</div>';
     }
+
+    window._currentRunForGarmin = run;
+    html += '<button onclick="downloadFIT(window._currentRunForGarmin)" style="width:100%;background:rgba(0,175,80,0.1);border:1px solid rgba(0,200,80,0.3);color:rgba(60,220,120,0.9);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:4px;">&#8987; Send to Garmin</button>';
+    html += '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:8px;">Downloads a .FIT file — open in Garmin Connect to sync to your watch</div>';
 
     pb.innerHTML = html;
   }
