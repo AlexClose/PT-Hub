@@ -493,6 +493,9 @@ to{opacity:1;transform:translateY(0);}
     <button class="nav-tab" onclick="showView('library',this)">
       <span class="tab-icon">📋</span> Library
     </button>
+    <button class="nav-tab" onclick="showView('programs',this)">
+      <span class="tab-icon">📁</span> Programs
+    </button>
   </div>
 </nav>
 
@@ -551,16 +554,20 @@ to{opacity:1;transform:translateY(0);}
       <div class="equip-grid" id="equipList"></div>
     </div>
 
-    <div style="margin-top:32px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div>
-          <div class="page-label" style="margin:0">Program Templates</div>
-          <div style="font-size:11px;color:rgba(180,200,230,0.3);margin-top:3px">Save programs to apply to any client instantly</div>
-        </div>
-        <button class="btn btn-secondary btn-sm" onclick="openAddTemplate()">+ Template</button>
+  </div>
+
+  <!-- PROGRAMS -->
+
+  <div class="view" id="view-programs">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="page-header" style="margin:0">
+        <div class="page-label">Saved Programs</div>
+        <h2>Programs</h2>
       </div>
-      <div id="templateList" style="margin-top:14px"></div>
+      <button class="btn btn-primary btn-sm" onclick="openAddTemplate()">+ New</button>
     </div>
+    <div style="font-size:13px;color:rgba(180,200,230,0.4);margin-bottom:20px;">Build programs here and apply them to any client instantly.</div>
+    <div id="templateList"></div>
   </div>
 </main>
 
@@ -1042,7 +1049,8 @@ function showView(name,el){
   if(el)el.classList.add('active');
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
-  if(name==='library'){renderLibrary();renderEquipList();loadTemplates();}
+  if(name==='library'){renderLibrary();renderEquipList();}
+  if(name==='programs'){loadTemplates();}
 }
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 function openModal(id){
