@@ -2352,7 +2352,7 @@ function startClientPortal(id) {
       if (!day) return;
       var dayColor = (day && day.color) || '#4fa3e8';
       if (tappedCell) { tappedCell.style.outline = '2px solid ' + dayColor; tappedCell.style.outlineOffset = '2px'; }
-      renderDayPicker(window._portalDays);
+      renderWorkoutCard(day, day.name);
     };
   }
 
