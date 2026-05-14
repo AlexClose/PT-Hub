@@ -2693,11 +2693,11 @@ function downloadFIT(run) {
   // Try Web Share API first (Android)
   if(window.File&&navigator.share&&navigator.canShare){
     try{
-      var file=new File([fitData],fname,{type:'application/octet-stream'});
+      var file=new File([fitData],fname,{type:'application/vnd.ant.fit'});
       if(navigator.canShare({files:[file]})){
         navigator.share({files:[file],title:run.label||'Workout'})
-          .then(function(){setTimeout(function(){showGarminHelp(fname);},400);})
-          .catch(function(){});
+          .then(function(){setTimeout(function(){showGarminHelp(fname);},600);})
+          .catch(function(){setTimeout(function(){showGarminHelp(fname);},400);});
         return;
       }
     }catch(e){}
@@ -2714,9 +2714,7 @@ function downloadFIT(run) {
     var a2=document.createElement('a');a2.href='data:application/octet-stream;base64,'+btoa(bin);a2.download=fname;
     document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
   }
-  // Show a quick prompt first, then full instructions after iOS dialog clears
-  toast('Tap “Save to Files” in the dialog ↗');
-  setTimeout(function(){showGarminHelp(fname);},2200);
+  setTimeout(function(){showGarminHelp(fname);},1000);
 }
 
 function showGarminHelp(fname) {
@@ -2731,19 +2729,19 @@ function showGarminHelp(fname) {
       '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">1</div>' +
-          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Open the <b style="color:#fff;">Files</b> app → <b style="color:#fff;">Downloads</b></div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">In the share sheet, tap <b style="color:#fff;">Save to Files</b> → <b style="color:#fff;">Downloads</b></div>' +
         '</div>' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">2</div>' +
-          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap <b style="color:#fff;">' + fname + '</b></div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Open <b style="color:#fff;">Garmin Connect</b> → <b style="color:#fff;">More</b> → <b style="color:#fff;">Training &amp; Planning</b> → <b style="color:#fff;">Workouts</b></div>' +
         '</div>' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">3</div>' +
-          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap <b style="color:#fff;">Share &#8599;</b> → <b style="color:#fff;">Open in Garmin Connect</b></div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Tap the <b style="color:#fff;">import icon</b> (top right) → select <b style="color:#fff;">' + fname + '</b> from Downloads</div>' +
         '</div>' +
         '<div style="display:flex;align-items:flex-start;gap:12px;">' +
           '<div style="background:rgba(0,200,80,0.15);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:rgba(0,220,100,0.9);flex-shrink:0;">4</div>' +
-          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Workout syncs to your watch on next Garmin Connect open</div>' +
+          '<div style="font-size:13px;color:rgba(180,200,230,0.8);line-height:1.5;">Workout appears in your list — sync your watch to send it over</div>' +
         '</div>' +
       '</div>' +
       '<button onclick="document.getElementById(\'garmin-help-ov\').remove()" style="width:100%;background:rgba(0,200,80,0.12);border:1px solid rgba(0,200,80,0.25);border-radius:10px;padding:13px;color:rgba(60,220,120,0.9);font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Got it</button>' +
