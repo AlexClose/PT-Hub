@@ -3546,7 +3546,11 @@ function startClientPortal(id) {
     // Open body stats entry sheet
     window._openBodyStatSheet = function() {
       var sheet = document.getElementById('body-stat-sheet');
-      if (!sheet) return;
+      if (!sheet) {
+        sheet = document.createElement('div');
+        sheet.id = 'body-stat-sheet';
+        document.body.appendChild(sheet);
+      }
       sheet.innerHTML =
         '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto;">' +
           '<div onclick="window._closeBodyStatSheet()" style="font-size:13px;font-weight:700;color:rgba(126,200,255,0.7);cursor:pointer;">&#8592; Cancel</div>' +
