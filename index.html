@@ -256,8 +256,8 @@ will-change:transform;
 @keyframes checkPop{from{transform:scale(0) rotate(-15deg)}60%{transform:scale(1.25) rotate(5deg)}to{transform:scale(1) rotate(0deg)}}
 @keyframes confettiFall{from{top:-8px;opacity:1;}to{top:108%;opacity:0;transform:rotate(720deg) scale(0.5);}}
 @keyframes successIn{from{transform:scale(0.85) translateY(16px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
-#workout-sheet{position:fixed;inset:0;z-index:400;background:#0a0d12;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;transform:translateY(100%);transition:transform .32s cubic-bezier(0.32,0,0.2,1);will-change:transform;}
-#workout-sheet.sheet-open{transform:translateY(0);}
+#workout-sheet,#body-stat-sheet{position:fixed;inset:0;z-index:400;background:#0a0d12;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;transform:translateY(100%);transition:transform .32s cubic-bezier(0.32,0,0.2,1);will-change:transform;}
+#workout-sheet.sheet-open,#body-stat-sheet.sheet-open{transform:translateY(0);}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal.no-transition{transition:none!important;}
 .modal-handle{width:40px;height:4px;background:var(–border2);border-radius:2px;margin:0 auto 24px;}
@@ -890,6 +890,9 @@ const db={
   addRunProgram:   (d)   => sb('POST','run_programs',d),
   updateRunProgram:(id,d)=> sb('PATCH','run_programs',d,`?id=eq.${id}`),
   delRunProgram:   (id)  => sb('DELETE','run_programs',null,`?id=eq.${id}`),
+  getBodyStats:  (cid,lim)=> sb('GET','body_stats',null,`?client_id=eq.${cid}&order=date.asc${lim?'&limit='+lim:''}`),
+  addBodyStat:   (d)      => sb('POST','body_stats',d),
+  delBodyStat:   (id)     => sb('DELETE','body_stats',null,`?id=eq.${id}`),
 };
 
 const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4fa3e8',Arms:'#c084fc',Core:'#ff8c47',Glutes:'#ff6b9d','Full Body':'#7ec8ff',Cardio:'#43d9a2'};
@@ -1494,13 +1497,14 @@ async function openClientDetail(id){
   if(!c._sessions) c._sessions=[];
   renderClientModal(c);
   openModal('clientModal');
-  setTimeout(function(){renderMonthlyReport(c);},370);
+  setTimeout(function(){renderMonthlyReport(c);renderBodyStatsCoach(c);},370);
   try{
     const fresh=await db.getSessions(id);
     if(JSON.stringify(fresh)!==JSON.stringify(c._sessions)){
       c._sessions=fresh;
       renderClientModal(c);
       renderMonthlyReport(c);
+      renderBodyStatsCoach(c);
     }
   }catch(e){}
 }
@@ -1694,6 +1698,15 @@ function renderClientModal(c){
         <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Monthly Summary &middot; ${new Date().toLocaleString('default',{month:'long'})}</div>
       </div>
       <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
+        <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
+      </div>
+      <div id="bodystats-form-${c.id}" style="display:none"></div>
+      <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
     </div>
 
     ${c.goals||c.injuries?(()=>{
@@ -3396,7 +3409,14 @@ function startClientPortal(id) {
       }
     }
 
-    html += '<div style="margin-top:28px;">' +
+    html += '<div style="background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-top:28px;margin-bottom:20px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+        '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>' +
+      '</div>' +
+      '<div id="portal-body-stats"><div class="skeleton" style="height:100px;border-radius:10px;"></div></div>' +
+    '</div>';
+
+    html += '<div style="margin-top:0;">' +
       '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>' +
       '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>' +
     '</div>';
@@ -3481,6 +3501,105 @@ function startClientPortal(id) {
         if(sb2) sb2.innerHTML+='<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#c084fc;letter-spacing:0.3px;margin-left:8px;margin-bottom:2px;">🏆 '+prCount2+' PR'+(prCount2===1?'':'s')+' this month</div>';
       }
     }).catch(function(){});
+
+    // Body stats — fetch entries and render chart + last entry
+    window._loadPortalBodyStats = function() {
+      var bsEl = document.getElementById('portal-body-stats');
+      if (!bsEl) return;
+      fetch(SUPABASE_URL + '/rest/v1/body_stats?client_id=eq.' + window._portalClientId + '&order=date.asc&limit=30', {
+        headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+      }).then(function(r){ return r.json(); }).then(function(data) {
+        var bsEl2 = document.getElementById('portal-body-stats');
+        if (!bsEl2) return;
+        var entries = Array.isArray(data) ? data : [];
+        if (entries.length === 0) {
+          bsEl2.innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+              '<div style="font-size:13px;color:rgba(180,200,230,0.35);">No stats logged yet.</div>' +
+              '<button onclick="window._openBodyStatSheet()" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:8px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;">+ Log Stats</button>' +
+            '</div>';
+          return;
+        }
+        var latest = entries[entries.length-1];
+        var prev = entries.length > 1 ? entries[entries.length-2] : null;
+        var diff = prev && latest.weight_lbs && prev.weight_lbs ? parseFloat(latest.weight_lbs)-parseFloat(prev.weight_lbs) : null;
+        var trendHtml = diff !== null
+          ? '<span style="font-size:11px;color:'+(diff<0?'#43d9a2':diff>0?'#ff5c6a':'rgba(180,200,230,0.35)')+';font-weight:700;margin-left:6px;">'+(diff>0?'+':'')+diff.toFixed(1)+' lbs</span>'
+          : '';
+        bsEl2.innerHTML =
+          '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">' +
+            '<span style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">'+(latest.weight_lbs?parseFloat(latest.weight_lbs).toFixed(1):'—')+'</span>' +
+            '<span style="font-size:13px;color:rgba(180,200,230,0.4);">lbs'+trendHtml+'</span>' +
+            (latest.body_fat_pct?'<span style="font-size:13px;color:rgba(192,132,252,0.6);margin-left:8px;">· '+parseFloat(latest.body_fat_pct).toFixed(1)+'% BF</span>':'') +
+            '<button onclick="window._openBodyStatSheet()" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin-left:auto;flex-shrink:0;">+ Log</button>' +
+          '</div>' +
+          '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-bottom:10px;">'+latest.date+'</div>' +
+          renderBodyStatsChart(entries,'weight_lbs','#4fa3e8') +
+          (entries.filter(function(e){return e.body_fat_pct>0;}).length>=2 ? renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc') : '');
+      }).catch(function(){
+        var bsEl3 = document.getElementById('portal-body-stats');
+        if (bsEl3) bsEl3.innerHTML = '<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>';
+      });
+    };
+    window._loadPortalBodyStats();
+
+    // Open body stats entry sheet
+    window._openBodyStatSheet = function() {
+      var sheet = document.getElementById('body-stat-sheet');
+      if (!sheet) return;
+      sheet.innerHTML =
+        '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto;">' +
+          '<div onclick="window._closeBodyStatSheet()" style="font-size:13px;font-weight:700;color:rgba(126,200,255,0.7);cursor:pointer;">&#8592; Cancel</div>' +
+          '<div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;text-align:center;">Log Body Stats</div>' +
+          '<div style="width:64px;"></div>' +
+        '</div>' +
+        '<div style="padding:24px 20px;max-width:480px;margin:0 auto;">' +
+          '<div style="margin-bottom:18px;">' +
+            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Weight (lbs)</div>' +
+            '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;">' +
+          '</div>' +
+          '<div style="margin-bottom:18px;">' +
+            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Body Fat % <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+            '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;">' +
+          '</div>' +
+          '<div style="margin-bottom:28px;">' +
+            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+            '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;">' +
+          '</div>' +
+          '<button onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">Save Stats</button>' +
+        '</div>';
+      requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
+      setTimeout(function(){var w=document.getElementById('portal-bs-weight');if(w)w.focus();},400);
+    };
+
+    window._closeBodyStatSheet = function() {
+      var sheet = document.getElementById('body-stat-sheet');
+      if (!sheet) return;
+      sheet.classList.remove('sheet-open');
+      setTimeout(function(){sheet.innerHTML='';},380);
+    };
+
+    window._saveBodyStat = function() {
+      var wEl=document.getElementById('portal-bs-weight');
+      var bfEl=document.getElementById('portal-bs-bf');
+      var nEl=document.getElementById('portal-bs-notes');
+      if (!wEl || !wEl.value) { if(wEl){wEl.style.borderColor='rgba(255,92,106,0.5)';} return; }
+      var btn=document.querySelector('#body-stat-sheet button');
+      if(btn){btn.disabled=true;btn.textContent='Saving...';}
+      var today2=new Date().toISOString().split('T')[0];
+      var body={client_id:window._portalClientId,date:today2,weight_lbs:parseFloat(wEl.value)};
+      if(bfEl&&bfEl.value)body.body_fat_pct=parseFloat(bfEl.value);
+      if(nEl&&nEl.value)body.notes=nEl.value;
+      fetch(SUPABASE_URL+'/rest/v1/body_stats',{
+        method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify(body)
+      }).then(function(r){
+        if(!r.ok)throw new Error();
+        window._closeBodyStatSheet();
+        setTimeout(function(){if(window._loadPortalBodyStats)window._loadPortalBodyStats();},420);
+      }).catch(function(){if(btn){btn.disabled=false;btn.textContent='Save Stats';}});
+    };
   }
 
   function renderRunCard(runDay) {
@@ -4283,9 +4402,116 @@ async function renderMonthlyReport(c) {
   el.innerHTML = html;
 }
 
+// ── BODY STATS ──
+function renderBodyStatsChart(entries, field, color) {
+  var pts = entries.filter(function(e){ return parseFloat(e[field]) > 0; });
+  if (pts.length < 2) return '';
+  var vals = pts.map(function(e){ return parseFloat(e[field]); });
+  var minV = Math.min.apply(null, vals), maxV = Math.max.apply(null, vals);
+  var rng = maxV - minV || 1;
+  var W=300, H=80, pL=30, pR=8, pT=8, pB=20;
+  function f(n){return n.toFixed(1);}
+  var xs = pts.map(function(_,i){ return pL + (pts.length>1?i/(pts.length-1):0.5)*(W-pL-pR); });
+  var ys = pts.map(function(e){ return pT + (1-(parseFloat(e[field])-minV)/rng)*(H-pT-pB); });
+  var d='M'+f(xs[0])+','+f(ys[0]);
+  for(var i=1;i<xs.length;i++){var cpx=xs[i-1]+(xs[i]-xs[i-1])/2;d+=' C'+f(cpx)+','+f(ys[i-1])+' '+f(cpx)+','+f(ys[i])+' '+f(xs[i])+','+f(ys[i]);}
+  var uid='bsc'+Math.random().toString(36).slice(2,7);
+  var fD=d+' L'+f(xs[xs.length-1])+','+(H-pB)+' L'+f(xs[0])+','+(H-pB)+' Z';
+  function fmt(s){var p=s.split('-');return +p[1]+'/'+(+p[2]);}
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-bottom:4px;">'+
+    '<defs><linearGradient id="'+uid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+fD+'" fill="url(#'+uid+')"/>'+
+    '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round"/>'+
+    pts.map(function(e,j){var isL=j===pts.length-1;return '<circle cx="'+f(xs[j])+'" cy="'+f(ys[j])+'" r="'+(isL?4:2.5)+'" fill="'+(isL?color:'rgba(10,13,18,0.9)')+'" stroke="'+color+'" stroke-width="'+(isL?0:1.5)+'"/>';}).join('')+
+    '<text x="'+(pL-4)+'" y="'+(pT+5)+'" text-anchor="end" fill="rgba(180,200,230,0.3)" font-size="8">'+Math.round(maxV)+'</text>'+
+    '<text x="'+(pL-4)+'" y="'+(H-pB+5)+'" text-anchor="end" fill="rgba(180,200,230,0.3)" font-size="8">'+Math.round(minV)+'</text>'+
+    '<text x="'+f(xs[0])+'" y="'+H+'" text-anchor="start" fill="rgba(180,200,230,0.25)" font-size="8">'+fmt(pts[0].date)+'</text>'+
+    (pts.length>1?'<text x="'+f(xs[xs.length-1])+'" y="'+H+'" text-anchor="end" fill="rgba(180,200,230,0.25)" font-size="8">'+fmt(pts[pts.length-1].date)+'</text>':'')+
+    '</svg>';
+}
+
+async function renderBodyStatsCoach(c) {
+  const el = document.getElementById('bodystats-coach-'+c.id);
+  if (!el) return;
+  let entries = [];
+  try { entries = await db.getBodyStats(c.id, 30); } catch(e) { entries = []; }
+  if (!entries || entries.length === 0) {
+    el.innerHTML = '<div style="font-size:13px;color:rgba(180,200,230,0.3);padding:4px 0;">No stats logged yet.</div>';
+    return;
+  }
+  const latest = entries[entries.length-1];
+  const prev = entries.length > 1 ? entries[entries.length-2] : null;
+  const wDiff = prev&&latest.weight_lbs&&prev.weight_lbs ? parseFloat(latest.weight_lbs)-parseFloat(prev.weight_lbs) : null;
+  const trendHtml = wDiff!==null ? `<span style="font-size:11px;color:${wDiff<0?'#43d9a2':wDiff>0?'#ff5c6a':'rgba(180,200,230,0.35)'};font-weight:700;margin-left:6px;">${wDiff>0?'+':''}${wDiff.toFixed(1)}</span>` : '';
+  let html = `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:12px;">
+    <span style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">${latest.weight_lbs?parseFloat(latest.weight_lbs).toFixed(1):'—'}</span>
+    <span style="font-size:13px;color:rgba(180,200,230,0.4);">lbs${trendHtml}</span>
+    ${latest.body_fat_pct?`<span style="font-size:13px;color:rgba(192,132,252,0.6);margin-left:8px;">· ${parseFloat(latest.body_fat_pct).toFixed(1)}% BF</span>`:''}
+    <span style="font-size:11px;color:rgba(180,200,230,0.3);margin-left:auto;">${latest.date}</span>
+  </div>`;
+  html += renderBodyStatsChart(entries,'weight_lbs','#4fa3e8');
+  if (entries.length >= 2) html += renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc');
+  html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:8px;">';
+  entries.slice(-5).reverse().forEach(e=>{
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(100,160,255,0.05);">
+      <span style="font-size:12px;color:rgba(180,200,230,0.4);">${e.date}</span>
+      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">${e.weight_lbs?parseFloat(e.weight_lbs).toFixed(1)+' lbs':'—'}${e.body_fat_pct?' · '+parseFloat(e.body_fat_pct).toFixed(1)+'% BF':''}</span>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function openCoachBodyStatForm(cid) {
+  const key='_bsf_'+cid;
+  window[key]=!window[key];
+  const el=document.getElementById('bodystats-form-'+cid);
+  if(!el)return;
+  if(!window[key]){el.style.display='none';return;}
+  el.style.display='block';
+  const today=new Date().toISOString().split('T')[0];
+  el.innerHTML=`<div style="background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.18);border-radius:12px;padding:14px;margin-top:10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Date</div>
+        <input id="bsDate-${cid}" type="date" value="${today}" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Weight (lbs)</div>
+        <input id="bsWeight-${cid}" type="number" step="0.1" placeholder="e.g. 165.2" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Body Fat %</div>
+        <input id="bsBF-${cid}" type="number" step="0.1" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Notes</div>
+        <input id="bsNotes-${cid}" type="text" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+    </div>
+    <button onclick="saveCoachBodyStat('${cid}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Save Entry</button>
+  </div>`;
+}
+
+async function saveCoachBodyStat(cid) {
+  const dateEl=document.getElementById('bsDate-'+cid);
+  const wEl=document.getElementById('bsWeight-'+cid);
+  const bfEl=document.getElementById('bsBF-'+cid);
+  const nEl=document.getElementById('bsNotes-'+cid);
+  if(!dateEl||!dateEl.value){toast('Please enter a date');return;}
+  const entry={client_id:cid,date:dateEl.value};
+  if(wEl&&wEl.value)entry.weight_lbs=parseFloat(wEl.value);
+  if(bfEl&&bfEl.value)entry.body_fat_pct=parseFloat(bfEl.value);
+  if(nEl&&nEl.value)entry.notes=nEl.value;
+  try {
+    await db.addBodyStat(entry);
+    toast('Stats saved ✓');
+    window['_bsf_'+cid]=false;
+    const fe=document.getElementById('bodystats-form-'+cid);
+    if(fe)fe.style.display='none';
+    const c=clients.find(x=>x.id===cid);
+    if(c)renderBodyStatsCoach(c);
+  } catch(e){toast('Error saving — check Supabase table exists');}
+}
+
 startApp();
 </script>
 
 <div id="workout-sheet"></div>
+<div id="body-stat-sheet"></div>
 </body>
 </html>
