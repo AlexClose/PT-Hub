@@ -3290,21 +3290,8 @@ function startClientPortal(id) {
     var html =
       '<div style="margin-bottom:16px;">' +
         '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:4px;font-weight:500;">' + greeting + ',</div>' +
-        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:14px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
-        '<div id="portal-stats-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:0;">' +
-          '<div style="background:rgba(79,163,232,0.08);border:1px solid rgba(79,163,232,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:32px;border-radius:5px;"></div></div>' +
-            '<div style="font-size:9px;color:rgba(126,200,255,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">All Time</div>' +
-          '</div>' +
-          '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:24px;border-radius:5px;"></div></div>' +
-            '<div style="font-size:9px;color:rgba(245,158,11,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Month</div>' +
-          '</div>' +
-          '<div style="background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:24px;border-radius:5px;"></div></div>' +
-            '<div style="font-size:9px;color:rgba(67,217,162,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Streak</div>' +
-          '</div>' +
-        '</div>' +
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:10px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
+        '<div id="portal-stats-bar"></div>' +
       '</div>' +
       heroHtml +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:9px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;">' +
@@ -3412,35 +3399,14 @@ function startClientPortal(id) {
       sessions = sessions || [];
       window._portalRecentSessions = sessions;
 
-      // Populate stats bar
+      // Populate stats bar (month sessions only)
       var statsBar = document.getElementById('portal-stats-bar');
       if (statsBar) {
         var monthStart2 = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         var monthSess = sessions.filter(function(s) { return new Date(s.created_at || s.date) >= monthStart2; }).length;
-        // Streak: consecutive training days up to today
-        var dateSeen = {};
-        sessions.forEach(function(s) { var d = s.date || (s.created_at||'').slice(0,10); if(d) dateSeen[d]=true; });
-        var streak = 0, checkDate = new Date(); checkDate.setHours(0,0,0,0);
-        for (var sd = 0; sd < 365; sd++) {
-          var dStr = checkDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-          var dStr2 = checkDate.toISOString().slice(0,10);
-          if (dateSeen[dStr] || dateSeen[dStr2]) { streak++; checkDate.setDate(checkDate.getDate()-1); }
-          else if (sd === 0) { checkDate.setDate(checkDate.getDate()-1); } // skip today if no session yet
-          else break;
-        }
-        statsBar.innerHTML =
-          '<div style="background:rgba(79,163,232,0.08);border:1px solid rgba(79,163,232,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#7ec8ff;line-height:1;">' + sessions.length + '</div>' +
-            '<div style="font-size:9px;color:rgba(126,200,255,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">All Time</div>' +
-          '</div>' +
-          '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#f59e0b;line-height:1;">' + monthSess + '</div>' +
-            '<div style="font-size:9px;color:rgba(245,158,11,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">Month</div>' +
-          '</div>' +
-          '<div style="background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
-            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#43d9a2;line-height:1;">' + streak + '</div>' +
-            '<div style="font-size:9px;color:rgba(67,217,162,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">Streak</div>' +
-          '</div>';
+        statsBar.innerHTML = monthSess > 0
+          ? '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.3px;margin-bottom:2px;">🔥 ' + monthSess + ' session' + (monthSess===1?'':'s') + ' this month</div>'
+          : '';
         // Update week pill with real data
         var now2 = new Date(), monday2 = new Date(now2);
         monday2.setDate(now2.getDate() - (now2.getDay() === 0 ? 6 : now2.getDay() - 1));
