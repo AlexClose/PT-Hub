@@ -3010,52 +3010,44 @@ function startClientPortal(id) {
     document.body.style.color = '#e8edf5';
     document.body.style.minHeight = '100vh';
     document.body.style.overflowX = 'hidden';
+    var tabItem = function(id, tab, icon, label, active) {
+      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 12px;cursor:pointer;color:'+(active?'#7ec8ff':'rgba(180,200,230,0.32)')+';border-top:2px solid '+(active?'#4fa3e8':'transparent')+';transition:color .2s,border-color .2s;">'+
+        icon+'<span style="font-size:9px;font-weight:700;letter-spacing:0.5px;margin-top:5px;">'+label+'</span></div>';
+    };
+    var icoHome='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+    var icoTrain='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    var icoPRs='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>';
+    var icoStats='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
     document.body.innerHTML =
-      '<div style="background:linear-gradient(180deg,rgba(10,12,15,0.99),rgba(10,12,15,0.95));border-bottom:1px solid rgba(100,160,255,0.12);padding:16px 20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);">' +
+      '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.1);padding:14px 20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);">' +
         '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.3px;">' +
               '<span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>' +
             '</div>' +
-            '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.45);margin-top:2px;font-weight:500;">Client Portal</div>' +
           '</div>' +
-          '<div style="background:rgba(26,31,40,0.8);border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:8px 14px;text-align:right;backdrop-filter:blur(4px);">' +
+          '<div style="background:rgba(26,31,40,0.8);border:1px solid rgba(100,160,255,0.18);border-radius:10px;padding:7px 13px;text-align:right;">' +
             '<div style="font-size:13px;font-weight:700;color:#fff;">' + (client ? client.first : 'Client') + '</div>' +
-            '<div style="font-size:10px;color:rgba(180,200,230,0.45);margin-top:1px;font-weight:500;">' + (client ? (client.level || '') : '') + '</div>' +
+            '<div style="font-size:10px;color:rgba(180,200,230,0.4);margin-top:1px;">' + (client ? (client.level || '') : '') + '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-      '<div style="border-bottom:1px solid rgba(100,160,255,0.08);padding:12px 20px;">' +
-        '<div style="max-width:480px;margin:0 auto;" id="calendar-strip">Loading calendar...</div>' +
+      '<div style="border-bottom:1px solid rgba(100,160,255,0.07);padding:10px 20px;">' +
+        '<div style="max-width:480px;margin:0 auto;" id="calendar-strip">Loading...</div>' +
       '</div>' +
-      '<div id="portal-body" style="padding:20px;max-width:480px;margin:0 auto;">' +
-        '<div class="skeleton" style="height:100px;margin-bottom:16px;border-radius:16px;"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
-          '<div class="skeleton" style="height:72px;border-radius:12px;"></div>' +
-          '<div class="skeleton" style="height:72px;border-radius:12px;"></div>' +
+      '<div id="portal-body" style="padding:20px 20px 100px;max-width:480px;margin:0 auto;">' +
+        '<div class="skeleton" style="height:100px;margin-bottom:14px;border-radius:16px;"></div>' +
+        '<div class="skeleton" style="height:60px;margin-bottom:10px;border-radius:12px;"></div>' +
+        '<div class="skeleton" style="height:60px;border-radius:12px;"></div>' +
+      '</div>' +
+      '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(10,12,15,0.97);border-top:1px solid rgba(100,160,255,0.1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,0px);">' +
+          tabItem('home','home',icoHome,'Home',true) +
+          tabItem('train','train',icoTrain,'Train',false) +
+          tabItem('prs','prs',icoPRs,'PRs',false) +
+          tabItem('stats','stats',icoStats,'Stats',false) +
         '</div>' +
-        '<div class="skeleton" style="height:64px;margin-bottom:10px;border-radius:14px;"></div>' +
-        '<div class="skeleton" style="height:64px;margin-bottom:10px;border-radius:14px;"></div>' +
-        '<div class="skeleton" style="height:64px;border-radius:14px;"></div>' +
-      '</div>' +
-      '<div style="text-align:center;padding:32px 20px 48px;opacity:0.15;">' +
-        '<svg viewBox="0 0 400 300" width="160" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;">' +
-          '<defs>' +
-            '<linearGradient id="fpL" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#1d4ed8"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient>' +
-            '<linearGradient id="fpR" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#1d4ed8"/></linearGradient>' +
-            '<linearGradient id="fwg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#60a5fa"/><stop offset="100%" style="stop-color:#1e3a8a"/></linearGradient>' +
-          '</defs>' +
-          '<text x="200" y="68" font-family="Syne,sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">BAY</text>' +
-          '<rect x="20" y="106" width="9" height="22" rx="2" fill="#60a5fa"/><rect x="33" y="96" width="13" height="42" rx="3" fill="url(#fpL)"/><rect x="50" y="90" width="13" height="54" rx="3" fill="url(#fpL)"/><rect x="67" y="84" width="13" height="66" rx="3" fill="url(#fpL)"/><rect x="84" y="78" width="13" height="78" rx="3" fill="url(#fpL)"/>' +
-          '<rect x="371" y="106" width="9" height="22" rx="2" fill="#60a5fa"/><rect x="354" y="96" width="13" height="42" rx="3" fill="url(#fpR)"/><rect x="337" y="90" width="13" height="54" rx="3" fill="url(#fpR)"/><rect x="320" y="84" width="13" height="66" rx="3" fill="url(#fpR)"/><rect x="303" y="78" width="13" height="78" rx="3" fill="url(#fpR)"/>' +
-          '<path d="M97,100 Q115,85 132,95 Q150,106 168,96 Q186,85 204,95 Q222,106 240,94 Q258,82 276,94 Q288,102 303,100 L303,134 Q288,134 276,122 Q258,110 240,122 Q222,134 204,123 Q186,113 168,124 Q150,135 132,123 Q115,113 97,134 Z" fill="url(#fwg)"/>' +
-          '<path d="M228,94 C230,82 233,69 237,57 C241,46 245,36 250,26" stroke="#93c5fd" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
-          '<path d="M250,26 C261,15 275,11 285,14 C274,18 263,24 255,34" fill="#60a5fa"/><path d="M250,26 C257,13 263,5 268,1 C263,12 257,21 252,32" fill="#7ec8ff"/><path d="M250,26 C249,12 250,2 252,-4 C250,8 249,18 250,30" fill="#93c5fd"/><path d="M250,26 C243,12 238,4 234,0 C238,11 243,20 248,31" fill="#7ec8ff"/><path d="M250,26 C240,15 229,11 220,14 C230,17 241,22 247,33" fill="#60a5fa"/><path d="M250,26 C261,29 270,35 272,43 C263,38 254,33 252,36" fill="#3b82f6"/><path d="M250,26 C239,30 230,37 228,45 C237,40 247,35 249,37" fill="#3b82f6"/>' +
-          '<circle cx="249" cy="33" r="4" fill="#1d4ed8"/><circle cx="255" cy="31" r="3.5" fill="#1e3a8a"/><circle cx="243" cy="32" r="3.5" fill="#1d4ed8"/>' +
-          '<text x="200" y="195" font-family="Syne,sans-serif" font-weight="800" font-size="64" fill="#ffffff" text-anchor="middle" letter-spacing="4">MADE</text>' +
-          '<text x="200" y="234" font-family="Syne,sans-serif" font-weight="600" font-size="20" fill="#60a5fa" text-anchor="middle" letter-spacing="12">TRAINING</text>' +
-          '<path d="M12,12 L12,34 M12,12 L34,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M388,12 L388,34 M388,12 L366,12" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M12,288 L12,266 M12,288 L34,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/><path d="M388,288 L388,266 M388,288 L366,288" stroke="rgba(96,165,250,0.4)" stroke-width="2.5" stroke-linecap="round" fill="none"/>' +
-        '</svg></div>';
+      '</div>';
     setTimeout(function() { renderCalendarStrip(); }, 0);
   }
 
@@ -3135,7 +3127,7 @@ function startClientPortal(id) {
 
     window._calendarHome = function() {
       document.querySelectorAll('#calendar-strip [data-dayidx]').forEach(function(c) { c.style.outline = 'none'; });
-      window._showPortalDay(-1);
+      if (window._showPortalTab) window._showPortalTab('home');
     };
 
     window._toggleCalMonth = function() {
@@ -3248,261 +3240,328 @@ function startClientPortal(id) {
     scheduledDays.forEach(function(calIdx, pi) { if (pi < days.length) calDayToProgDay[calIdx] = pi; });
     renderCalendarStrip();
 
-    window._showPortalDay = function(index) {
-      if (index === -1) { renderDayPicker(window._portalDays); return; }
-      var day = window._portalDays[index];
-      if (day) renderWorkoutCard(day, day.name);
-    };
-
-    var portalBody = document.getElementById('portal-body');
-    var hour = new Date().getHours();
-    var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    var clientFirstName = window._portalClientName || 'there';
-
-    var thisMonth = 0;
-    var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    if (window._portalRecentSessions) {
-      window._portalRecentSessions.forEach(function(s) { if (new Date(s.created_at || s.date) >= monthStart) thisMonth++; });
-    }
-
-    var sessionsThisWeek = 0;
-    if (window._portalRecentSessions) {
-      var now = new Date();
-      var monday = new Date(now);
-      monday.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-      monday.setHours(0,0,0,0);
-      window._portalRecentSessions.forEach(function(s) { if (new Date(s.created_at || s.date) >= monday) sessionsThisWeek++; });
-    }
-    var weekTarget = scheduledDays.length || days.length;
-    var weekColor = sessionsThisWeek >= weekTarget ? '#43d9a2' : '#4fa3e8';
-
-    var dayLastDone = {};
-    if (window._portalRecentSessions) {
-      window._portalRecentSessions.forEach(function(s) {
-        var note = s.note || '';
-        if (note && !dayLastDone[note]) dayLastDone[note] = new Date(s.created_at || s.date);
-      });
-    }
-    function _fmtAgo(d) {
-      var diff = Math.floor((new Date() - d) / (1000*60*60*24));
-      if (diff === 0) return 'Today';
-      if (diff === 1) return 'Yesterday';
-      if (diff < 7) return diff + 'd ago';
-      if (diff < 30) return Math.floor(diff/7) + 'w ago';
-      return Math.floor(diff/30) + 'mo ago';
-    }
-
-    var todayJSH = new Date().getDay();
-    var todayCalIdx = (todayJSH === 0) ? 6 : todayJSH - 1;
-    var todayProgIdx = calDayToProgDay[todayCalIdx];
-    var heroHtml = '';
-    if (todayProgIdx !== undefined && days[todayProgIdx]) {
-      var td = days[todayProgIdx];
-      var tdColor = td.color || '#4fa3e8';
-      var tdExCount = (td.exercises || []).length;
-      heroHtml =
-        '<div style="background:linear-gradient(135deg,' + tdColor + '22,' + tdColor + '10);border:1px solid ' + tdColor + '44;border-left:4px solid ' + tdColor + ';border-radius:16px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
-          '<div>' +
-            '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:' + tdColor + 'bb;margin-bottom:5px;">Today\'s Workout</div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + td.name + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:4px;">' + tdExCount + ' exercise' + (tdExCount !== 1 ? 's' : '') + '</div>' +
-          '</div>' +
-          '<button onclick="window._showPortalDay(' + todayProgIdx + ')" style="background:' + tdColor + ';color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px ' + tdColor + '55;">Start &#8594;</button>' +
-        '</div>';
-    } else {
-      heroHtml =
-        '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:16px 20px;margin-bottom:14px;">' +
-          '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:5px;">Today</div>' +
-          '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
-          '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:4px;">Prioritise sleep, mobility, and nutrition today.</div>' +
-        '</div>';
-    }
-
-    var html =
-      '<div style="margin-bottom:16px;">' +
-        '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:4px;font-weight:500;">' + greeting + ',</div>' +
-        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:10px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
-        '<div id="portal-stats-bar"></div>' +
-      '</div>' +
-      heroHtml +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:9px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;">' +
-        '<span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.3);flex-shrink:0;">This Week</span>' +
-        '<span style="width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0;"></span>' +
-        '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:' + weekColor + ';">' + sessionsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + weekTarget + ' workouts</span></span>' +
-      '</div>' +
-      '';
+    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
+    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
 
     var isRunDay = function(d) {
-      var n = (d.name || '').toLowerCase();
-      return /run|speed work|cardio|interval|long run|tempo|jog/.test(n);
+      return /run|speed work|cardio|interval|long run|tempo|jog/i.test(d.name || '');
     };
-
     var liftDays = [], runDays = [];
     for (var i = 0; i < days.length; i++) {
       (isRunDay(days[i]) ? runDays : liftDays).push({day: days[i], idx: i});
     }
 
-    var makeDayCard = function(entry) {
-      var day = entry.day, i = entry.idx;
-      var col = day.color || ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'][i % 5];
-      return '<div onclick="window._showPortalDay(' + i + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(100,160,255,0.25)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(100,160,255,0.15)\';">' +
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<div style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;box-shadow:0 0 12px ' + col + '40;"></div>' +
-          '<div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;letter-spacing:0.5px;">' + day.name + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercise' + (day.exercises && day.exercises.length !== 1 ? 's' : '') + '</div>' +
-            '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-top:3px;">' + (dayLastDone[day.name] ? 'Last · ' + _fmtAgo(dayLastDone[day.name]) : 'Not done yet') + '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="font-size:20px;color:rgba(100,160,255,0.3);">▸</div>' +
-      '</div>';
+    window._showPortalTab = function(tab) {
+      window._portalActiveTab = tab;
+      ['home','train','prs','stats'].forEach(function(t) {
+        var el = document.getElementById('ptab-' + t);
+        if (!el) return;
+        var active = (t === tab);
+        el.style.color = active ? '#7ec8ff' : 'rgba(180,200,230,0.32)';
+        el.style.borderTopColor = active ? '#4fa3e8' : 'transparent';
+      });
+      if (tab === 'home') renderPortalHome();
+      else if (tab === 'train') renderPortalTrain();
+      else if (tab === 'prs') renderPortalPRs();
+      else if (tab === 'stats') renderPortalStats();
     };
 
-    if (liftDays.length > 0) {
-      html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">Lifts</div>';
-      for (var li = 0; li < liftDays.length; li++) { html += makeDayCard(liftDays[li]); }
-    }
+    window._showPortalDay = function(index) {
+      if (index === -1) { window._showPortalTab('home'); return; }
+      var day = window._portalDays[index];
+      if (day) renderWorkoutCard(day, day.name);
+    };
 
-    if (runDays.length > 0) {
-      html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);margin-top:' + (liftDays.length > 0 ? '24px' : '0') + ';margin-bottom:14px;">Running</div>';
-      for (var ri = 0; ri < runDays.length; ri++) { html += makeDayCard(runDays[ri]); }
-    }
+    // -------- HOME TAB --------
+    function renderPortalHome() {
+      var portalBody = document.getElementById('portal-body');
+      var hour = new Date().getHours();
+      var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+      var clientFirstName = window._portalClientName || 'there';
+      var weekTarget = scheduledDays.length || days.length;
 
-    if (days.length === 0 && !window._portalRunProgram) {
-      html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">What are you training today?</div>';
-    }
-
-    // Run program section (from assigned run_programs table)
-    if (window._portalRunProgram) {
-      var rp = window._portalRunProgram;
-      var rpWeekNum = window._portalRunProgramWeek || 1;
-      var rpWeekRuns2 = (rp.weeks || [])[rpWeekNum - 1] || [];
-      var rpTotalWeeks = (rp.weeks || []).length;
-      var hasLiftContent = liftDays.length > 0 || runDays.length > 0;
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:' + (hasLiftContent ? '24px' : '0') + ';margin-bottom:14px;">' +
-        '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);">Running — Week ' + rpWeekNum + ' of ' + rpTotalWeeks + '</div>' +
-      '</div>';
-      window._showRunDay = function(ri) {
-        var run2 = ((rp.weeks || [])[rpWeekNum - 1] || [])[ri];
-        if (run2) renderRunDetail(run2);
-      };
-      for (var ri2 = 0; ri2 < rpWeekRuns2.length; ri2++) {
-        var rrun = rpWeekRuns2[ri2];
-        var rtc = {easy:'#43d9a2', tempo:'#4fa3e8', long:'#c084fc', intervals:'#ff8c47', recovery:'#43d9a2'};
-        var rcol = rtc[rrun.type] || '#ff8c47';
-        var rSub = rrun.type === 'intervals'
-          ? (rrun.segments||[]).length + ' interval set' + ((rrun.segments||[]).length !== 1 ? 's' : '')
-          : (rrun.distance ? rrun.distance + ' mi' : '') + (rrun.pace ? ' · ' + rrun.pace + '/mi' : '');
-        html += '<div onclick="window._showRunDay(' + ri2 + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\'" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\'">' +
-          '<div style="display:flex;align-items:center;gap:12px;">' +
-            '<div style="width:10px;height:10px;border-radius:50%;background:' + rcol + ';flex-shrink:0;box-shadow:0 0 12px ' + rcol + '40;"></div>' +
+      var todayJSH = new Date().getDay();
+      var todayCalIdx = (todayJSH === 0) ? 6 : todayJSH - 1;
+      var todayProgIdx = calDayToProgDay[todayCalIdx];
+      var heroHtml = '';
+      if (todayProgIdx !== undefined && days[todayProgIdx]) {
+        var td = days[todayProgIdx];
+        var tdColor = td.color || '#4fa3e8';
+        var tdExCount = (td.exercises || []).length;
+        heroHtml =
+          '<div style="background:linear-gradient(135deg,' + tdColor + '22,' + tdColor + '10);border:1px solid ' + tdColor + '44;border-left:4px solid ' + tdColor + ';border-radius:16px;padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
             '<div>' +
-              '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;">' + (rrun.label || 'Run') + '</div>' +
-              '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + rSub + '</div>' +
+              '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:' + tdColor + 'bb;margin-bottom:6px;">Today\'s Workout</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:-0.2px;line-height:1.1;">' + td.name + '</div>' +
+              '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:5px;">' + tdExCount + ' exercise' + (tdExCount !== 1 ? 's' : '') + '</div>' +
             '</div>' +
-          '</div>' +
-          '<div style="font-size:20px;color:rgba(255,140,71,0.4);">&#9658;</div>' +
+            '<button onclick="window._showPortalDay(' + todayProgIdx + ')" style="background:' + tdColor + ';color:#fff;border:none;border-radius:10px;padding:11px 18px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;white-space:nowrap;box-shadow:0 4px 16px ' + tdColor + '55;">Start &#8594;</button>' +
+          '</div>';
+      } else if (window._portalRunProgram) {
+        var runSched = parseScheduleMap(window._portalRunScheduleStr || '');
+        var todayRunIdx = runSched[todayCalIdx];
+        if (todayRunIdx !== undefined) {
+          var weekRuns0 = (window._portalRunProgram.weeks || [])[(window._portalRunProgramWeek||1)-1] || [];
+          var todayRun = weekRuns0[todayRunIdx];
+          if (todayRun) {
+            var rcol0 = {easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'#43d9a2'}[todayRun.type] || '#ff8c47';
+            heroHtml =
+              '<div style="background:linear-gradient(135deg,' + rcol0 + '18,' + rcol0 + '08);border:1px solid ' + rcol0 + '44;border-left:4px solid ' + rcol0 + ';border-radius:16px;padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<div>' +
+                  '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:' + rcol0 + 'bb;margin-bottom:6px;">Today\'s Run</div>' +
+                  '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:-0.2px;">' + (todayRun.label || 'Run') + '</div>' +
+                  (todayRun.distance ? '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:5px;">' + todayRun.distance + ' mi</div>' : '') +
+                '</div>' +
+                '<button onclick="window._showPortalTab(\'train\')" style="background:' + rcol0 + ';color:#fff;border:none;border-radius:10px;padding:11px 18px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;box-shadow:0 4px 16px ' + rcol0 + '55;">Go &#8594;</button>' +
+              '</div>';
+          }
+        }
+      }
+      if (!heroHtml) {
+        heroHtml =
+          '<div style="background:linear-gradient(135deg,rgba(67,217,162,0.08),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.2);border-left:4px solid rgba(67,217,162,0.5);border-radius:16px;padding:18px 20px;margin-bottom:14px;">' +
+            '<div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(67,217,162,0.6);margin-bottom:6px;">Today</div>' +
+            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:rgba(232,237,245,0.85);letter-spacing:-0.2px;">Rest Day &#x2014; Recovery</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.45);margin-top:5px;">Prioritise sleep, mobility, and nutrition today.</div>' +
+          '</div>';
+      }
+
+      var noteHtml = '';
+      if (window._portalCoachNote) {
+        noteHtml =
+          '<div style="background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.18);border-left:3px solid rgba(79,163,232,0.5);border-radius:12px;padding:14px 18px;margin-bottom:16px;">' +
+            '<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:5px;">Coach Note</div>' +
+            '<div style="font-size:14px;color:rgba(232,237,245,0.85);line-height:1.5;">' + window._portalCoachNote + '</div>' +
+          '</div>';
+      }
+
+      portalBody.innerHTML =
+        '<div style="margin-bottom:16px;">' +
+          '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:4px;font-weight:500;">' + greeting + ',</div>' +
+          '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:10px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
+          '<div id="portal-stats-bar" style="margin-bottom:4px;"></div>' +
+        '</div>' +
+        noteHtml +
+        heroHtml +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;">' +
+          '<span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.3);flex-shrink:0;">This Week</span>' +
+          '<span style="width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0;"></span>' +
+          '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:#4fa3e8;">— <span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;">/ ' + weekTarget + ' workouts</span></span>' +
         '</div>';
-      }
-      if (rpWeekRuns2.length === 0) {
-        html += '<div style="font-size:13px;color:rgba(180,200,230,0.3);padding:8px 0;">No runs scheduled for this week.</div>';
-      }
-    }
 
-    html += '<div style="background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-top:28px;margin-bottom:20px;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
-        '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>' +
-      '</div>' +
-      '<div id="portal-body-stats"><div class="skeleton" style="height:100px;border-radius:10px;"></div></div>' +
-    '</div>';
+      portalBody.classList.add('view-enter');
+      setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
 
-    html += '<div style="margin-top:0;">' +
-      '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>' +
-      '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>' +
-    '</div>';
-
-    portalBody.innerHTML = html;
-    portalBody.classList.add('view-enter');
-    setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
-
-    var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
-    var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
-    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=200', {
-      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
-    })
-    .then(function(res) { return res.json(); })
-    .then(function(sessions) {
-      var el = document.getElementById('recent-sessions-list');
-      if (!el) return;
-      sessions = sessions || [];
-      window._portalRecentSessions = sessions;
-
-      // Populate stats bar (month sessions only)
-      var statsBar = document.getElementById('portal-stats-bar');
-      if (statsBar) {
-        var monthStart2 = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        var monthSess = sessions.filter(function(s) { return new Date(s.created_at || s.date) >= monthStart2; }).length;
-        statsBar.innerHTML = monthSess > 0
-          ? '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.3px;margin-bottom:2px;">🔥 ' + monthSess + ' session' + (monthSess===1?'':'s') + ' this month</div>'
-          : '';
-        // Update week pill with real data
+      fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=200', {
+        headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+      }).then(function(res){ return res.json(); }).then(function(sessions) {
+        sessions = sessions || [];
+        window._portalRecentSessions = sessions;
+        var sb = document.getElementById('portal-stats-bar');
+        var monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        var monthSess = sessions.filter(function(s){ return new Date(s.created_at||s.date) >= monthStart; }).length;
+        if (sb && monthSess > 0) {
+          sb.innerHTML = '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.3px;margin-bottom:2px;">🔥 ' + monthSess + ' session' + (monthSess===1?'':'s') + ' this month</div>';
+        }
         var now2 = new Date(), monday2 = new Date(now2);
         monday2.setDate(now2.getDate() - (now2.getDay() === 0 ? 6 : now2.getDay() - 1));
         monday2.setHours(0,0,0,0);
-        var weekSess2 = sessions.filter(function(s){ return new Date(s.created_at||s.date) >= monday2; }).length;
-        var wkTarget2 = (window._portalScheduleDays||[]).length || (window._portalDays||[]).length;
-        var wkColor2 = weekSess2 >= wkTarget2 && wkTarget2 > 0 ? '#43d9a2' : '#4fa3e8';
+        var weekSess = sessions.filter(function(s){ return new Date(s.created_at||s.date) >= monday2; }).length;
+        var wkColor = weekSess >= weekTarget && weekTarget > 0 ? '#43d9a2' : '#4fa3e8';
         var weekEl = document.getElementById('portal-week-count');
-        if (weekEl) { weekEl.style.color = wkColor2; weekEl.innerHTML = weekSess2 + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + wkTarget2 + ' workouts</span>'; }
-      }
+        if (weekEl) { weekEl.style.color = wkColor; weekEl.innerHTML = weekSess + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + weekTarget + ' workouts</span>'; }
+      }).catch(function(){});
 
-      if (sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet — log your first workout!</p>'; return; }
-      var sessionRow = function(s) {
-        var wkHtml = (s.workout && s.workout.length > 0)
-          ? '<div style="font-size:11px;color:rgba(100,160,255,0.45);margin-top:3px;">' + s.workout.length + ' exercise' + (s.workout.length!==1?'s':'') + ' logged</div>'
-          : '';
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(100,160,255,0.07);">' +
-          '<div>' +
-            '<div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:2px;">' + s.date + '</div>' +
-            wkHtml +
+      var prMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      Promise.all([
+        fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=gte.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();}),
+        fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=lt.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();})
+      ]).then(function(results) {
+        var mLogs = results[0]||[], pLogs = results[1]||[];
+        var prevMax={}, monthMax={};
+        pLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!prevMax[l.exercise_name]||w>prevMax[l.exercise_name])prevMax[l.exercise_name]=w; });
+        mLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!monthMax[l.exercise_name]||w>monthMax[l.exercise_name])monthMax[l.exercise_name]=w; });
+        var prCount=0;
+        Object.keys(monthMax).forEach(function(ex){ if(monthMax[ex]>0&&monthMax[ex]>(prevMax[ex]||0))prCount++; });
+        if(prCount>0){
+          var sb2=document.getElementById('portal-stats-bar');
+          if(sb2) sb2.innerHTML+='<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#c084fc;letter-spacing:0.3px;margin-left:8px;margin-bottom:2px;">🏆 '+prCount+' PR'+(prCount===1?'':'s')+' this month</div>';
+        }
+      }).catch(function(){});
+    }
+
+    // -------- TRAIN TAB --------
+    function renderPortalTrain() {
+      var portalBody = document.getElementById('portal-body');
+      var dayLastDone = {};
+      if (window._portalRecentSessions) {
+        window._portalRecentSessions.forEach(function(s) {
+          var note = s.note || '';
+          if (note && !dayLastDone[note]) dayLastDone[note] = new Date(s.created_at || s.date);
+        });
+      }
+      function fmtAgo(d) {
+        var diff = Math.floor((new Date() - d) / (1000*60*60*24));
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Yesterday';
+        if (diff < 7) return diff + 'd ago';
+        if (diff < 30) return Math.floor(diff/7) + 'w ago';
+        return Math.floor(diff/30) + 'mo ago';
+      }
+      var makeDayCard = function(entry) {
+        var day = entry.day, idx = entry.idx;
+        var col = day.color || ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'][idx % 5];
+        return '<div onclick="window._showPortalDay(' + idx + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(100,160,255,0.25)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(100,160,255,0.15)\';">' +
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<div style="width:10px;height:10px;border-radius:50%;background:' + col + ';flex-shrink:0;box-shadow:0 0 12px ' + col + '40;"></div>' +
+            '<div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;letter-spacing:0.5px;">' + day.name + '</div>' +
+              '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + (day.exercises ? day.exercises.length : 0) + ' exercise' + (day.exercises && day.exercises.length !== 1 ? 's' : '') + '</div>' +
+              '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-top:3px;">' + (dayLastDone[day.name] ? 'Last · ' + fmtAgo(dayLastDone[day.name]) : 'Not done yet') + '</div>' +
+            '</div>' +
           '</div>' +
-          '<div style="font-size:10px;font-weight:700;color:#43d9a2;background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;flex-shrink:0;">Done ✓</div>' +
+          '<div style="font-size:20px;color:rgba(100,160,255,0.3);">&#9656;</div>' +
         '</div>';
       };
-      var visible = sessions.slice(0, 5);
-      var hidden = sessions.slice(5);
-      var html2 = '';
-      for (var i = 0; i < visible.length; i++) { html2 += sessionRow(visible[i]); }
-      if (hidden.length > 0) {
-        var hiddenHtml = '';
-        for (var j = 0; j < hidden.length; j++) { hiddenHtml += sessionRow(hidden[j]); }
-        html2 += '<div id="portal-sess-hidden" style="display:none;">' + hiddenHtml + '</div>';
-        html2 += '<div id="portal-sess-btn" onclick="window._toggleSessions(' + sessions.length + ')" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
-      }
-      el.innerHTML = html2;
-    })
-    .catch(function() { var el = document.getElementById('recent-sessions-list'); if (el) el.innerHTML = ''; });
 
-    // Async: compute PRs hit this month and add badge to stats bar
-    var prMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-    Promise.all([
-      fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=gte.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();}),
-      fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=lt.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();})
-    ]).then(function(results) {
-      var mLogs = results[0] || [], pLogs = results[1] || [];
-      var prevMax2 = {}, monthMax2 = {};
-      pLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!prevMax2[l.exercise_name]||w>prevMax2[l.exercise_name])prevMax2[l.exercise_name]=w; });
-      mLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!monthMax2[l.exercise_name]||w>monthMax2[l.exercise_name])monthMax2[l.exercise_name]=w; });
-      var prCount2=0;
-      Object.keys(monthMax2).forEach(function(ex){ if(monthMax2[ex]>0&&monthMax2[ex]>(prevMax2[ex]||0))prCount2++; });
-      if(prCount2>0){
-        var sb2=document.getElementById('portal-stats-bar');
-        if(sb2) sb2.innerHTML+='<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#c084fc;letter-spacing:0.3px;margin-left:8px;margin-bottom:2px;">🏆 '+prCount2+' PR'+(prCount2===1?'':'s')+' this month</div>';
+      var html = '';
+      if (liftDays.length > 0) {
+        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">Lifts</div>';
+        for (var li = 0; li < liftDays.length; li++) { html += makeDayCard(liftDays[li]); }
       }
-    }).catch(function(){});
+      if (runDays.length > 0) {
+        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);margin-top:' + (liftDays.length > 0 ? '24px' : '0') + ';margin-bottom:14px;">Running</div>';
+        for (var ri = 0; ri < runDays.length; ri++) { html += makeDayCard(runDays[ri]); }
+      }
+      if (window._portalRunProgram) {
+        var rp = window._portalRunProgram;
+        var rpWeekNum = window._portalRunProgramWeek || 1;
+        var rpWeekRuns = (rp.weeks || [])[rpWeekNum - 1] || [];
+        var rpTotalWeeks = (rp.weeks || []).length;
+        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);margin-top:' + (liftDays.length > 0 || runDays.length > 0 ? '24px' : '0') + ';margin-bottom:14px;">Running — Week ' + rpWeekNum + ' of ' + rpTotalWeeks + '</div>';
+        window._showRunDay = function(ri2) {
+          var run2 = ((rp.weeks||[])[rpWeekNum-1]||[])[ri2];
+          if (run2) renderRunDetail(run2);
+        };
+        for (var ri2 = 0; ri2 < rpWeekRuns.length; ri2++) {
+          var rrun = rpWeekRuns[ri2];
+          var rtc = {easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'#43d9a2'};
+          var rcol = rtc[rrun.type] || '#ff8c47';
+          var rSub = rrun.type === 'intervals'
+            ? (rrun.segments||[]).length + ' interval set' + ((rrun.segments||[]).length!==1?'s':'')
+            : (rrun.distance ? rrun.distance + ' mi' : '') + (rrun.pace ? ' · ' + rrun.pace + '/mi' : '');
+          html += '<div onclick="window._showRunDay(' + ri2 + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\'" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\'">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:10px;height:10px;border-radius:50%;background:' + rcol + ';flex-shrink:0;box-shadow:0 0 12px ' + rcol + '40;"></div>' +
+              '<div>' +
+                '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;">' + (rrun.label || 'Run') + '</div>' +
+                '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-top:2px;">' + rSub + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:20px;color:rgba(255,140,71,0.4);">&#9658;</div>' +
+          '</div>';
+        }
+        if (rpWeekRuns.length === 0) {
+          html += '<div style="font-size:13px;color:rgba(180,200,230,0.3);padding:8px 0;">No runs scheduled for this week.</div>';
+        }
+      }
+      if (days.length === 0 && !window._portalRunProgram) {
+        html = '<div style="text-align:center;padding:48px 20px;"><div style="font-size:48px;margin-bottom:16px;">&#127947;</div><div style="font-family:Syne,sans-serif;font-weight:700;font-size:18px;color:rgba(232,237,245,0.7);">No program yet</div><div style="font-size:13px;color:rgba(180,200,230,0.4);margin-top:8px;">Your coach will assign your training program here.</div></div>';
+      }
+      portalBody.innerHTML = html;
+      portalBody.classList.add('view-enter');
+      setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
+    }
 
-    // Body stats — fetch entries and render chart + last entry
+    // -------- PRs TAB --------
+    function renderPortalPRs() {
+      var portalBody = document.getElementById('portal-body');
+      portalBody.innerHTML = '<div class="skeleton" style="height:200px;border-radius:14px;margin-bottom:12px;"></div>';
+      fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&select=exercise_name,weight,reps,session_date&order=session_date.desc', {
+        headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+      }).then(function(r){ return r.json(); }).then(function(logs) {
+        logs = Array.isArray(logs) ? logs : [];
+        if (logs.length === 0) {
+          portalBody.innerHTML = '<div style="text-align:center;padding:48px 20px;"><div style="font-size:48px;margin-bottom:16px;">&#127942;</div><div style="font-family:Syne,sans-serif;font-weight:700;font-size:18px;color:rgba(232,237,245,0.7);">No PRs yet</div><div style="font-size:13px;color:rgba(180,200,230,0.4);margin-top:8px;">Log workouts to track your personal records.</div></div>';
+          return;
+        }
+        var exMap = {};
+        logs.forEach(function(l) {
+          var w = parseFloat(l.weight) || 0;
+          if (!exMap[l.exercise_name]) exMap[l.exercise_name] = {max:0, date:'', reps:''};
+          if (w > exMap[l.exercise_name].max) exMap[l.exercise_name] = {max:w, date:l.session_date, reps:l.reps};
+        });
+        var exercises = Object.keys(exMap).filter(function(k){ return exMap[k].max > 0; });
+        exercises.sort(function(a,b){ return exMap[b].max - exMap[a].max; });
+        var html = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.8);margin-bottom:16px;">Personal Records</div>';
+        for (var i = 0; i < exercises.length; i++) {
+          var ex = exercises[i], pr = exMap[ex];
+          html +=
+            '<div style="background:rgba(15,19,23,0.5);border:1px solid rgba(192,132,252,0.12);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-size:14px;font-weight:600;color:#e8edf5;margin-bottom:3px;">' + ex.replace(/^SS\w+:\s*/i,'') + '</div>' +
+                (pr.date ? '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' + pr.date + (pr.reps ? ' · ' + pr.reps + ' reps' : '') + '</div>' : '') +
+              '</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#c084fc;">' + pr.max + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
+            '</div>';
+        }
+        portalBody.innerHTML = html;
+        portalBody.classList.add('view-enter');
+        setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
+      }).catch(function(){ portalBody.innerHTML = '<div style="font-size:13px;color:rgba(180,200,230,0.3);">Could not load records.</div>'; });
+    }
+
+    // -------- STATS TAB --------
+    function renderPortalStats() {
+      var portalBody = document.getElementById('portal-body');
+      portalBody.innerHTML =
+        '<div style="background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-bottom:20px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>' +
+          '</div>' +
+          '<div id="portal-body-stats"><div class="skeleton" style="height:100px;border-radius:10px;"></div></div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>' +
+          '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>' +
+        '</div>';
+      portalBody.classList.add('view-enter');
+      setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
+
+      fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=200', {
+        headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+      }).then(function(res){ return res.json(); }).then(function(sessions) {
+        var el = document.getElementById('recent-sessions-list');
+        if (!el) return;
+        sessions = sessions || [];
+        window._portalRecentSessions = sessions;
+        if (sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet — log your first workout!</p>'; return; }
+        var sessionRow = function(s) {
+          var wkHtml = (s.workout && s.workout.length > 0)
+            ? '<div style="font-size:11px;color:rgba(100,160,255,0.45);margin-top:3px;">' + s.workout.length + ' exercise' + (s.workout.length!==1?'s':'') + ' logged</div>'
+            : '';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(100,160,255,0.07);">' +
+            '<div><div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note||'Workout') + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:2px;">' + s.date + '</div>' + wkHtml + '</div>' +
+            '<div style="font-size:10px;font-weight:700;color:#43d9a2;background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;flex-shrink:0;">Done ✓</div>' +
+          '</div>';
+        };
+        var visible = sessions.slice(0, 5), hidden = sessions.slice(5);
+        var html2 = '';
+        for (var i = 0; i < visible.length; i++) html2 += sessionRow(visible[i]);
+        if (hidden.length > 0) {
+          var hiddenHtml = '';
+          for (var j = 0; j < hidden.length; j++) hiddenHtml += sessionRow(hidden[j]);
+          html2 += '<div id="portal-sess-hidden" style="display:none;">' + hiddenHtml + '</div>';
+          html2 += '<div id="portal-sess-btn" onclick="window._toggleSessions(' + sessions.length + ')" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
+        }
+        el.innerHTML = html2;
+      }).catch(function(){ var el=document.getElementById('recent-sessions-list'); if(el) el.innerHTML=''; });
+
+      window._loadPortalBodyStats();
+    }
+
+    // -------- BODY STAT SHEET --------
     window._loadPortalBodyStats = function() {
       var bsEl = document.getElementById('portal-body-stats');
       if (!bsEl) return;
@@ -3523,9 +3582,7 @@ function startClientPortal(id) {
         var latest = entries[entries.length-1];
         var prev = entries.length > 1 ? entries[entries.length-2] : null;
         var diff = prev && latest.weight_lbs && prev.weight_lbs ? parseFloat(latest.weight_lbs)-parseFloat(prev.weight_lbs) : null;
-        var trendHtml = diff !== null
-          ? '<span style="font-size:11px;color:'+(diff<0?'#43d9a2':diff>0?'#ff5c6a':'rgba(180,200,230,0.35)')+';font-weight:700;margin-left:6px;">'+(diff>0?'+':'')+diff.toFixed(1)+' lbs</span>'
-          : '';
+        var trendHtml = diff !== null ? '<span style="font-size:11px;color:'+(diff<0?'#43d9a2':diff>0?'#ff5c6a':'rgba(180,200,230,0.35)')+';font-weight:700;margin-left:6px;">'+(diff>0?'+':'')+diff.toFixed(1)+' lbs</span>' : '';
         bsEl2.innerHTML =
           '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">' +
             '<span style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">'+(latest.weight_lbs?parseFloat(latest.weight_lbs).toFixed(1):'—')+'</span>' +
@@ -3536,21 +3593,12 @@ function startClientPortal(id) {
           '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-bottom:10px;">'+latest.date+'</div>' +
           renderBodyStatsChart(entries,'weight_lbs','#4fa3e8') +
           (entries.filter(function(e){return e.body_fat_pct>0;}).length>=2 ? renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc') : '');
-      }).catch(function(){
-        var bsEl3 = document.getElementById('portal-body-stats');
-        if (bsEl3) bsEl3.innerHTML = '<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>';
-      });
+      }).catch(function(){ var e=document.getElementById('portal-body-stats'); if(e) e.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>'; });
     };
-    window._loadPortalBodyStats();
 
-    // Open body stats entry sheet
     window._openBodyStatSheet = function() {
       var sheet = document.getElementById('body-stat-sheet');
-      if (!sheet) {
-        sheet = document.createElement('div');
-        sheet.id = 'body-stat-sheet';
-        document.body.appendChild(sheet);
-      }
+      if (!sheet) { sheet = document.createElement('div'); sheet.id = 'body-stat-sheet'; document.body.appendChild(sheet); }
       sheet.innerHTML =
         '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto;">' +
           '<div onclick="window._closeBodyStatSheet()" style="font-size:13px;font-weight:700;color:rgba(126,200,255,0.7);cursor:pointer;">&#8592; Cancel</div>' +
@@ -3558,18 +3606,12 @@ function startClientPortal(id) {
           '<div style="width:64px;"></div>' +
         '</div>' +
         '<div style="padding:24px 20px;max-width:480px;margin:0 auto;">' +
-          '<div style="margin-bottom:18px;">' +
-            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Weight (lbs)</div>' +
-            '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;">' +
-          '</div>' +
-          '<div style="margin-bottom:18px;">' +
-            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Body Fat % <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
-            '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;">' +
-          '</div>' +
-          '<div style="margin-bottom:28px;">' +
-            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
-            '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;">' +
-          '</div>' +
+          '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Weight (lbs)</div>' +
+          '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;"></div>' +
+          '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Body Fat % <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+          '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;"></div>' +
+          '<div style="margin-bottom:28px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+          '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;"></div>' +
           '<button onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">Save Stats</button>' +
         '</div>';
       requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
@@ -3584,10 +3626,8 @@ function startClientPortal(id) {
     };
 
     window._saveBodyStat = function() {
-      var wEl=document.getElementById('portal-bs-weight');
-      var bfEl=document.getElementById('portal-bs-bf');
-      var nEl=document.getElementById('portal-bs-notes');
-      if (!wEl || !wEl.value) { if(wEl){wEl.style.borderColor='rgba(255,92,106,0.5)';} return; }
+      var wEl=document.getElementById('portal-bs-weight'), bfEl=document.getElementById('portal-bs-bf'), nEl=document.getElementById('portal-bs-notes');
+      if (!wEl||!wEl.value) { if(wEl) wEl.style.borderColor='rgba(255,92,106,0.5)'; return; }
       var btn=document.querySelector('#body-stat-sheet button');
       if(btn){btn.disabled=true;btn.textContent='Saving...';}
       var today2=new Date().toISOString().split('T')[0];
@@ -3595,8 +3635,7 @@ function startClientPortal(id) {
       if(bfEl&&bfEl.value)body.body_fat_pct=parseFloat(bfEl.value);
       if(nEl&&nEl.value)body.notes=nEl.value;
       fetch(SUPABASE_URL+'/rest/v1/body_stats',{
-        method:'POST',
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
         body:JSON.stringify(body)
       }).then(function(r){
         if(!r.ok)throw new Error();
@@ -3604,13 +3643,15 @@ function startClientPortal(id) {
         setTimeout(function(){if(window._loadPortalBodyStats)window._loadPortalBodyStats();},420);
       }).catch(function(){if(btn){btn.disabled=false;btn.textContent='Save Stats';}});
     };
+
+    window._showPortalTab('home');
   }
 
   function renderRunCard(runDay) {
     window._portalRunName = runDay.name;
     var portalBody = document.getElementById('portal-body');
     var html =
-      '<div onclick="window._showPortalDay(-1)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
+      '<div onclick="window._showPortalTab(\'train\')" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:16px;">&#8592; Back</div>' +
       '<div style="background:#0f1317;border:1px solid rgba(255,140,71,0.2);border-radius:14px;padding:20px;margin-bottom:12px;">' +
         '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#ff8c47;margin-bottom:4px;">' + runDay.name + '</div>' +
         '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">' + runDay.description + '</div>';
@@ -3694,7 +3735,7 @@ function startClientPortal(id) {
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Run Logged!</div>' +
             '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:24px;">' + name + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
             weekBanner +
-            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
+            '<div onclick="window._showPortalTab(\'train\')" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
           '</div>';
       })
       .catch(function(err) {
@@ -3711,7 +3752,7 @@ function startClientPortal(id) {
     var col = rtc[run.type] || '#ff8c47';
     var typeName = run.type ? (run.type.charAt(0).toUpperCase() + run.type.slice(1)) : 'Run';
 
-    var html = '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:22px;">&#8592; Back</div>';
+    var html = '<div onclick="window._showPortalTab(\'train\')" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:22px;">&#8592; Back</div>';
     html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:' + col + 'bb;margin-bottom:8px;">' + typeName + ' Run</div>';
     html += '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:20px;letter-spacing:-0.2px;">' + (run.label || 'Run') + '</div>';
 
@@ -3816,7 +3857,7 @@ function startClientPortal(id) {
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:1px;margin-bottom:8px;">Run Logged!</div>' +
             '<div style="font-size:14px;color:rgba(180,200,230,0.5);margin-bottom:24px;">' + name + ' &nbsp;&middot;&nbsp; ' + dateStr + '</div>' +
             weekBanner +
-            '<div onclick="renderDayPicker(window._portalDays)" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
+            '<div onclick="window._showPortalTab(\'train\')" style="display:inline-block;background:rgba(255,255,255,0.06);color:rgba(200,215,235,0.7);border:1px solid rgba(255,140,71,0.2);border-radius:10px;padding:12px 24px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">Back to Workouts</div>' +
           '</div>';
       })
       .catch(function(err) {
@@ -3978,12 +4019,9 @@ function startClientPortal(id) {
     setTimeout(window._restoreDraft, 50);
 
     window._showPortalDay = function(index) {
-      if (index === -1) {
-        renderDayPicker(window._portalDays);
-      } else {
-        var d = window._portalDays[index];
-        renderWorkoutCard(d, d.name);
-      }
+      if (index === -1) { if (window._showPortalTab) window._showPortalTab('home'); return; }
+      var d = window._portalDays[index];
+      if (d) renderWorkoutCard(d, d.name);
     };
 
     window._logPortalSession = function() {
