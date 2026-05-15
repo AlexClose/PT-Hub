@@ -480,6 +480,9 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <button class="nav-tab" onclick="showView('programs',this)">
       <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> Programs
     </button>
+    <button class="nav-tab" onclick="showView('business',this)">
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Business
+    </button>
   </div>
 </nav>
 
@@ -574,6 +577,20 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
       <div id="runProgramList"></div>
     </div>
   </div>
+
+  <!-- BUSINESS -->
+  <div class="view" id="view-business">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-top:4px;">
+      <div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div>
+      <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;">Business</div>
+    </div>
+    <div id="business-content">
+      <div class="skeleton" style="height:120px;border-radius:16px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:180px;border-radius:16px;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:100px;border-radius:16px"></div>
+    </div>
+  </div>
+
 </div><!-- /view-scroll -->
 </main>
 
@@ -1183,7 +1200,7 @@ async function restoreSessionCounts(which){
 function showLoading(id){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="loading"><div class="spinner"></div><div>Loading...</div></div>`;}
 function showView(name,el){
   if(!el&&typeof event!=='undefined')el=event.currentTarget;
-  var TABS=['dashboard','clients','library','programs'];
+  var TABS=['dashboard','clients','library','programs','business'];
   var idx=TABS.indexOf(name);if(idx<0)return;
   var currentName=window._activeView||'dashboard';
   var currentIdx=TABS.indexOf(currentName);
@@ -1194,6 +1211,7 @@ function showView(name,el){
   if(name==='clients')renderClientList();
   if(name==='library'){renderLibrary();renderEquipList();}
   if(name==='programs'){loadTemplates();loadRunPrograms();}
+  if(name==='business')renderBusinessView();
   if(idx===currentIdx)return;
   var forward=idx>currentIdx;
   var cv=document.getElementById('view-'+currentName);
@@ -1705,6 +1723,7 @@ function renderClientModal(c){
     <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Monthly Summary &middot; ${new Date().toLocaleString('default',{month:'long'})}</div>
+        <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Share ↗</button>
       </div>
       <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
     </div>
@@ -4524,6 +4543,258 @@ async function renderMonthlyReport(c) {
   }
 
   el.innerHTML = html;
+}
+
+// ── BUSINESS VIEW ──
+async function renderBusinessView() {
+  const el = document.getElementById('business-content');
+  if (!el) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStr = monthStart.toISOString().split('T')[0];
+  const tenDaysAgoStr = new Date(now - 10*24*60*60*1000).toISOString().split('T')[0];
+
+  let recentLogs = [], monthLogs = [];
+  try {
+    [recentLogs, monthLogs] = await Promise.all([
+      sb('GET','exercise_logs',null,`?session_date=gte.${tenDaysAgoStr}&select=client_id`),
+      sb('GET','exercise_logs',null,`?session_date=gte.${monthStr}&select=client_id,session_date`)
+    ]);
+  } catch(e) { recentLogs=[]; monthLogs=[]; }
+
+  const recentIds = new Set((recentLogs||[]).map(function(l){return l.client_id;}));
+  const activeClients = clients.filter(function(c){return !c.paused;});
+
+  const owes = activeClients.filter(function(c){return (c.remaining||0)<0;});
+  const expiring = activeClients.filter(function(c){return c.package_size>0&&(c.remaining||0)>0&&(c.remaining||0)<=2;});
+  const inactive = activeClients.filter(function(c){return !recentIds.has(c.id);});
+
+  const monthClientIds = new Set((monthLogs||[]).map(function(l){return l.client_id;}));
+  const monthSessionSet = new Set((monthLogs||[]).map(function(l){return l.client_id+'|'+l.session_date;}));
+
+  const attentionCount = owes.length + expiring.length;
+  const sectionHdr = function(label, gradient, count, countColor) {
+    return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+      +'<div style="width:4px;height:18px;border-radius:2px;background:'+gradient+';flex-shrink:0;"></div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:#fff;">'+label+'</div>'
+      +(count>0?'<div style="background:'+countColor+';border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;">'+count+'</div>':'')
+      +'</div>';
+  };
+
+  let html = '<div style="margin-bottom:24px;">'
+    + sectionHdr('Needs Attention','linear-gradient(180deg,#ff5c6a,#ff8c47)',attentionCount,'rgba(255,92,106,0.2);color:#ff5c6a;border:1px solid rgba(255,92,106,0.3)');
+
+  if (attentionCount === 0) {
+    html += '<div style="background:rgba(67,217,162,0.06);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:14px 16px;font-size:13px;color:rgba(67,217,162,0.8);">✓ All clients are up to date</div>';
+  } else {
+    owes.forEach(function(c) {
+      var n = Math.abs(c.remaining);
+      html += '<div style="background:rgba(255,92,106,0.05);border:1px solid rgba(255,92,106,0.18);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
+        +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+c.first+' '+c.last+'</div>'
+        +'<div style="font-size:12px;color:rgba(255,92,106,0.8);">Owes '+n+' session'+(n===1?'':'s')+'</div></div>'
+        +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
+    });
+    expiring.forEach(function(c) {
+      html += '<div style="background:rgba(255,140,71,0.05);border:1px solid rgba(255,140,71,0.18);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
+        +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+c.first+' '+c.last+'</div>'
+        +'<div style="font-size:12px;color:rgba(255,140,71,0.8);">'+c.remaining+' session'+(c.remaining===1?'':'s')+' remaining — renew soon</div></div>'
+        +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
+    });
+  }
+  html += '</div>';
+
+  html += '<div style="margin-bottom:24px;">'
+    + sectionHdr('Inactive 10+ Days','linear-gradient(180deg,#ffb347,#ff8c47)',inactive.length,'rgba(255,140,71,0.15);color:#ff8c47;border:1px solid rgba(255,140,71,0.25)');
+
+  if (inactive.length === 0) {
+    html += '<div style="background:rgba(67,217,162,0.06);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:14px 16px;font-size:13px;color:rgba(67,217,162,0.8);">✓ All clients trained recently</div>';
+  } else {
+    inactive.forEach(function(c) {
+      html += '<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,140,71,0.1);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
+        +'<div style="font-size:14px;font-weight:700;color:#fff;">'+c.first+' '+c.last+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;">'
+        +'<button onclick="event.stopPropagation();openLogSession(\''+c.id+'\')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Syne,sans-serif;">+ Log</button>'
+        +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div></div>';
+    });
+  }
+  html += '</div>';
+
+  html += '<div>'
+    + sectionHdr(now.toLocaleString('default',{month:'long'})+' Overview','linear-gradient(180deg,#4fa3e8,#2563eb)',0,'')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">'
+    +'<div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:14px;padding:14px;text-align:center;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1;">'+monthSessionSet.size+'</div>'
+    +'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:5px;">Sessions</div></div>'
+    +'<div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:14px;padding:14px;text-align:center;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1;">'+monthClientIds.size+'</div>'
+    +'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:5px;">Active</div></div>'
+    +'<div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:14px;padding:14px;text-align:center;">'
+    +'<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1;">'+activeClients.length+'</div>'
+    +'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:5px;">Clients</div></div>'
+    +'</div></div>';
+
+  el.innerHTML = html;
+}
+
+// ── PROGRESS REPORT OVERLAY ──
+async function openProgressReport(cid) {
+  const c = clients.find(function(x){return x.id===cid;});
+  if (!c) return;
+
+  var overlay = document.getElementById('progress-report-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'progress-report-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0d1117;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'block';
+
+  var month = new Date().toLocaleString('default',{month:'long'});
+  var year = new Date().getFullYear();
+
+  overlay.innerHTML = '<div style="max-width:420px;margin:0 auto;padding:20px 20px 56px;">'
+    +'<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">'
+    +'<button onclick="document.getElementById(\'progress-report-overlay\').style.display=\'none\'" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:rgba(180,200,230,0.6);font-size:18px;width:36px;height:36px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">×</button>'
+    +'</div>'
+    +'<div style="text-align:center;margin-bottom:32px;">'
+    +'<div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(79,163,232,0.55);margin-bottom:10px;">Progress Report</div>'
+    +'<div style="font-family:Syne,sans-serif;font-size:30px;font-weight:800;color:#fff;letter-spacing:-0.5px;">'+c.first+' '+c.last+'</div>'
+    +'<div style="font-size:14px;color:rgba(180,200,230,0.4);margin-top:5px;">'+month+' '+year+'</div>'
+    +'</div>'
+    +'<div id="pr-content-'+cid+'">'
+    +'<div class="skeleton" style="height:110px;border-radius:16px;margin-bottom:12px;"></div>'
+    +'<div class="skeleton" style="height:90px;border-radius:16px;margin-bottom:12px;"></div>'
+    +'<div class="skeleton" style="height:130px;border-radius:16px;"></div>'
+    +'</div>'
+    +'<div style="text-align:center;margin-top:36px;">'
+    +'<div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.15);">PT-HUB</div>'
+    +'</div></div>';
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const monthStr = monthStart.toISOString().split('T')[0];
+  const lastStr = lastMonthStart.toISOString().split('T')[0];
+  const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
+
+  let logs=[], prevLogs=[];
+  try {
+    [logs, prevLogs] = await Promise.all([
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`),
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${monthStr}`)
+    ]);
+  } catch(e) { logs=[]; prevLogs=[]; }
+
+  const sessions = c._sessions || [];
+  const monthlySessions = sessions.filter(function(s){
+    const d = new Date(s.date); return d >= monthStart;
+  });
+
+  let totalVolume = 0;
+  const exMaxWeight = {}, exVolume = {};
+  logs.forEach(function(l) {
+    const sets = parseInt((l.reps||'').split('x')[0])||0;
+    const reps = parseInt((l.reps||'').split('x')[1])||0;
+    const w = parseFloat(l.weight)||0;
+    const vol = sets*reps*w;
+    totalVolume += vol;
+    if (!exVolume[l.exercise_name]) exVolume[l.exercise_name]=0;
+    exVolume[l.exercise_name] += vol;
+    if (!exMaxWeight[l.exercise_name]||w>exMaxWeight[l.exercise_name]) exMaxWeight[l.exercise_name]=w;
+  });
+
+  const allTimeMax={}, lastMonthMax={};
+  prevLogs.forEach(function(l){
+    const w=parseFloat(l.weight)||0;
+    if (!allTimeMax[l.exercise_name]||w>allTimeMax[l.exercise_name]) allTimeMax[l.exercise_name]=w;
+    if (new Date(l.session_date)>=lastMonthStart && new Date(l.session_date)<=lastMonthEnd) {
+      if (!lastMonthMax[l.exercise_name]||w>lastMonthMax[l.exercise_name]) lastMonthMax[l.exercise_name]=w;
+    }
+  });
+
+  let prCount=0, prList=[];
+  Object.keys(exMaxWeight).forEach(function(ex){
+    if (exMaxWeight[ex]>0 && exMaxWeight[ex]>(allTimeMax[ex]||0)) {
+      prCount++; prList.push({name:ex, weight:exMaxWeight[ex]});
+    }
+  });
+  prList.sort(function(a,b){return b.weight-a.weight;});
+
+  const bestLift = Object.entries(exMaxWeight).sort(function(a,b){return b[1]-a[1];})[0]||null;
+  let mostImproved=null, biggestGain=0;
+  Object.keys(exMaxWeight).forEach(function(ex){
+    if (lastMonthMax[ex]) {
+      const g=exMaxWeight[ex]-lastMonthMax[ex];
+      if (g>biggestGain){biggestGain=g;mostImproved=ex;}
+    }
+  });
+
+  const volDisplay = totalVolume>=1000 ? (Math.round(totalVolume/100)/10)+'k' : Math.round(totalVolume).toLocaleString();
+  const topEx = Object.entries(exVolume).sort(function(a,b){return b[1]-a[1];}).slice(0,4);
+
+  const rcEl = document.getElementById('pr-content-'+cid);
+  if (!rcEl) return;
+
+  var rhtml = '';
+
+  // Big three stat tiles
+  rhtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">';
+  const bigTile = function(label, val, sub, accent) {
+    return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.08);border-radius:16px;padding:16px 10px;text-align:center;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:'+accent+';opacity:0.75;margin-bottom:8px;">'+label+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">'+val+'</div>'
+      +'<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:5px;">'+sub+'</div>'
+      +'</div>';
+  };
+  rhtml += bigTile('Sessions', monthlySessions.length, month, '#4fa3e8');
+  rhtml += bigTile('PRs', prCount||'—', prCount===1?'new record':'records', '#ff8c47');
+  rhtml += bigTile('Volume', totalVolume>0?volDisplay:'—', totalVolume>0?'lbs moved':'no data', '#93c5fd');
+  rhtml += '</div>';
+
+  // Best lift + most improved side by side
+  rhtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">';
+  if (bestLift) {
+    rhtml += '<div style="background:rgba(192,132,252,0.07);border:1px solid rgba(192,132,252,0.15);border-radius:16px;padding:16px;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c084fc;opacity:0.8;margin-bottom:8px;">Best Lift</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">'+bestLift[1]+'<span style="font-size:13px;font-weight:500;color:rgba(180,200,230,0.5);"> lbs</span></div>'
+      +'<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+bestLift[0]+'</div>'
+      +'</div>';
+  } else { rhtml += '<div></div>'; }
+  if (mostImproved) {
+    rhtml += '<div style="background:rgba(67,217,162,0.07);border:1px solid rgba(67,217,162,0.15);border-radius:16px;padding:16px;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#43d9a2;opacity:0.8;margin-bottom:8px;">Most Improved</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">+'+biggestGain+'<span style="font-size:13px;font-weight:500;color:rgba(180,200,230,0.5);"> lbs</span></div>'
+      +'<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+mostImproved+'</div>'
+      +'</div>';
+  } else { rhtml += '<div></div>'; }
+  rhtml += '</div>';
+
+  // PRs list if any
+  if (prList.length > 0) {
+    rhtml += '<div style="background:rgba(255,140,71,0.05);border:1px solid rgba(255,140,71,0.12);border-radius:16px;padding:16px;margin-bottom:12px;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.6);margin-bottom:12px;">🏆 New Personal Records</div>';
+    prList.slice(0,4).forEach(function(pr){
+      rhtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">'
+        +'<div style="font-size:13px;color:rgba(232,237,245,0.85);font-weight:600;">'+pr.name+'</div>'
+        +'<div style="font-size:13px;font-weight:700;color:#fff;">'+pr.weight+' lbs</div>'
+        +'</div>';
+    });
+    rhtml += '</div>';
+  }
+
+  // Volume as a wow number
+  if (totalVolume > 0) {
+    rhtml += '<div style="background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(79,163,232,0.08));border:1px solid rgba(79,163,232,0.15);border-radius:16px;padding:20px;text-align:center;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.6);margin-bottom:10px;">Total Weight Moved This Month</div>'
+      +'<div style="font-family:Syne,sans-serif;font-size:42px;font-weight:800;color:#fff;letter-spacing:-1px;line-height:1;">'+Math.round(totalVolume).toLocaleString()+'</div>'
+      +'<div style="font-size:14px;color:rgba(180,200,230,0.4);margin-top:4px;">lbs</div>'
+      +'</div>';
+  }
+
+  rcEl.innerHTML = rhtml;
 }
 
 // ── BODY STATS ──
