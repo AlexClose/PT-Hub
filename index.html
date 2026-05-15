@@ -3499,11 +3499,11 @@ function startClientPortal(id) {
 
       var html = '';
       if (liftDays.length > 0) {
-        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.8);margin-bottom:14px;">Lifts</div>';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:0.3px;">Lifts</div></div>';
         for (var li = 0; li < liftDays.length; li++) { html += makeDayCard(liftDays[li]); }
       }
       if (runDays.length > 0) {
-        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);margin-top:' + (liftDays.length > 0 ? '24px' : '0') + ';margin-bottom:14px;">Running</div>';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-top:' + (liftDays.length > 0 ? '28px' : '0') + ';margin-bottom:16px;"><div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#ff8c47,#c2410c);flex-shrink:0;"></div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:0.3px;">Running</div></div>';
         for (var ri = 0; ri < runDays.length; ri++) { html += makeDayCard(runDays[ri]); }
       }
       if (window._portalRunProgram) {
@@ -3511,7 +3511,7 @@ function startClientPortal(id) {
         var rpWeekNum = window._portalRunProgramWeek || 1;
         var rpWeekRuns = (rp.weeks || [])[rpWeekNum - 1] || [];
         var rpTotalWeeks = (rp.weeks || []).length;
-        html += '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,140,71,0.8);margin-top:' + (liftDays.length > 0 || runDays.length > 0 ? '24px' : '0') + ';margin-bottom:14px;">Running — Week ' + rpWeekNum + ' of ' + rpTotalWeeks + '</div>';
+        html += '<div style="display:flex;align-items:center;gap:12px;margin-top:' + (liftDays.length > 0 || runDays.length > 0 ? '28px' : '0') + ';margin-bottom:16px;"><div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#ff8c47,#c2410c);flex-shrink:0;"></div><div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:0.3px;">Running</div><div style="font-size:11px;color:rgba(255,140,71,0.6);font-weight:600;margin-top:1px;">Week ' + rpWeekNum + ' of ' + rpTotalWeeks + '</div></div></div>';
         window._showRunDay = function(ri2) {
           var run2 = ((rp.weeks||[])[rpWeekNum-1]||[])[ri2];
           if (run2) renderRunDetail(run2);
