@@ -1,115 +1,185 @@
 # PT-Hub Coaching App — Context & Status
 
 ## Project Overview
-Single-file SPA at `/home/user/PT-Hub/index.html` (~3000 lines) for a personal training coaching platform. Two portals:
+Single-file SPA at `/home/user/PT-Hub/index.html` (~4200 lines) for a personal training coaching platform. Two portals:
 - **Coaching Portal** (`#coach-*`): Coach manages clients, logs sessions, views dashboards
 - **Client Portal** (`#client-*`): Clients log workouts, view training programs
 
 ## Tech Stack
 - Vanilla JS, no framework
-- Supabase for backend (REST API via `sb()` function)
+- Supabase for backend (REST API via `sb()` function, keys hardcoded in file)
 - Single HTML file with inline CSS and JS
-- Git-based workflow on branch `claude/check-repo-connection-0JGIq`
+- Deployed to Vercel via GitHub — pushes to `main` go live automatically
+- GitHub repo: `alexclose/pt-hub`
+
+## Git Workflow (IMPORTANT)
+```bash
+# Always work on feature branch:
+git checkout claude/continue-pt-hub-yVRHo
+
+# Commit + push:
+git add index.html
+git commit -m "Clear message"
+git push -u origin claude/continue-pt-hub-yVRHo
+
+# Create PR via mcp__github__create_pull_request (owner: alexclose, repo: pt-hub)
+# Merge via mcp__github__merge_pull_request with merge_method: squash
+```
+
+### Squash Merge Conflict Resolution (happens every time)
+Squash merges rewrite main history, so every PR will have conflicts. Fix:
+```bash
+git fetch origin main
+git diff origin/main HEAD > /tmp/patch.diff
+git reset --hard origin/main
+git apply /tmp/patch.diff
+git add index.html
+git commit -m "message"
+git push --force -u origin claude/continue-pt-hub-yVRHo
+# Then retry the merge
+```
 
 ## Key Data Model
-**Clients table:**
+
+### Clients table
 - `id`, `first`, `last`, `email`, `age`, `level`, `duration`
 - `package_size` (total sessions in package) — can be 0
-- `remaining` (sessions left) — can be negative (means owed)
-- `package_size=0 && remaining>0` means "pay per session but tracked" (common bug point)
-- `remaining<0` means client owes money
-- Shared packages: `shared_package_id` links to `shared_packages` table
+- `remaining` (sessions left) — can be negative (means client owes money)
+- `schedule` — text string like "Mon, Wed, Fri 10:00 AM"
+- `run_schedule` — text string for run days
+- `run_program_id` — FK to `run_programs` table
+- `run_program_week` — which week of run program client is on (1-indexed)
+- `run_week_done` — how many runs completed in current program week (for auto-progression)
+- `structured_program` — JSONB with `{ days: [{name, color, exercises: [{name, prescription, load}]}] }`
+- `exercise_history` — JSONB keyed by exercise name, stores last reps/weight/date
+- `shared_package_id` — links to `shared_packages` table
+- `paused` — boolean
 
-## Recent Major Bug Fixes (This Session)
+### Package/Remaining Logic (critical)
+- `package_size=0 && remaining>0` → pay-per-session but tracked ("N remaining")
+- `package_size>0 && remaining>0` → standard package ("N / package_size")
+- `remaining<0` → owes sessions (shows red full bar)
+- `package_size=0 && remaining=0` → "Pay per session", no bar
+- `!!c.remaining` is truthy for any non-zero (positive OR negative) — used in hasPkg
 
-### Root Cause
-When adding new UI (colored stat tiles), session display logic broke. The issue was in how `hasPkg` (does client have a package?) was calculated and how progress bars rendered.
+### Sessions table
+- `client_id`, `date` (formatted "May 15, 2026"), `note`, `workout` (JSONB array)
 
-### What Was Broken
-1. **hasPkg logic**: Used `c.remaining > 0` which failed for negative remaining — Ali at -1 was invisible
-2. **Progress bar at 0%**: When `package_size=0`, `displayTotal=0`, causing `pct = remaining/0 = NaN → 0%` — invisible bar
-3. **Auto-decrement**: Only decremented for `package_size>0` clients, broke for package_size=0
-4. **Missing denominator**: Clients without `package_size` couldn't show "X / Y" format
+### Exercise logs table (`exercise_logs`)
+- `client_id`, `session_date`, `exercise_name`, `reps`, `weight`, `day_name`
 
-### What Was Fixed
-**Commit history (latest first):**
-- `0ed2b8b` — Show full red bar when sessions at 0 or negative (100% width in red when remaining ≤ 0)
-- `22b6587` — Update package size dropdown to 8, 12, 16, 20, 24, 30
-- `78b36e6` — Revert sessions-owed display
-- `ca2ec68` — Show 'X session(s) owed' text (reverted)
-- `3b001bd` — Merge conflicts keeping feature branch fixes
-- `f99fc16` — Merge PR #38 (session count fixes to main)
-- `196322d` — Progress bar scaling + auto-decrement for all clients
-- `af7ed3d` — hasPkg fix for negative remaining
-
-### Current State (Live)
-**All three client types now display correctly:**
-- `package_size=16, remaining=4` (Michael): Shows "4 / 16" + green bar at 25%
-- `package_size=0, remaining=8` (Beth/Lissette): Shows "8 remaining" + orange/yellow bar at 80%
-- `package_size=8, remaining=-1` (Ali): Shows "-1 / 8" + full red bar at 100%
-- `package_size=0, remaining=0`: Shows "Pay per session", no bar
+### Run programs table
+- `id`, `name`, `weeks` (JSONB array of arrays of run objects)
+- Run object: `{ label, type, distance, pace, segments }`
 
 ## Code Locations (Key Functions)
 
 | Function | Line | Purpose |
 |----------|------|---------|
-| `renderDashboard()` | 1004 | Coach dashboard: filters, stats tiles |
-| `clientRowHtml(c)` | 1044 | Coach client card: hasPkg, badge, bar logic |
-| `renderClientModal(c)` | 1167 | Coach client detail modal: sessions display |
-| `openLogSession()` | 1658 | Log workout form |
-| `logWorkout()` | 1680 | **Auto-decrement here (line 1691)** |
-| `renderDayPicker()` | ~830 | Client portal hero + weekly stats pill |
-| `openWorkout()` | ~1800 | Client portal workout sheet |
+| `getTodayClients()` | 1225 | Returns clients scheduled for today |
+| `clientTodayWorkout(c)` | 1244 | Returns today's workout name from program+schedule |
+| `renderTodaySessions()` | 1255 | Coach dashboard Today card with client list + workout names |
+| `renderDashboard()` | 1303 | Coach dashboard: stat tiles, alerts, client cards |
+| `clientRowHtml(c)` | 1343 | Coach dashboard client card (hasPkg, badge, progress bar) |
+| `renderClientList()` | 1410 | Clients tab — compact rows via `clientCompactRowHtml` |
+| `renderClientModal(c)` | 1536 | Coach client detail modal |
+| `openLogSession(id)` | 1899 | Log workout form (opens logModal) |
+| Session save logic | ~2110 | Auto-decrement, exercise logs, next-client prompt |
+| `renderTemplateList()` | 2379 | Lift program template list (compact rows) |
+| `startClientPortal(id)` | 2929 | Client portal entry point |
+| `renderClientShell(client)` | 2975 | Client portal shell HTML (nav + calendar strip) |
+| `buildPortalMonthView()` | 3031 | Month calendar grid for client portal |
+| `renderCalendarStrip()` | 3068 | Client portal week calendar + month expand toggle |
+| `loadTodayWorkout(client)` | 3174 | Fetches program + run program, calls renderDayPicker |
+| `renderDayPicker(days)` | 3209 | Client portal home screen (greeting, stats, day cards) |
+| `renderRunDetail(run)` | 3548 | Client portal run detail + LOG RUN button |
+| `renderMonthlyReport(c)` | 4114 | Monthly stats: sessions, volume, PRs, best lift, most improved |
 
-## Critical Lines for Package/Remaining Logic
+## Critical Code Snippets
 
 ```javascript
-// Line 1046: Coach card
+// clientRowHtml — hasPkg logic
 const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
 
-// Line 1049: Coach card progress bar
+// Progress bar pct
 const effectivePct = !hasPkg ? 0 : displayRemaining<=0 ? 100 : displayTotal>0 ? Math.min(displayRemaining/displayTotal*100, 100) : Math.min((displayRemaining||0)*10, 100);
 
-// Line 1691: Auto-decrement on session log
+// Auto-decrement on session log (~line 2109)
 let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
 
-// Line 1172: Modal progress bar
-const pct=!hasPkg?0:displayRem<=0?100:displayTotal>0?Math.min(displayRem/displayTotal*100,100):Math.min((displayRem||0)*10,100);
+// After session save — next client prompt (~line 2125)
+const nextToday = getTodayClients().find(tc => !tc._sessions.some(s=>s.date===dateStr) && tc.id !== c.id);
+// Shows a dismissible banner with "Log ⚡" shortcut for 9s
+
+// Run auto-progression (in _logRunSession)
+if (newDone >= weekRuns.length && currentWeek < totalWeeks) {
+  clientPatch.run_program_week = currentWeek + 1;
+  clientPatch.run_week_done = 0;
+} else {
+  clientPatch.run_week_done = newDone;
+}
 ```
 
-**Key insight:** 
-- `!!c.remaining` is truthy for any non-zero (positive OR negative)
-- `displayRemaining<=0 ? 100` forces full red bar when out or owed
-- Clients with `package_size=0` now use `remaining*10%` as scaled estimate for bar width
+## Features Completed (Recent Sessions)
 
-## Known Data Issues
-- Some old clients have `package_size=0` when they should have a number — must be set manually via Edit
-- Ali's data was at `remaining=-1, package_size=0` → now shows correctly as `-1 / 8` after manual edit
+### Coaching Portal
+- **Dashboard** — 4 colored stat tiles (Active Clients, Sessions This Month, Low Sessions, Invoice Needed)
+- **Today card** — collapsible, shows client dots + names + workout name + time + quick Log button
+- **Client cards** — compact, shows name + level + run week badge + package bar
+- **Client list tab** — compact single-line rows (dot + name + level + last session + status badge)
+- **Client modal** — collapsible Goals/Injuries section, Monthly Summary with 5 stats
+- **Monthly stats** — Sessions, Volume, PRs Hit, Best Lift, Most Improved (with trend indicators vs last month)
+- **Programs tab** — styled section headers (blue bar for Lift, orange for Run), compact template rows
+- **Add/Edit client form** — secondary fields (Goals, Injuries, Notes, Tier) hidden under "+ More options"
+- **Backup button** — de-emphasized (tiny, faded, icon-only)
+- **Nav tabs** — clean SVG icons (grid, users, list, layers) instead of emoji
 
-## Branch & Deployment
-- Feature branch: `claude/check-repo-connection-0JGIq`
-- All changes go here first, then PR to `main` (which is branch-protected)
-- Main is auto-deployed (GitHub Pages or similar)
-- Always resolve merge conflicts by keeping feature branch (HEAD) version
+### Client Portal
+- **Home screen** — greeting + "🔥 N sessions this month" badge (loads async), hero today card, This Week pill
+- **Month calendar** — expandable via ▼ chevron under the week strip (`window._calMonthOpen`)
+- **Home button** — blue-tinted, min-width 44px, "HOME" label, easy to tap
+- **Session history** — shows 5 sessions with exercise count, expandable to full history
+- **Run program** — LOG RUN button on run detail screen, auto-advances week when all runs complete
+- **Run week tracking** — `run_week_done` DB column, incremented on each run log
 
-## Next Steps (If Any)
-- Monitor for any remaining visual regressions
-- Consider prompting users to set `package_size` when creating clients with `remaining>0`
-- Could add validation in the edit form
+### Shared
+- **Shared packages** — `shared_package_id` links two clients to one package, deducts from shared remaining
 
-## Git Workflow Reminder
-```bash
-# Always work on feature branch:
-git checkout claude/check-repo-connection-0JGIq
+## Monthly Report Details (`renderMonthlyReport`)
+Fetches 3 datasets in parallel:
+1. Current month `exercise_logs`
+2. Last month `exercise_logs` (for trend comparison)
+3. All-time previous `exercise_logs` (for PR detection)
 
-# Commit when done:
-git add index.html
-git commit -m "Clear message"
-git push -u origin claude/check-repo-connection-0JGIq
+Stats shown:
+- Sessions this month (+ trend vs last month)
+- Total volume lbs (+ trend)
+- PRs Hit (exercises with new all-time max weight this month)
+- Best Lift (highest single weight logged this month)
+- Most Improved (biggest weight % increase vs last month)
 
-# Create PR via mcp__github__create_pull_request
-# Merge via mcp__github__merge_pull_request (handles conflicts)
-```
+## Run Program Auto-Progression
+1. Client has `run_program_id`, `run_program_week`, `run_week_done` on their record
+2. Client portal loads these into `window._portalRunProgramWeek` and `window._portalRunWeekDone`
+3. When LOG RUN tapped, `_logRunSession` increments `run_week_done`
+4. If `run_week_done >= weekRuns.length` → advance `run_program_week`, reset `run_week_done = 0`
+5. Green "Week N complete!" banner shown to client
+
+## Known Patterns & Gotchas
+- **Line numbers shift** every session as code grows — always grep to find current positions
+- **`parseSchedule(str)`** handles both JSON `{"Mon":0}` and plain text "Mon, Wed" formats
+- **`parseScheduleMap(str)`** returns a map object; `schedMapToStr(map)` converts back
+- **`window._portalClientId`** etc. — client portal uses global window vars (not a module)
+- **Session date format** is `"May 15, 2026"` (US locale string) not ISO — used for matching/display
+- **`_sessions` array** on each client object is loaded via `db.getSessions(c.id)` and cached in-memory
+
+## Potential Next Improvements
+- Smarter Today hero: show run week status (e.g. "Week 3 · 1/2 runs done")
+- Client portal: show PRs hit this month to the client
+- Session log flow: pre-select today's program day based on schedule
+- Coach programs tab: drag-to-reorder exercise list
+- Notifications / reminders for low-session clients
+- Client portal: show personal records per exercise
 
 ---
-**Last Updated:** May 13, 2026 at session end after full session count/bar fixes
+**Last Updated:** May 15, 2026
