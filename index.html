@@ -1251,6 +1251,16 @@ function clientTodayWorkout(c){
   if(pos<0||pos>=c.structured_program.days.length)return'';
   return c.structured_program.days[pos].name||'';
 }
+function clientTodayWorkoutIndex(c){
+  if(!c.structured_program||!c.structured_program.days||!c.structured_program.days.length)return undefined;
+  const sched=(c.schedule||'').toLowerCase();
+  const dayOrder=[{js:1,t:['mon','monday']},{js:2,t:['tue','tuesday','tues']},{js:3,t:['wed','wednesday']},{js:4,t:['thu','thursday','thur','thurs']},{js:5,t:['fri','friday']},{js:6,t:['sat','saturday']},{js:0,t:['sun','sunday']}];
+  const ordered=[];
+  dayOrder.forEach(function(d){if(d.t.some(function(p){return sched.includes(p);}))ordered.push(d.js);});
+  const pos=ordered.indexOf(new Date().getDay());
+  if(pos<0||pos>=c.structured_program.days.length)return undefined;
+  return pos;
+}
 
 function renderTodaySessions(){
   const el=document.getElementById('todaySessions');
@@ -1275,11 +1285,15 @@ function renderTodaySessions(){
     const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
     const time=timeMatch?timeMatch[0]:'';
     const wkName=clientTodayWorkout(c);
+    const rp=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
+    const rpWeekRuns=rp?((rp.weeks||[])[(c.run_program_week||1)-1]||[]):[];
+    const runStatusHtml=rp?`<div style="font-size:11px;color:rgba(255,140,71,0.55);margin-top:2px;">🏃 Wk ${c.run_program_week||1} · ${c.run_week_done||0}/${rpWeekRuns.length} runs done</div>`:'';
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
       <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
         ${wkName?`<div style="font-size:11px;color:rgba(147,197,253,0.45);margin-top:2px;">${wkName}</div>`:''}
+        ${runStatusHtml}
       </div>
       ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">⚡ Log</button>`:''}
     </div>`;
@@ -1297,7 +1311,9 @@ function renderTodaySessions(){
 }
 
 function quickLog(id){
-  openLogSession(id);
+  const c=clients.find(x=>x.id===id);
+  const dayIdx=c?clientTodayWorkoutIndex(c):undefined;
+  openLogSession(id,dayIdx);
 }
 
 function renderDashboard(){
@@ -2147,8 +2163,10 @@ async function confirmLogSession(){
       setTimeout(function(){
         const nb=document.createElement('div');
         nb.style.cssText='position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid rgba(79,163,232,0.3);border-radius:14px;padding:14px 18px;z-index:9998;display:flex;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.6);width:min(340px,90vw);';
-        nb.innerHTML='<div style="flex:1;"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(100,160,255,0.5);margin-bottom:3px;">Up next today</div><div style="font-size:15px;font-weight:700;color:#fff;">'+nextToday.first+'</div></div>'
-          +'<button onclick="this.parentNode.remove();openLogSession(\''+nextToday.id+'\')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Log ⚡</button>'
+        const nextDayIdx=clientTodayWorkoutIndex(nextToday);
+        const nextWkName=clientTodayWorkout(nextToday);
+        nb.innerHTML='<div style="flex:1;"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(100,160,255,0.5);margin-bottom:3px;">Up next today</div><div style="font-size:15px;font-weight:700;color:#fff;">'+nextToday.first+'</div>'+(nextWkName?'<div style="font-size:11px;color:rgba(147,197,253,0.45);margin-top:2px;">'+nextWkName+'</div>':'')+'</div>'
+          +'<button onclick="this.parentNode.remove();openLogSession(\''+nextToday.id+'\''+(nextDayIdx!==undefined?','+nextDayIdx:'')+')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Log ⚡</button>'
           +'<button onclick="this.parentNode.remove()" style="background:transparent;color:rgba(180,200,230,0.25);border:none;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;flex-shrink:0;">×</button>';
         document.body.appendChild(nb);
         setTimeout(function(){if(nb.parentNode)nb.remove();},9000);
@@ -3445,6 +3463,24 @@ function startClientPortal(id) {
       el.innerHTML = html2;
     })
     .catch(function() { var el = document.getElementById('recent-sessions-list'); if (el) el.innerHTML = ''; });
+
+    // Async: compute PRs hit this month and add badge to stats bar
+    var prMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    Promise.all([
+      fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=gte.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();}),
+      fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&session_date=lt.' + prMonthStr, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();})
+    ]).then(function(results) {
+      var mLogs = results[0] || [], pLogs = results[1] || [];
+      var prevMax2 = {}, monthMax2 = {};
+      pLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!prevMax2[l.exercise_name]||w>prevMax2[l.exercise_name])prevMax2[l.exercise_name]=w; });
+      mLogs.forEach(function(l){ var w=parseFloat(l.weight)||0; if(!monthMax2[l.exercise_name]||w>monthMax2[l.exercise_name])monthMax2[l.exercise_name]=w; });
+      var prCount2=0;
+      Object.keys(monthMax2).forEach(function(ex){ if(monthMax2[ex]>0&&monthMax2[ex]>(prevMax2[ex]||0))prCount2++; });
+      if(prCount2>0){
+        var sb2=document.getElementById('portal-stats-bar');
+        if(sb2) sb2.innerHTML+='<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#c084fc;letter-spacing:0.3px;margin-left:8px;margin-bottom:2px;">🏆 '+prCount2+' PR'+(prCount2===1?'':'s')+' this month</div>';
+      }
+    }).catch(function(){});
   }
 
   function renderRunCard(runDay) {
