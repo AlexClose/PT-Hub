@@ -494,9 +494,12 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div id="todaySessions" style="margin-bottom:16px"></div>
     <div class="stats-grid" id="dashStats"></div>
     <div id="dashAlerts"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div class="page-label" style="margin:0">All Clients</div>
-      <button onclick="openSessionBackup()" style="background:none;border:none;color:rgba(180,200,230,0.2);font-size:10px;cursor:pointer;padding:2px 0;font-family:inherit;opacity:0.6;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="View & restore session count backup">🔒</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div>
+        <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:0.3px;">Clients</div>
+      </div>
+      <button onclick="openSessionBackup()" style="background:none;border:none;color:rgba(180,200,230,0.15);font-size:11px;cursor:pointer;padding:4px;font-family:inherit;opacity:0.5;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'" title="View & restore session count backup">🔒</button>
     </div>
     <div style="position:relative;margin-bottom:14px;">
       <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;opacity:0.5;">🔍</span>
@@ -1290,26 +1293,34 @@ function renderTodaySessions(){
     const wkName=clientTodayWorkout(c);
     const rp=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
     const rpWeekRuns=rp?((rp.weeks||[])[(c.run_program_week||1)-1]||[]):[];
-    const runStatusHtml=rp?`<div style="font-size:11px;color:rgba(255,140,71,0.55);margin-top:2px;">🏃 Wk ${c.run_program_week||1} · ${c.run_week_done||0}/${rpWeekRuns.length} runs done</div>`:'';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-      <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>
+    const runStatusHtml=rp?`<span style="color:rgba(255,140,71,0.55);"> · 🏃 Wk ${c.run_program_week||1} · ${c.run_week_done||0}/${rpWeekRuns.length}</span>`:'';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'rgba(255,92,106,0.7)'};flex-shrink:0;box-shadow:0 0 8px ${isLogged?'rgba(67,217,162,0.4)':'rgba(255,92,106,0.3)'};"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
-        ${wkName?`<div style="font-size:11px;color:rgba(147,197,253,0.45);margin-top:2px;">${wkName}</div>`:''}
-        ${runStatusHtml}
+        <div style="font-size:14px;font-weight:600;color:${isLogged?'rgba(232,237,245,0.4)':'#e8edf5'};display:flex;align-items:center;gap:6px;">${c.first} ${c.last||''}${time?`<span style="color:rgba(100,160,255,0.5);font-size:11px;font-weight:400;">· ${time}</span>`:''}${isLogged?'<span style="color:#43d9a2;font-size:11px;">✓</span>':''}</div>
+        ${wkName||runStatusHtml?`<div style="font-size:11px;color:rgba(147,197,253,0.4);margin-top:2px;">${wkName}${runStatusHtml}</div>`:''}
       </div>
-      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">⚡ Log</button>`:''}
+      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:rgba(37,99,235,0.85);color:#fff;border:none;border-radius:8px;padding:7px 13px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;letter-spacing:0.3px;">⚡ Log</button>`:'<div style="width:36px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">✓</div>'}
     </div>`;
   }).join('');
 
-  el.innerHTML=`<div style="background:#0d1117;border:1px solid rgba(37,99,235,0.25);border-radius:12px;margin-bottom:16px;overflow:hidden">
-    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4fa3e8;flex-shrink:0">TODAY</div>
-      <div style="display:flex;gap:4px;align-items:center;flex:1">${dots}</div>
-      <div style="font-size:11px;color:${allDone?'#43d9a2':'rgba(180,200,230,0.4)'};font-weight:600;flex-shrink:0">${loggedCount}/${todayClients.length}</div>
-      <div style="color:rgba(180,200,230,0.3);font-size:12px">▼</div>
+  const progressPct = Math.round(loggedCount/todayClients.length*100);
+  el.innerHTML=`<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(79,163,232,0.2);border-radius:16px;margin-bottom:20px;overflow:hidden;">
+    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#4fa3e8;">Today</div>
+          <div style="display:flex;gap:5px;align-items:center;">${dots}</div>
+        </div>
+        <div style="font-size:12px;color:${allDone?'#43d9a2':'rgba(180,200,230,0.5)'};font-weight:600;">${allDone?'All sessions logged ✓':`${loggedCount} of ${todayClients.length} logged`}</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right;">
+        <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:${allDone?'#43d9a2':'#fff'};line-height:1;">${loggedCount}<span style="font-size:13px;color:rgba(180,200,230,0.3);font-weight:400;">/${todayClients.length}</span></div>
+      </div>
+      <div style="color:rgba(180,200,230,0.25);font-size:11px;flex-shrink:0;">▼</div>
     </div>
-    <div id="todayExpanded" style="display:none;padding:0 16px 12px">${list}</div>
+    <div style="height:3px;background:rgba(255,255,255,0.05);"><div style="height:3px;width:${progressPct}%;background:${allDone?'#43d9a2':'#2563eb'};transition:width 0.4s;"></div></div>
+    <div id="todayExpanded" style="display:none;padding:4px 18px 14px;">${list}</div>
   </div>`;
 }
 
@@ -1377,31 +1388,29 @@ function clientRowHtml(c){
       :c.remaining===0?'<span class="badge badge-red">0 remaining</span>'
       :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
       :`<span class="badge badge-green">${c.remaining} left</span>`;
-  const isSummer=c.first.toLowerCase().includes('summer');
-  const tierBadge = c.tier === 'gold' ? '<span style="font-size:14px;line-height:1;" title="Gold Client">🥇</span>' : c.tier === 'silver' ? '<span style="font-size:14px;line-height:1;" title="Silver Client">🥈</span>' : c.tier === 'bronze' ? '<span style="font-size:14px;line-height:1;" title="Bronze Client">🥉</span>' : '';
   const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
   const lastSessText = lastSess ? (() => { const d = new Date(lastSess.created_at || lastSess.date); const now = new Date(); const diff = Math.floor((now - d) / (1000*60*60*24)); return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? diff + 'd ago' : diff < 30 ? Math.floor(diff/7) + 'w ago' : Math.floor(diff/30) + 'mo ago'; })() : null;
-  // Tier dot color
   const _cardTier = (JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
-  const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : 'rgba(180,200,230,0.2)';
+  const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : 'rgba(180,200,230,0.18)';
   const sessionCount = (c._sessions||[]).length;
-  const subLine = lastSessText ? `Last · ${lastSessText}&nbsp;&nbsp;·&nbsp;&nbsp;${sessionCount} session${sessionCount===1?'':'s'}` : 'No sessions yet';
+  const runTag = c.run_program_id ? `<span style="color:rgba(255,140,71,0.6);font-weight:600;">· 🏃 Wk ${c.run_program_week||1}</span>` : '';
+  const subLine = lastSessText
+    ? `Last · ${lastSessText} &nbsp;·&nbsp; ${sessionCount} session${sessionCount===1?'':'s'} ${runTag}`
+    : `No sessions yet ${runTag}`;
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'10':'0'}px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
       <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="width:8px;height:8px;border-radius:50%;background:${tierDotColor};flex-shrink:0;display:inline-block;"></span>
-          <span style="font-weight:600;font-size:15px">${c.first} ${c.last||''}</span>
-          ${isSummer?'<span class="badge badge-summer" style="font-size:9px">☀️ Summer</span>':''}
-          ${c.structured_program?'<span class="badge badge-blue" style="font-size:9px">📋 Program</span>':''}
-          ${c.run_program_id?'<span class="badge" style="font-size:9px;background:rgba(255,140,71,0.15);color:rgba(255,140,71,0.9);border:1px solid rgba(255,140,71,0.2);">&#127939; Wk '+(c.run_program_week||1)+'</span>':''}
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${tierDotColor};flex-shrink:0;display:inline-block;"></span>
+          <span style="font-weight:700;font-size:15px;color:#e8edf5;">${c.first} ${c.last||''}</span>
+          ${c.level?`<span style="font-size:11px;color:rgba(180,200,230,0.35);font-weight:500;">${c.level}</span>`:''}
         </div>
-        <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px;">${subLine}</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.45);line-height:1.4;">${subLine}</div>
       </div>
       ${badge}
     </div>
-    ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
+    ${hasPkg?`<div class="prog-wrap" style="height:6px;margin-top:0;"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
   </div>`;
 }
 
@@ -1416,13 +1425,13 @@ function clientCompactRowHtml(c){
   const lastText = lastSess?(()=>{const d=new Date(lastSess.created_at||lastSess.date);const diff=Math.floor((new Date()-d)/(1000*60*60*24));return diff===0?'Today':diff===1?'Yesterday':diff<7?diff+'d ago':Math.floor(diff/7)+'w ago';})():'—';
   const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
   const dotCol=_ct==='gold'?'#FFD700':_ct==='silver'?'#C0C8D0':_ct==='bronze'?'#FF8C47':'rgba(180,200,230,0.15)';
-  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:12px;margin-bottom:7px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.2)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.08)'">
-    <div style="width:8px;height:8px;border-radius:50%;background:${dotCol};flex-shrink:0;"></div>
+  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)';this.style.background='rgba(255,255,255,0.035)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)';this.style.background=''">
+    <div style="width:8px;height:8px;border-radius:50%;background:${dotCol};flex-shrink:0;box-shadow:${dotCol!=='rgba(180,200,230,0.15)'?'0 0 8px '+dotCol+'60':'none'};"></div>
     <div style="flex:1;min-width:0;">
-      <div style="font-weight:600;font-size:14px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.first} ${c.last||''}</div>
-      <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px;">${c.level||''}${c.level&&lastText?' · ':''}${lastText}</div>
+      <div style="font-weight:700;font-size:15px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.first} ${c.last||''}</div>
+      <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${c.level||''}${c.level&&lastText?' · ':''}${lastText}</div>
     </div>
-    <span style="font-size:11px;font-weight:700;color:${badgeCol};background:${badgeBg};border-radius:20px;padding:3px 10px;white-space:nowrap;flex-shrink:0;">${badgeText}</span>
+    <span style="font-size:11px;font-weight:700;color:${badgeCol};background:${badgeBg};border:1px solid ${badgeCol}22;border-radius:20px;padding:4px 11px;white-space:nowrap;flex-shrink:0;">${badgeText}</span>
   </div>`;
 }
 
