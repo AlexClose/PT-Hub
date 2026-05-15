@@ -1709,15 +1709,6 @@ function renderClientModal(c){
       <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
     </div>
 
-    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
-        <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
-      </div>
-      <div id="bodystats-form-${c.id}" style="display:none"></div>
-      <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
-    </div>
-
     ${c.goals||c.injuries?(()=>{
       const giKey='_gi_'+c.id;
       const giOpen=window[giKey]||false;
@@ -1745,6 +1736,15 @@ function renderClientModal(c){
     </div>
 
     ${runProgramSection}
+
+    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
+        <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
+      </div>
+      <div id="bodystats-form-${c.id}" style="display:none"></div>
+      <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
+    </div>
 
     <div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
