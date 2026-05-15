@@ -3335,6 +3335,46 @@ function startClientPortal(id) {
           '</div>';
       }
 
+      // Build upcoming workouts list (next 3 scheduled days, skipping today)
+      var dayNames7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      var runSched7 = parseScheduleMap(window._portalRunScheduleStr || '');
+      var upcoming = [];
+      for (var d7 = 1; d7 <= 7 && upcoming.length < 3; d7++) {
+        var nextCalIdx = (todayCalIdx + d7) % 7;
+        var progIdx7 = calDayToProgDay[nextCalIdx];
+        if (progIdx7 !== undefined && days[progIdx7]) {
+          var uDay = days[progIdx7];
+          var uColor = uDay.color || '#4fa3e8';
+          upcoming.push({label: d7===1?'Tomorrow':dayNames7[nextCalIdx], name: uDay.name, color: uColor, sub: (uDay.exercises||[]).length + ' exercise' + ((uDay.exercises||[]).length!==1?'s':''), idx: progIdx7, type:'lift'});
+        } else if (runSched7[nextCalIdx] !== undefined && window._portalRunProgram) {
+          var rp7 = window._portalRunProgram;
+          var wk7 = window._portalRunProgramWeek || 1;
+          var rrun7 = ((rp7.weeks||[])[wk7-1]||[])[runSched7[nextCalIdx]];
+          if (rrun7) {
+            var rcol7 = {easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'#43d9a2'}[rrun7.type]||'#ff8c47';
+            upcoming.push({label: d7===1?'Tomorrow':dayNames7[nextCalIdx], name: rrun7.label||'Run', color: rcol7, sub: rrun7.distance ? rrun7.distance+' mi' : (rrun7.type||'run'), type:'run'});
+          }
+        }
+      }
+      var upcomingHtml = '';
+      if (upcoming.length > 0) {
+        upcomingHtml = '<div style="margin-top:4px;">' +
+          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);margin-bottom:10px;">Upcoming</div>';
+        for (var u7 = 0; u7 < upcoming.length; u7++) {
+          var up = upcoming[u7];
+          var clickAttr = up.type==='lift' && up.idx!==undefined ? ' onclick="window._showPortalTab(\'train\')" style="cursor:pointer;"' : ' style="cursor:default;"';
+          upcomingHtml +=
+            '<div' + clickAttr + ' style="background:rgba(255,255,255,0.025);border:1px solid rgba(100,160,255,0.07);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:8px;height:8px;border-radius:50%;background:' + up.color + ';flex-shrink:0;opacity:0.75;"></div>' +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:14px;font-weight:600;color:rgba(232,237,245,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + up.name + '</div>' +
+                '<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px;">' + up.label + ' &middot; ' + up.sub + '</div>' +
+              '</div>' +
+            '</div>';
+        }
+        upcomingHtml += '</div>';
+      }
+
       portalBody.innerHTML =
         '<div style="margin-bottom:16px;">' +
           '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:4px;font-weight:500;">' + greeting + ',</div>' +
@@ -3347,7 +3387,8 @@ function startClientPortal(id) {
           '<span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.3);flex-shrink:0;">This Week</span>' +
           '<span style="width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0;"></span>' +
           '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:#4fa3e8;">— <span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;">/ ' + weekTarget + ' workouts</span></span>' +
-        '</div>';
+        '</div>' +
+        upcomingHtml;
 
       portalBody.classList.add('view-enter');
       setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
