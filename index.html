@@ -103,12 +103,12 @@ color:#ffffff !important;
 .nav-tabs{display:flex;gap:4px;background:rgba(20,24,32,0.9);border:1px solid rgba(37,99,235,0.35);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 0 0 1px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.05);}
 .nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{
-font-family:‘Syne’,sans-serif;font-size:12px;font-weight:700;
-letter-spacing:.5px;text-transform:uppercase;
-padding:10px 14px;border-radius:9px;
+font-family:’Syne’,sans-serif;font-size:11px;font-weight:700;
+letter-spacing:.4px;text-transform:uppercase;
+padding:8px 10px;border-radius:9px;
 cursor:pointer;color:rgba(180,200,230,0.6);border:none;background:transparent;
 transition:all .2s;white-space:nowrap;
-display:flex;align-items:center;gap:5px;
+display:flex;align-items:center;gap:4px;
 }
 .nav-tab:hover{color:#e8edf5;background:#1e232b;}
 .nav-tab.active{color:#ffffff !important;background:#2563eb !important;box-shadow:0 2px 14px rgba(37,99,235,0.6);}
@@ -1205,7 +1205,7 @@ function showView(name,el){
   var currentName=window._activeView||'dashboard';
   var currentIdx=TABS.indexOf(currentName);
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  if(el)el.classList.add('active');
+  if(el){el.classList.add('active');el.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});}
   window._activeView=name;
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
