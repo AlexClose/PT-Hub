@@ -469,16 +469,16 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showView('dashboard',this)">
-      <span class="tab-icon">⚡</span> Dashboard
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Dashboard
     </button>
     <button class="nav-tab" onclick="showView('clients',this)">
-      <span class="tab-icon">👤</span> Clients
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Clients
     </button>
     <button class="nav-tab" onclick="showView('library',this)">
-      <span class="tab-icon">📋</span> Library
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Library
     </button>
     <button class="nav-tab" onclick="showView('programs',this)">
-      <span class="tab-icon">📁</span> Programs
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> Programs
     </button>
   </div>
 </nav>
@@ -1241,6 +1241,16 @@ function getTodayClients(){
     return patterns.some(p=>sched.includes(p));
   });
 }
+function clientTodayWorkout(c){
+  if(!c.structured_program||!c.structured_program.days||!c.structured_program.days.length)return'';
+  const sched=(c.schedule||'').toLowerCase();
+  const dayOrder=[{js:1,t:['mon','monday']},{js:2,t:['tue','tuesday','tues']},{js:3,t:['wed','wednesday']},{js:4,t:['thu','thursday','thur','thurs']},{js:5,t:['fri','friday']},{js:6,t:['sat','saturday']},{js:0,t:['sun','sunday']}];
+  const ordered=[];
+  dayOrder.forEach(function(d){if(d.t.some(function(p){return sched.includes(p);}))ordered.push(d.js);});
+  const pos=ordered.indexOf(new Date().getDay());
+  if(pos<0||pos>=c.structured_program.days.length)return'';
+  return c.structured_program.days[pos].name||'';
+}
 
 function renderTodaySessions(){
   const el=document.getElementById('todaySessions');
@@ -1264,10 +1274,14 @@ function renderTodaySessions(){
     const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
     const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
     const time=timeMatch?timeMatch[0]:'';
+    const wkName=clientTodayWorkout(c);
     return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
       <div style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>
-      <div style="flex:1;font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
-      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer">⚡ Log</button>`:''}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;color:${isLogged?'rgba(255,255,255,0.4)':'#fff'}">${c.first}${time?` <span style="color:rgba(100,160,255,0.6);font-size:11px">· ${time}</span>`:''}${isLogged?' <span style="color:#43d9a2;font-size:11px">✓</span>':''}</div>
+        ${wkName?`<div style="font-size:11px;color:rgba(147,197,253,0.45);margin-top:2px;">${wkName}</div>`:''}
+      </div>
+      ${!isLogged?`<button onclick="quickLog('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">⚡ Log</button>`:''}
     </div>`;
   }).join('');
 
@@ -2124,6 +2138,22 @@ async function confirmLogSession(){
     clearDraftCoach();
     closeModal('logModal');renderClientModal(c);renderDashboard();
     showSuccessAnimation(c.first,coachPBs);
+    // Prompt to log next today client
+    const nextToday=getTodayClients().find(tc=>{
+      if(tc.id===c.id)return false;
+      return !(tc._sessions||[]).some(s=>s.date===dateStr);
+    });
+    if(nextToday){
+      setTimeout(function(){
+        const nb=document.createElement('div');
+        nb.style.cssText='position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:#0d1117;border:1px solid rgba(79,163,232,0.3);border-radius:14px;padding:14px 18px;z-index:9998;display:flex;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.6);width:min(340px,90vw);';
+        nb.innerHTML='<div style="flex:1;"><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(100,160,255,0.5);margin-bottom:3px;">Up next today</div><div style="font-size:15px;font-weight:700;color:#fff;">'+nextToday.first+'</div></div>'
+          +'<button onclick="this.parentNode.remove();openLogSession(\''+nextToday.id+'\')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Log ⚡</button>'
+          +'<button onclick="this.parentNode.remove()" style="background:transparent;color:rgba(180,200,230,0.25);border:none;font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;flex-shrink:0;">×</button>';
+        document.body.appendChild(nb);
+        setTimeout(function(){if(nb.parentNode)nb.remove();},9000);
+      },1200);
+    }
     if(c.remaining<0&&!c.shared_package_id){
       setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
     } else if(c.shared_package_id){
@@ -3258,16 +3288,29 @@ function startClientPortal(id) {
     }
 
     var html =
-      '<div style="margin-bottom:20px;">' +
-        '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:6px;font-weight:500;">' + greeting + ',</div>' +
-        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:28px;color:#fff;margin-bottom:' + (thisMonth > 0 ? '10' : '0') + 'px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
-        (thisMonth > 0 ? '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.3px;">🔥 ' + thisMonth + ' session' + (thisMonth===1?'':'s') + ' this month</div>' : '') +
+      '<div style="margin-bottom:16px;">' +
+        '<div style="font-size:12px;color:rgba(180,200,230,0.5);margin-bottom:4px;font-weight:500;">' + greeting + ',</div>' +
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;margin-bottom:14px;letter-spacing:0.2px;">' + clientFirstName + ' &#128170;</div>' +
+        '<div id="portal-stats-bar" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:0;">' +
+          '<div style="background:rgba(79,163,232,0.08);border:1px solid rgba(79,163,232,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:32px;border-radius:5px;"></div></div>' +
+            '<div style="font-size:9px;color:rgba(126,200,255,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">All Time</div>' +
+          '</div>' +
+          '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:24px;border-radius:5px;"></div></div>' +
+            '<div style="font-size:9px;color:rgba(245,158,11,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Month</div>' +
+          '</div>' +
+          '<div style="background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="height:22px;display:flex;align-items:center;justify-content:center;"><div class="skeleton" style="height:18px;width:24px;border-radius:5px;"></div></div>' +
+            '<div style="font-size:9px;color:rgba(67,217,162,0.4);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:5px;">Streak</div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       heroHtml +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:9px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;">' +
         '<span style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.3);flex-shrink:0;">This Week</span>' +
         '<span style="width:1px;height:12px;background:rgba(255,255,255,0.08);flex-shrink:0;"></span>' +
-        '<span style="font-size:13px;font-weight:700;color:' + weekColor + ';">' + sessionsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + weekTarget + ' workouts</span></span>' +
+        '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:' + weekColor + ';">' + sessionsThisWeek + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + weekTarget + ' workouts</span></span>' +
       '</div>' +
       '';
 
@@ -3359,24 +3402,72 @@ function startClientPortal(id) {
 
     var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
     var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
-    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=50', {
+    fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=200', {
       headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
     })
     .then(function(res) { return res.json(); })
     .then(function(sessions) {
       var el = document.getElementById('recent-sessions-list');
       if (!el) return;
-      if (!sessions || sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet.</p>'; return; }
+      sessions = sessions || [];
       window._portalRecentSessions = sessions;
+
+      // Populate stats bar
+      var statsBar = document.getElementById('portal-stats-bar');
+      if (statsBar) {
+        var monthStart2 = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        var monthSess = sessions.filter(function(s) { return new Date(s.created_at || s.date) >= monthStart2; }).length;
+        // Streak: consecutive training days up to today
+        var dateSeen = {};
+        sessions.forEach(function(s) { var d = s.date || (s.created_at||'').slice(0,10); if(d) dateSeen[d]=true; });
+        var streak = 0, checkDate = new Date(); checkDate.setHours(0,0,0,0);
+        for (var sd = 0; sd < 365; sd++) {
+          var dStr = checkDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+          var dStr2 = checkDate.toISOString().slice(0,10);
+          if (dateSeen[dStr] || dateSeen[dStr2]) { streak++; checkDate.setDate(checkDate.getDate()-1); }
+          else if (sd === 0) { checkDate.setDate(checkDate.getDate()-1); } // skip today if no session yet
+          else break;
+        }
+        statsBar.innerHTML =
+          '<div style="background:rgba(79,163,232,0.08);border:1px solid rgba(79,163,232,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#7ec8ff;line-height:1;">' + sessions.length + '</div>' +
+            '<div style="font-size:9px;color:rgba(126,200,255,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">All Time</div>' +
+          '</div>' +
+          '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#f59e0b;line-height:1;">' + monthSess + '</div>' +
+            '<div style="font-size:9px;color:rgba(245,158,11,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">Month</div>' +
+          '</div>' +
+          '<div style="background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.15);border-radius:12px;padding:11px 8px;text-align:center;">' +
+            '<div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:#43d9a2;line-height:1;">' + streak + '</div>' +
+            '<div style="font-size:9px;color:rgba(67,217,162,0.45);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:4px;">Streak</div>' +
+          '</div>';
+        // Update week pill with real data
+        var now2 = new Date(), monday2 = new Date(now2);
+        monday2.setDate(now2.getDate() - (now2.getDay() === 0 ? 6 : now2.getDay() - 1));
+        monday2.setHours(0,0,0,0);
+        var weekSess2 = sessions.filter(function(s){ return new Date(s.created_at||s.date) >= monday2; }).length;
+        var wkTarget2 = (window._portalScheduleDays||[]).length || (window._portalDays||[]).length;
+        var wkColor2 = weekSess2 >= wkTarget2 && wkTarget2 > 0 ? '#43d9a2' : '#4fa3e8';
+        var weekEl = document.getElementById('portal-week-count');
+        if (weekEl) { weekEl.style.color = wkColor2; weekEl.innerHTML = weekSess2 + '<span style="color:rgba(180,200,230,0.3);font-weight:400;font-size:12px;"> / ' + wkTarget2 + ' workouts</span>'; }
+      }
+
+      if (sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet — log your first workout!</p>'; return; }
       var sessionRow = function(s) {
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.08);">' +
-          '<div><div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
-          '<div style="font-size:12px;color:rgba(180,200,230,0.4);margin-top:2px;">' + s.date + '</div></div>' +
-          '<div style="font-size:11px;font-weight:600;color:#43d9a2;background:rgba(67,217,162,0.1);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;">Done</div>' +
+        var wkHtml = (s.workout && s.workout.length > 0)
+          ? '<div style="font-size:11px;color:rgba(100,160,255,0.45);margin-top:3px;">' + s.workout.length + ' exercise' + (s.workout.length!==1?'s':'') + ' logged</div>'
+          : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(100,160,255,0.07);">' +
+          '<div>' +
+            '<div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note || 'Workout') + '</div>' +
+            '<div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:2px;">' + s.date + '</div>' +
+            wkHtml +
+          '</div>' +
+          '<div style="font-size:10px;font-weight:700;color:#43d9a2;background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;flex-shrink:0;">Done ✓</div>' +
         '</div>';
       };
-      var visible = sessions.slice(0, 3);
-      var hidden = sessions.slice(3);
+      var visible = sessions.slice(0, 5);
+      var hidden = sessions.slice(5);
       var html2 = '';
       for (var i = 0; i < visible.length; i++) { html2 += sessionRow(visible[i]); }
       if (hidden.length > 0) {
