@@ -114,6 +114,8 @@ display:flex;align-items:center;gap:4px;
 .nav-tab.active{color:#ffffff !important;background:#2563eb !important;box-shadow:0 2px 14px rgba(37,99,235,0.6);}
 .nav-tab.active span{color:#ffffff !important;}
 .nav-tab .tab-icon{font-size:14px;}
+.nav-tab .tab-label{display:none;}
+.nav-tab.active .tab-label{display:inline;}
 
 /* ── MAIN ── */
 main{padding-top:64px;height:100vh;overflow:hidden;box-sizing:border-box;}
@@ -469,19 +471,19 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
   </div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showView('dashboard',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Dashboard
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="tab-label"> Dashboard</span>
     </button>
     <button class="nav-tab" onclick="showView('clients',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Clients
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="tab-label"> Clients</span>
     </button>
     <button class="nav-tab" onclick="showView('library',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Library
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span><span class="tab-label"> Library</span>
     </button>
     <button class="nav-tab" onclick="showView('programs',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span> Programs
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="tab-label"> Programs</span>
     </button>
     <button class="nav-tab" onclick="showView('business',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> Business
+      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="tab-label"> Business</span>
     </button>
   </div>
 </nav>
@@ -4632,6 +4634,51 @@ async function renderBusinessView() {
     +'<div style="font-family:Syne,sans-serif;font-size:28px;font-weight:800;color:#fff;line-height:1;">'+activeClients.length+'</div>'
     +'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-top:5px;">Clients</div></div>'
     +'</div></div>';
+
+  // Renewals this month — packages projected to run out before month end
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  const daysLeft = Math.max(1, Math.ceil((endOfMonth - now) / (1000*60*60*24)));
+  const renewals = activeClients.filter(function(c) {
+    if (!c.package_size || c.package_size <= 0 || (c.remaining||0) <= 0) return false;
+    const sessPerWeek = Math.max(1, parseSchedule(c.schedule||'').length);
+    const projectedThisMonth = Math.ceil(sessPerWeek * daysLeft / 7);
+    return c.remaining <= projectedThisMonth;
+  });
+  if (renewals.length > 0) {
+    html += '<div style="margin-bottom:24px;">'
+      + sectionHdr('Renewals This Month','linear-gradient(180deg,#c084fc,#7c3aed)',renewals.length,'rgba(192,132,252,0.15);color:#c084fc;border:1px solid rgba(192,132,252,0.25)');
+    renewals.forEach(function(c) {
+      const sessPerWeek = Math.max(1, parseSchedule(c.schedule||'').length);
+      const projectedThisMonth = Math.ceil(sessPerWeek * daysLeft / 7);
+      const urgent = c.remaining <= Math.ceil(projectedThisMonth / 2);
+      html += '<div style="background:rgba(192,132,252,0.05);border:1px solid rgba(192,132,252,0.15);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
+        +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+c.first+' '+c.last+'</div>'
+        +'<div style="font-size:12px;color:rgba(192,132,252,0.7);">'+c.remaining+' / '+c.package_size+' left'+(urgent?' · runs out soon':' · renew this month')+'</div></div>'
+        +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // Long-term clients (6+ months)
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth()-6, now.getDate());
+  const longTerm = activeClients.filter(function(c) {
+    return c.created_at && new Date(c.created_at) <= sixMonthsAgo;
+  }).sort(function(a,b){ return new Date(a.created_at)-new Date(b.created_at); });
+  if (longTerm.length > 0) {
+    html += '<div style="margin-bottom:24px;">'
+      + sectionHdr('Long-Term Clients','linear-gradient(180deg,#43d9a2,#0d9488)',0,'');
+    longTerm.forEach(function(c) {
+      const months = Math.floor((now - new Date(c.created_at)) / (1000*60*60*24*30.44));
+      const years = Math.floor(months/12);
+      const rem = months % 12;
+      const label = years > 0 ? years+'y'+(rem > 0 ? ' '+rem+'mo':'') : months+'mo';
+      html += '<div style="background:rgba(67,217,162,0.04);border:1px solid rgba(67,217,162,0.1);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
+        +'<div style="font-size:14px;font-weight:700;color:#fff;">'+c.first+' '+c.last+'</div>'
+        +'<div style="background:rgba(67,217,162,0.12);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;color:#43d9a2;">'+label+'</div>'
+        +'</div>';
+    });
+    html += '</div>';
+  }
 
   el.innerHTML = html;
 }
