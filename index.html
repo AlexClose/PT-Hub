@@ -1067,8 +1067,7 @@ async function verifyClientEmail(clientId) {
 function setupSwipeGestures(){
   if(window._swipeSetup)return;
   window._swipeSetup=true;
-  var TABS=['dashboard','clients','library','programs'];
-  window._activeView='dashboard';
+  var TABS=['dashboard','clients','library','programs','business'];
 
   // Touch-based horizontal swipe to navigate tabs
   var sc=document.getElementById('view-scroll');
