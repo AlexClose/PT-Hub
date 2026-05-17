@@ -1405,8 +1405,8 @@ function clientRowHtml(c){
     : !hasPkg?'<span class="badge badge-blue">Pay per session</span>'
       :c.remaining<0?`<span class="badge badge-red">${c.remaining} sessions</span>`
       :c.remaining===0?'<span class="badge badge-red">0 remaining</span>'
-      :c.remaining<=2?`<span class="badge badge-yellow">${c.remaining} left</span>`
-      :`<span class="badge badge-green">${c.remaining} left</span>`;
+      :c.remaining<=2?`<span class="badge badge-yellow">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`
+      :`<span class="badge badge-green">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`;
   const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
   const lastSessText = lastSess ? (() => { const d = new Date(lastSess.created_at || lastSess.date); const now = new Date(); const diff = Math.floor((now - d) / (1000*60*60*24)); return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? diff + 'd ago' : diff < 30 ? Math.floor(diff/7) + 'w ago' : Math.floor(diff/30) + 'mo ago'; })() : null;
   const _cardTier = (JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
@@ -1439,7 +1439,7 @@ function clientCompactRowHtml(c){
   const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
   const badgeCol = !hasPkg?'rgba(79,163,232,0.7)':displayRemaining<=0?'#ff5c6a':displayRemaining<=2?'#ffb347':'#43d9a2';
   const badgeBg = !hasPkg?'rgba(79,163,232,0.1)':displayRemaining<=0?'rgba(255,92,106,0.1)':displayRemaining<=2?'rgba(255,179,71,0.1)':'rgba(67,217,162,0.1)';
-  const badgeText = c.paused?'Paused':!hasPkg?'Pay/session':displayRemaining<=0?'Out':displayRemaining+' left';
+  const badgeText = c.paused?'Paused':!hasPkg?'Pay/session':displayRemaining<=0?'Out':sharedPkg?(displayRemaining+' shared'):(c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left');
   const lastSess = c._sessions&&c._sessions.length>0?c._sessions[0]:null;
   const lastText = lastSess?(()=>{const d=new Date(lastSess.created_at||lastSess.date);const diff=Math.floor((new Date()-d)/(1000*60*60*24));return diff===0?'Today':diff===1?'Yesterday':diff<7?diff+'d ago':Math.floor(diff/7)+'w ago';})():'—';
   const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
