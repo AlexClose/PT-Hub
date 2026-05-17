@@ -4639,7 +4639,7 @@ async function renderBusinessView() {
   const endOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0);
   const daysLeft = Math.max(1, Math.ceil((endOfMonth - now) / (1000*60*60*24)));
   const renewals = activeClients.filter(function(c) {
-    if (!c.package_size || c.package_size <= 0 || (c.remaining||0) <= 0) return false;
+    if ((c.remaining||0) <= 0) return false;
     const sessPerWeek = Math.max(1, parseSchedule(c.schedule||'').length);
     const projectedThisMonth = Math.ceil(sessPerWeek * daysLeft / 7);
     return c.remaining <= projectedThisMonth;
@@ -4653,7 +4653,7 @@ async function renderBusinessView() {
       const urgent = c.remaining <= Math.ceil(projectedThisMonth / 2);
       html += '<div style="background:rgba(192,132,252,0.05);border:1px solid rgba(192,132,252,0.15);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
         +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+c.first+' '+c.last+'</div>'
-        +'<div style="font-size:12px;color:rgba(192,132,252,0.7);">'+c.remaining+' / '+c.package_size+' left'+(urgent?' · runs out soon':' · renew this month')+'</div></div>'
+        +'<div style="font-size:12px;color:rgba(192,132,252,0.7);">'+(c.package_size>0?c.remaining+' / '+c.package_size+' left':c.remaining+' sessions left')+(urgent?' · runs out soon':' · renew this month')+'</div></div>'
         +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
     });
     html += '</div>';
