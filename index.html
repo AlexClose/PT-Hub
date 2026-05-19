@@ -1956,8 +1956,10 @@ function restoreDraftCoach(){
 // ── LOG SESSION ──
 function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
-  // Allow negative sessions for clients like Ali who go on extended breaks
   pendingLogId=id;
+  // Always reset button in case a previous save errored and left it disabled
+  const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
+  if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
   document.getElementById('logModalTitle').textContent=c.first;
   document.getElementById('logNote').value='';
   let workoutHtml='';
@@ -2228,7 +2230,11 @@ async function confirmLogSession(){
       else if(c.remaining<=2)setTimeout(()=>toast(`🟡 ${c.first} has ${c.remaining} session${c.remaining===1?'':'s'} left`),300);
       else toast(`Session logged ✓ — ${c.remaining} remaining`);
     }else toast('Session logged ✓');
-  }catch(e){toast('Error saving — check connection');console.error(e);}
+  }catch(e){
+    toast('Error saving — check connection');
+    console.error(e);
+    if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
+  }
 }
 
 // ── RENEW ──
@@ -4556,15 +4562,20 @@ async function renderBusinessView() {
   const monthStr = monthStart.toISOString().split('T')[0];
   const tenDaysAgoStr = new Date(now - 10*24*60*60*1000).toISOString().split('T')[0];
 
-  let recentLogs = [], monthLogs = [];
+  let recentLogs = [], monthLogs = [], recentSessions = [];
   try {
-    [recentLogs, monthLogs] = await Promise.all([
+    [recentLogs, monthLogs, recentSessions] = await Promise.all([
       sb('GET','exercise_logs',null,`?session_date=gte.${tenDaysAgoStr}&select=client_id`),
-      sb('GET','exercise_logs',null,`?session_date=gte.${monthStr}&select=client_id,session_date`)
+      sb('GET','exercise_logs',null,`?session_date=gte.${monthStr}&select=client_id,session_date`),
+      sb('GET','sessions',null,`?created_at=gte.${tenDaysAgoStr}&select=client_id`)
     ]);
-  } catch(e) { recentLogs=[]; monthLogs=[]; }
+  } catch(e) { recentLogs=[]; monthLogs=[]; recentSessions=[]; }
 
-  const recentIds = new Set((recentLogs||[]).map(function(l){return l.client_id;}));
+  // Union exercise_logs + sessions so note-only sessions don't show as inactive
+  const recentIds = new Set([
+    ...(recentLogs||[]).map(function(l){return l.client_id;}),
+    ...(recentSessions||[]).map(function(s){return s.client_id;})
+  ]);
   const activeClients = clients.filter(function(c){return !c.paused;});
 
   const owes = activeClients.filter(function(c){return (c.remaining||0)<0;});
@@ -4638,22 +4649,43 @@ async function renderBusinessView() {
   // Renewals this month — packages projected to run out before month end
   const endOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0);
   const daysLeft = Math.max(1, Math.ceil((endOfMonth - now) / (1000*60*60*24)));
+  const seenSharedPkgs = new Set();
   const renewals = activeClients.filter(function(c) {
-    if ((c.remaining||0) <= 0) return false;
+    const sp = c.shared_package_id ? sharedPackages.find(function(p){return p.id===c.shared_package_id;}) : null;
+    const effectiveRemaining = sp ? sp.remaining_sessions : (c.remaining||0);
+    if (effectiveRemaining <= 0) return false;
+    if (sp) {
+      if (seenSharedPkgs.has(sp.id)) return false; // dedupe shared packages
+      seenSharedPkgs.add(sp.id);
+      // Combined sessions/week for all clients on this shared package
+      const spClients = activeClients.filter(function(x){return x.shared_package_id===sp.id;});
+      const combinedPerWeek = spClients.reduce(function(sum,x){return sum+Math.max(1,parseSchedule(x.schedule||'').length);},0);
+      return effectiveRemaining <= Math.ceil(combinedPerWeek * daysLeft / 7);
+    }
     const sessPerWeek = Math.max(1, parseSchedule(c.schedule||'').length);
-    const projectedThisMonth = Math.ceil(sessPerWeek * daysLeft / 7);
-    return c.remaining <= projectedThisMonth;
+    return effectiveRemaining <= Math.ceil(sessPerWeek * daysLeft / 7);
   });
   if (renewals.length > 0) {
     html += '<div style="margin-bottom:24px;">'
       + sectionHdr('Renewals This Month','linear-gradient(180deg,#c084fc,#7c3aed)',renewals.length,'rgba(192,132,252,0.15);color:#c084fc;border:1px solid rgba(192,132,252,0.25)');
     renewals.forEach(function(c) {
-      const sessPerWeek = Math.max(1, parseSchedule(c.schedule||'').length);
-      const projectedThisMonth = Math.ceil(sessPerWeek * daysLeft / 7);
-      const urgent = c.remaining <= Math.ceil(projectedThisMonth / 2);
+      const sp = c.shared_package_id ? sharedPackages.find(function(p){return p.id===c.shared_package_id;}) : null;
+      const effectiveRemaining = sp ? sp.remaining_sessions : (c.remaining||0);
+      const totalSess = sp ? sp.total_sessions : c.package_size;
+      let nameDisplay = c.first+' '+c.last;
+      if (sp) {
+        const partners = activeClients.filter(function(x){return x.shared_package_id===sp.id&&x.id!==c.id;}).map(function(x){return x.first;});
+        if (partners.length) nameDisplay += ' & '+partners.join(' & ');
+      }
+      const sessPerWeek = sp
+        ? activeClients.filter(function(x){return x.shared_package_id===sp.id;}).reduce(function(sum,x){return sum+Math.max(1,parseSchedule(x.schedule||'').length);},0)
+        : Math.max(1, parseSchedule(c.schedule||'').length);
+      const projected = Math.ceil(sessPerWeek * daysLeft / 7);
+      const urgent = effectiveRemaining <= Math.ceil(projected / 2);
+      const leftLabel = totalSess>0 ? effectiveRemaining+' / '+totalSess+' left' : effectiveRemaining+' sessions left';
       html += '<div style="background:rgba(192,132,252,0.05);border:1px solid rgba(192,132,252,0.15);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="renderClientModal(clients.find(function(x){return x.id===\''+c.id+'\';}));openModal(\'clientModal\');">'
-        +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+c.first+' '+c.last+'</div>'
-        +'<div style="font-size:12px;color:rgba(192,132,252,0.7);">'+(c.package_size>0?c.remaining+' / '+c.package_size+' left':c.remaining+' sessions left')+(urgent?' · runs out soon':' · renew this month')+'</div></div>'
+        +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+nameDisplay+'</div>'
+        +'<div style="font-size:12px;color:rgba(192,132,252,0.7);">'+leftLabel+(urgent?' · runs out soon':' · renew this month')+'</div></div>'
         +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
     });
     html += '</div>';
