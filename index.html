@@ -1960,6 +1960,7 @@ function openLogSession(id, preselectedDay){
   // Always reset button in case a previous save errored and left it disabled
   const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
   if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
+  window._adhocCount=0;
   document.getElementById('logModalTitle').textContent=c.first;
   document.getElementById('logNote').value='';
   let workoutHtml='';
@@ -2030,6 +2031,8 @@ function updateLogWorkout(clientId){
     });
     return html;
     })()
+  + `<div id="adhoc-exercises"></div>`
+  + `<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;margin-top:4px;margin-bottom:4px;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`;
   saveDraftCoach();
 }
 
@@ -2074,6 +2077,32 @@ function autoFillLog(){
   });
   saveDraftCoach();
   toast('Filled from last session ✓');
+}
+
+function addAdHocExercise(){
+  const container=document.getElementById('adhoc-exercises');
+  if(!container)return;
+  // Build autocomplete datalist from library on first use
+  if(!document.getElementById('exercise-autocomplete-list')){
+    const dl=document.createElement('datalist');
+    dl.id='exercise-autocomplete-list';
+    (window.library||[]).forEach(function(ex){const opt=document.createElement('option');opt.value=ex.name;dl.appendChild(opt);});
+    document.body.appendChild(dl);
+  }
+  const n=window._adhocCount||0;
+  window._adhocCount=n+1;
+  const row=document.createElement('div');
+  row.id='adhoc-row-'+n;
+  row.style.cssText='background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;position:relative;';
+  row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>`
+    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" list="exercise-autocomplete-list">`
+    +`<div class="workout-inputs">`
+    +`<div><input id="wr-adhoc-${n}" placeholder="Sets × Reps"><div class="wi-label">Sets × Reps</div></div>`
+    +`<div><input id="wt-adhoc-${n}" placeholder="Weight / Load"><div class="wi-label">Weight / Load</div></div>`
+    +`</div>`;
+  container.appendChild(row);
+  // Focus the name input
+  setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
 }
 
 function showExHistory(clientId, exName, displayName, ei){
@@ -2176,6 +2205,26 @@ async function confirmLogSession(){
         exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
       }
     });
+  }
+  // Collect ad-hoc exercises added inline during the session
+  const adhocCount=window._adhocCount||0;
+  for(let n=0;n<adhocCount;n++){
+    const nameEl=document.getElementById('an-adhoc-'+n);
+    const wrEl=document.getElementById('wr-adhoc-'+n);
+    const wtEl=document.getElementById('wt-adhoc-'+n);
+    if(!nameEl||!nameEl.closest('body'))continue; // row was deleted
+    const exName=(nameEl?.value||'').trim();
+    const wr=(wrEl?.value||'').trim();
+    const wt=(wtEl?.value||'').trim();
+    if(exName&&(wr||wt)){
+      const key=exName.toLowerCase().replace(/\s+/g,'_');
+      const prev=c.exercise_history&&c.exercise_history[key]?maxWeight(c.exercise_history[key].weight):0;
+      const newW=maxWeight(wt),isPB=newW>0&&newW>prev;
+      if(isPB)coachPBs.push(exName);
+      newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?wt:(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
+      workout.push({name:exName,reps:wr||'',weight:wt||''});
+      exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:exName,reps:wr||'',weight:wt||'',day_name:'Ad-hoc'});
+    }
   }
   try{
     await db.addSession({client_id:c.id,date:dateStr,note,workout});
