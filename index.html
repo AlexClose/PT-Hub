@@ -1716,6 +1716,7 @@ function renderClientModal(c){
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
           <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
           ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Renew</button>`:''}
+          <button onclick="(function(){var url='https://pt-hub.vercel.app/api/export?id=${c.id}&key=pthub_9r4xw2m8k6j3';if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){toast('Export URL copied ✓');});}else{var inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);inp.select();document.execCommand('copy');document.body.removeChild(inp);toast('Export URL copied ✓');}})();" style="background:rgba(255,255,255,0.03);color:rgba(180,200,230,0.3);border:1px solid rgba(255,255,255,0.05);border-radius:9px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:10px;font-weight:600;cursor:pointer">⬡ Export</button>
         </div>
       </div>
       ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
