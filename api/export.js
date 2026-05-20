@@ -9,6 +9,11 @@ const HEADERS = {
   'Authorization': `Bearer ${SB_KEY}`,
 };
 
+function maxWeight(str) {
+  if (!str) return 0;
+  return Math.max(0, ...String(str).split(/[,\/\s]+/).map(v => parseFloat(v) || 0));
+}
+
 async function query(table, params) {
   const res = await fetch(`${SB_URL}/rest/v1/${table}${params}`, { headers: HEADERS });
   if (!res.ok) throw new Error(`Supabase error: ${res.status} on ${table}`);
@@ -52,7 +57,7 @@ export default async function handler(req, res) {
     // Build personal records from exercise_logs
     const prs = {};
     exerciseLogs.forEach(log => {
-      const w = parseFloat(log.weight) || 0;
+      const w = maxWeight(log.weight);
       if (!prs[log.exercise_name] || w > prs[log.exercise_name].weight) {
         prs[log.exercise_name] = { weight: w, date: log.session_date, reps: log.reps };
       }
@@ -99,7 +104,7 @@ export default async function handler(req, res) {
         date: l.session_date,
         exercise: l.exercise_name,
         reps: l.reps || null,
-        weight: l.weight ? parseFloat(l.weight) : null,
+        weight: l.weight ? maxWeight(l.weight) : null,
         day_name: l.day_name || null,
       })),
     };

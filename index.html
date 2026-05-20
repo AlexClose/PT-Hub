@@ -2122,7 +2122,7 @@ function showExHistory(clientId, exName, displayName, ei){
         const dk=s.date||(s.created_at||'').slice(0,10);
         if(!seenDates[dk]){
           seenDates[dk]=true;
-          pts.push({weight:parseFloat(e.weight)||0,reps:e.reps||'',date:s.date||''});
+          pts.push({weight:maxWeight(e.weight),reps:e.reps||'',date:s.date||''});
         }
       }
     });
@@ -3540,8 +3540,8 @@ function startClientPortal(id) {
         fetch(SUPABASE_URL+'/rest/v1/exercise_logs?client_id=eq.'+window._portalClientId+'&session_date=lt.'+prMonthStr, {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}).then(function(r){return r.json();})
       ]).then(function(results) {
         var mLogs=results[0]||[], pLogs=results[1]||[], prevMax={}, monthMax={};
-        pLogs.forEach(function(l){var w=parseFloat(l.weight)||0;if(!prevMax[l.exercise_name]||w>prevMax[l.exercise_name])prevMax[l.exercise_name]=w;});
-        mLogs.forEach(function(l){var w=parseFloat(l.weight)||0;if(!monthMax[l.exercise_name]||w>monthMax[l.exercise_name])monthMax[l.exercise_name]=w;});
+        pLogs.forEach(function(l){var w=maxWeight(l.weight);if(!prevMax[l.exercise_name]||w>prevMax[l.exercise_name])prevMax[l.exercise_name]=w;});
+        mLogs.forEach(function(l){var w=maxWeight(l.weight);if(!monthMax[l.exercise_name]||w>monthMax[l.exercise_name])monthMax[l.exercise_name]=w;});
         var prCount=0;
         Object.keys(monthMax).forEach(function(ex){if(monthMax[ex]>0&&monthMax[ex]>(prevMax[ex]||0))prCount++;});
         if(prCount>0){var sb2=document.getElementById('portal-stats-bar');if(sb2)sb2.innerHTML+='<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.22);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#c084fc;letter-spacing:0.3px;">🏆 '+prCount+' PR'+(prCount===1?'':'s')+' this month</div>';}
@@ -3645,7 +3645,7 @@ function startClientPortal(id) {
         }
         var exMap = {};
         logs.forEach(function(l) {
-          var w = parseFloat(l.weight) || 0;
+          var w = maxWeight(l.weight);
           if (!exMap[l.exercise_name]) exMap[l.exercise_name] = {max:0, date:'', reps:''};
           if (w > exMap[l.exercise_name].max) exMap[l.exercise_name] = {max:w, date:l.session_date, reps:l.reps};
         });
@@ -4298,7 +4298,7 @@ function startClientPortal(id) {
               if (!seenDates[dateKey]) {
                 seenDates[dateKey] = true;
                 var d = new Date(s.created_at || s.date);
-                pts.push({weight: parseFloat(e.weight)||0, reps: e.reps||'', date: d.toLocaleDateString('en-US',{month:'short',day:'numeric'})});
+                pts.push({weight: maxWeight(e.weight), reps: e.reps||'', date: d.toLocaleDateString('en-US',{month:'short',day:'numeric'})});
               }
             }
           });
@@ -4506,7 +4506,7 @@ async function renderMonthlyReport(c) {
   logs.forEach(l => {
     const sets = parseInt((l.reps||'').split('x')[0]) || 0;
     const reps = parseInt((l.reps||'').split('x')[1]) || 0;
-    const weight = parseFloat(l.weight) || 0;
+    const weight = maxWeight(l.weight);
     const vol = sets * reps * weight;
     totalVolume += vol;
     if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
@@ -4516,7 +4516,7 @@ async function renderMonthlyReport(c) {
   lastMonthLogs.forEach(l => {
     const sets = parseInt((l.reps||'').split('x')[0]) || 0;
     const reps = parseInt((l.reps||'').split('x')[1]) || 0;
-    const weight = parseFloat(l.weight) || 0;
+    const weight = maxWeight(l.weight);
     lastMonthVolume += sets * reps * weight;
     if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) lastMonthMax[l.exercise_name] = weight;
   });
@@ -4536,7 +4536,7 @@ async function renderMonthlyReport(c) {
   // PR detection — compare this month's max vs all-time max before this month
   const allTimeMax = {};
   prevLogs.forEach(l => {
-    const weight = parseFloat(l.weight) || 0;
+    const weight = maxWeight(l.weight);
     if (!allTimeMax[l.exercise_name] || weight > allTimeMax[l.exercise_name]) allTimeMax[l.exercise_name] = weight;
   });
   let prCount = 0;
@@ -4826,7 +4826,7 @@ async function openProgressReport(cid) {
   logs.forEach(function(l) {
     const sets = parseInt((l.reps||'').split('x')[0])||0;
     const reps = parseInt((l.reps||'').split('x')[1])||0;
-    const w = parseFloat(l.weight)||0;
+    const w = maxWeight(l.weight);
     const vol = sets*reps*w;
     totalVolume += vol;
     if (!exVolume[l.exercise_name]) exVolume[l.exercise_name]=0;
@@ -4836,7 +4836,7 @@ async function openProgressReport(cid) {
 
   const allTimeMax={}, lastMonthMax={};
   prevLogs.forEach(function(l){
-    const w=parseFloat(l.weight)||0;
+    const w=maxWeight(l.weight);
     if (!allTimeMax[l.exercise_name]||w>allTimeMax[l.exercise_name]) allTimeMax[l.exercise_name]=w;
     if (new Date(l.session_date)>=lastMonthStart && new Date(l.session_date)<=lastMonthEnd) {
       if (!lastMonthMax[l.exercise_name]||w>lastMonthMax[l.exercise_name]) lastMonthMax[l.exercise_name]=w;
