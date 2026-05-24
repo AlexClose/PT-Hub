@@ -1820,9 +1820,20 @@ function toggleDay(el){
   }
 }
 
+function resetProgramCycle(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
+  const prog=JSON.parse(JSON.stringify(c.structured_program));
+  prog.started_at=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  db.updateClient(clientId,{structured_program:prog}).then(()=>{
+    c.structured_program=prog;renderClientModal(c);openModal('clientModal');toast('New cycle started ✓');
+  });
+}
+
 function renderStructuredProgram(c){
   const prog=c.structured_program;const history=c.exercise_history||{};
-  return prog.days.map((day,di)=>{
+  const startDate=prog.started_at?new Date(prog.started_at):null;
+  const weekNum=startDate?Math.max(1,Math.ceil((new Date()-startDate)/(7*24*60*60*1000))):null;
+  const days=prog.days.map((day,di)=>{
     let exNum=0;
     const exRows=day.exercises.map(ex=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
@@ -1866,6 +1877,19 @@ function renderStructuredProgram(c){
       </div>
     </div>`;
   }).join('');
+  const startBanner = startDate
+    ? `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(37,99,235,0.05);border:1px solid rgba(100,160,255,0.1);border-radius:10px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Program Started</div>
+          <div style="font-size:13px;font-weight:700;color:rgba(180,200,230,0.85);margin-top:2px;">${prog.started_at} &nbsp;·&nbsp; <span style="color:#7ec8ff;">Week ${weekNum}</span></div>
+        </div>
+        <button onclick="resetProgramCycle('${c.id}')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:rgba(180,200,230,0.5);cursor:pointer;font-family:'Syne',sans-serif;">↺ New Cycle</button>
+      </div>`
+    : `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(100,160,255,0.07);border-radius:10px;margin-bottom:10px;">
+        <div style="font-size:12px;color:rgba(180,200,230,0.3);">No start date set</div>
+        <button onclick="resetProgramCycle('${c.id}')" style="background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#7ec8ff;cursor:pointer;font-family:'Syne',sans-serif;">▶ Start Now</button>
+      </div>`;
+  return startBanner + days;
 }
 
 // ── EDIT PROGRAM DAY ──
@@ -2458,7 +2482,8 @@ async function saveBuildProgram(){
   if(buildingForTemplate){await saveBuildTemplate();return;}
   const c=clients.find(x=>x.id===buildingClientId);if(!c)return;
   if(buildingDays.length===0&&!confirm('Save an empty program? The client will see no workout days.'))return;
-  const prog={days:buildingDays};
+  const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const prog={days:buildingDays,started_at:c.structured_program?.started_at||today};
   try{
     await db.updateClient(buildingClientId,{structured_program:prog});
     c.structured_program=prog;closeModal('buildProgramModal');
@@ -2822,7 +2847,7 @@ async function confirmApplyTemplate(clientId){
   const c=clients.find(x=>x.id===clientId);
   if(!t||!c)return;
   if(c.structured_program&&!confirm(`Replace ${c.first}'s current program with "${t.name}"?`))return;
-  const prog={days:JSON.parse(JSON.stringify(t.days))};
+  const prog={days:JSON.parse(JSON.stringify(t.days)),started_at:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
   try{
     await db.updateClient(clientId,{structured_program:prog});
     c.structured_program=prog;closeModal('applyTemplateModal');
