@@ -1590,6 +1590,11 @@ function renderClientModal(c){
   const col=!hasPkg?'var(--muted)':displayRem<=0?'var(--danger)':displayRem<=2?'var(--warn)':'var(--success)';
   const sessions=c._sessions||[];
   const isSummer=c.first.toLowerCase().includes('summer');
+  const curTab=window['_cmTab_'+c.id]||'overview';
+  const tba=t=>t===curTab
+    ?'flex:1;background:rgba(255,255,255,0.09);border:none;border-radius:9px;padding:9px 0;font-family:\'Syne\',sans-serif;font-size:12px;font-weight:700;color:#fff;cursor:pointer;'
+    :'flex:1;background:none;border:none;border-radius:9px;padding:9px 0;font-family:\'Syne\',sans-serif;font-size:12px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;';
+  const tbc=t=>t===curTab?'block':'none';
 
   const sessionRowHtml=s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${(s.workout&&s.workout.length>0&&(s.workout[0]?.day||s.note))||(s.note&&(!s.workout||s.workout.length===0))?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${s.workout&&s.workout.length>0?s.workout[0]?.day||s.note||'':s.note}</div>`:''}</div></div></div>`;
   const sessHtml=sessions.length===0
@@ -1637,7 +1642,7 @@ function renderClientModal(c){
 
   document.getElementById('clientModalBody').innerHTML=`
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
       <div class="client-avatar" style="width:52px;height:52px;font-size:19px;border-radius:14px">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1650,140 +1655,211 @@ function renderClientModal(c){
       <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
 
-    ${(()=>{
-      const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-      const lm=parseScheduleMap(c.schedule||'');
-      const rm=parseScheduleMap(c.run_schedule||'');
-      const liftDays=(c.structured_program&&c.structured_program.days)||[];
-      const prog=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
-      const runWeek=prog?(prog.weeks||[])[(c.run_program_week||1)-1]||[]:[];
-      const liftKeys=Object.keys(lm).map(Number).sort((a,b)=>a-b);
-      const runKeys=Object.keys(rm).map(Number).sort((a,b)=>a-b);
-      const hasSched=liftKeys.length>0||runKeys.length>0;
-      const summary=hasSched
-        ?[liftKeys.length?liftKeys.map(i=>DN[i]).join('/')+ ' Lift':'',runKeys.length?runKeys.map(i=>DN[i]).join('/')+' Run':''].filter(Boolean).join(' · ')
-        :'Not set';
-      const exp=window['_se_'+c.id]||false;
-      let rows='';
-      if(exp){
-        for(let di=0;di<7;di++){
-          const isLift=lm.hasOwnProperty(di),isRun=rm.hasOwnProperty(di);
-          const type=isLift?'lift':isRun?'run':'off';
-          const col=type==='lift'?'79,163,232':type==='run'?'255,140,71':'180,200,230';
-          const typeBg=type!=='off'?`rgba(${col},0.15)`:'rgba(255,255,255,0.03)';
-          const typeLabel=type==='lift'?'Lift':type==='run'?'Run':'Off';
-          let dropHtml='';
-          if(isLift&&liftDays.length){
-            const sel=lm[di]??0;
-            dropHtml=`<select onchange="setScheduleAssignment('${c.id}','lift',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(79,163,232,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${liftDays.map((d,i)=>`<option value="${i}"${i===sel?' selected':''}>${d.name||'Day '+(i+1)}</option>`).join('')}</select>`;
-          } else if(isRun&&runWeek.length){
-            const sel=rm[di]??0;
-            dropHtml=`<select onchange="setScheduleAssignment('${c.id}','run',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(255,140,71,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${runWeek.map((r,i)=>`<option value="${i}"${i===(rm[di]??0)?' selected':''}>${r.label||'Session '+(i+1)}</option>`).join('')}</select>`;
-          } else if(isLift||isRun){
-            dropHtml=`<div style="flex:1;font-size:12px;color:rgba(180,200,230,0.3);">No ${isLift?'program':'run program'} assigned</div>`;
+    <div style="display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:12px;padding:3px;margin-bottom:18px;">
+      <button id="cmtb-${c.id}-overview" onclick="setClientModalTab('${c.id}','overview')" style="${tba('overview')}">Overview</button>
+      <button id="cmtb-${c.id}-program" onclick="setClientModalTab('${c.id}','program')" style="${tba('program')}">Program</button>
+      <button id="cmtb-${c.id}-progress" onclick="setClientModalTab('${c.id}','progress')" style="${tba('progress')}">Progress</button>
+    </div>
+
+    <div id="cmt-${c.id}-overview" style="display:${tbc('overview')}">
+      ${(()=>{
+        const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+        const lm=parseScheduleMap(c.schedule||'');
+        const rm=parseScheduleMap(c.run_schedule||'');
+        const liftDays=(c.structured_program&&c.structured_program.days)||[];
+        const prog=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
+        const runWeek=prog?(prog.weeks||[])[(c.run_program_week||1)-1]||[]:[];
+        const liftKeys=Object.keys(lm).map(Number).sort((a,b)=>a-b);
+        const runKeys=Object.keys(rm).map(Number).sort((a,b)=>a-b);
+        const hasSched=liftKeys.length>0||runKeys.length>0;
+        const summary=hasSched
+          ?[liftKeys.length?liftKeys.map(i=>DN[i]).join('/')+ ' Lift':'',runKeys.length?runKeys.map(i=>DN[i]).join('/')+' Run':''].filter(Boolean).join(' · ')
+          :'Not set';
+        const exp=window['_se_'+c.id]||false;
+        let rows='';
+        if(exp){
+          for(let di=0;di<7;di++){
+            const isLift=lm.hasOwnProperty(di),isRun=rm.hasOwnProperty(di);
+            const type=isLift?'lift':isRun?'run':'off';
+            const col=type==='lift'?'79,163,232':type==='run'?'255,140,71':'180,200,230';
+            const typeBg=type!=='off'?`rgba(${col},0.15)`:'rgba(255,255,255,0.03)';
+            const typeLabel=type==='lift'?'Lift':type==='run'?'Run':'Off';
+            let dropHtml='';
+            if(isLift&&liftDays.length){
+              const sel=lm[di]??0;
+              dropHtml=`<select onchange="setScheduleAssignment('${c.id}','lift',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(79,163,232,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${liftDays.map((d,i)=>`<option value="${i}"${i===sel?' selected':''}>${d.name||'Day '+(i+1)}</option>`).join('')}</select>`;
+            } else if(isRun&&runWeek.length){
+              const sel=rm[di]??0;
+              dropHtml=`<select onchange="setScheduleAssignment('${c.id}','run',${di},parseInt(this.value))" style="flex:1;background:#1a1f28;border:1px solid rgba(255,140,71,0.2);border-radius:6px;color:rgba(232,237,245,0.85);padding:5px 8px;font-size:12px;">${runWeek.map((r,i)=>`<option value="${i}"${i===(rm[di]??0)?' selected':''}>${r.label||'Session '+(i+1)}</option>`).join('')}</select>`;
+            } else if(isLift||isRun){
+              dropHtml=`<div style="flex:1;font-size:12px;color:rgba(180,200,230,0.3);">No ${isLift?'program':'run program'} assigned</div>`;
+            }
+            rows+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="width:32px;font-size:12px;font-weight:600;color:rgba(180,200,230,0.5);">${DN[di]}</div>
+              <button onclick="cycleScheduleDay('${c.id}',${di})" style="min-width:40px;padding:5px 8px;border-radius:6px;border:1px solid rgba(${col},${type!=='off'?'0.35':'0.15'});background:${typeBg};color:rgba(${col},${type!=='off'?'1':'0.4'});font-size:11px;font-weight:700;cursor:pointer;">${typeLabel}</button>
+              ${dropHtml}
+            </div>`;
           }
-          rows+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-            <div style="width:32px;font-size:12px;font-weight:600;color:rgba(180,200,230,0.5);">${DN[di]}</div>
-            <button onclick="cycleScheduleDay('${c.id}',${di})" style="min-width:40px;padding:5px 8px;border-radius:6px;border:1px solid rgba(${col},${type!=='off'?'0.35':'0.15'});background:${typeBg};color:rgba(${col},${type!=='off'?'1':'0.4'});font-size:11px;font-weight:700;cursor:pointer;">${typeLabel}</button>
-            ${dropHtml}
-          </div>`;
         }
-      }
-      return `<div style="margin-bottom:14px;">
-        <button onclick="window['_se_${c.id}']=!window['_se_${c.id}'];renderClientModal(clients.find(x=>x.id==='${c.id}'));openModal('clientModal');" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:${exp?'12px 12px 0 0':'12px'};padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;">
+        return `<div style="margin-bottom:14px;">
+          <button onclick="window['_se_${c.id}']=!window['_se_${c.id}'];renderClientModal(clients.find(x=>x.id==='${c.id}'));openModal('clientModal');" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:${exp?'12px 12px 0 0':'12px'};padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;">
+            <div>
+              <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.3);font-weight:700;text-transform:uppercase;margin-bottom:2px;">Weekly Schedule</div>
+              <div style="font-size:13px;color:${hasSched?'rgba(232,237,245,0.75)':'rgba(180,200,230,0.25)'};">${summary}</div>
+            </div>
+            <div style="color:rgba(180,200,230,0.35);font-size:11px;padding-left:8px;">${exp?'▲':'▼'}</div>
+          </button>
+          ${exp?`<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-top:none;border-radius:0 0 12px 12px;padding:6px 14px 10px;">${rows}</div>`:''}
+        </div>`;
+      })()}
+
+      <div class="card card-glow" style="margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
           <div>
-            <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.3);font-weight:700;text-transform:uppercase;margin-bottom:2px;">Weekly Schedule</div>
-            <div style="font-size:13px;color:${hasSched?'rgba(232,237,245,0.75)':'rgba(180,200,230,0.25)'};">${summary}</div>
+            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:600;margin-bottom:6px">Sessions Remaining</div>
+            ${sharedPkg
+              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
+              :c.package_size>0
+              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
+              :c.remaining
+              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
+              :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
           </div>
-          <div style="color:rgba(180,200,230,0.35);font-size:11px;padding-left:8px;">${exp?'▲':'▼'}</div>
-        </button>
-        ${exp?`<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-top:none;border-radius:0 0 12px 12px;padding:6px 14px 10px;">${rows}</div>`:''}
-      </div>`;
-    })()}
-
-    <div class="card card-glow" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
-        <div>
-          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:600;margin-bottom:6px">Sessions Remaining</div>
-          ${sharedPkg
-            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
-            :c.package_size>0
-            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
-            :c.remaining
-            ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
-            :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+            <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
+            ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Renew</button>`:''}
+            <button onclick="(function(){var url='https://pt-hub.vercel.app/api/export?id=${c.id}&key=pthub_9r4xw2m8k6j3';if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){toast('Export URL copied ✓');});}else{var inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);inp.select();document.execCommand('copy');document.body.removeChild(inp);toast('Export URL copied ✓');}})();" style="background:rgba(255,255,255,0.03);color:rgba(180,200,230,0.3);border:1px solid rgba(255,255,255,0.05);border-radius:9px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:10px;font-weight:600;cursor:pointer">⬡ Export</button>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-          <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
-          ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Renew</button>`:''}
-          <button onclick="(function(){var url='https://pt-hub.vercel.app/api/export?id=${c.id}&key=pthub_9r4xw2m8k6j3';if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){toast('Export URL copied ✓');});}else{var inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);inp.select();document.execCommand('copy');document.body.removeChild(inp);toast('Export URL copied ✓');}})();" style="background:rgba(255,255,255,0.03);color:rgba(180,200,230,0.3);border:1px solid rgba(255,255,255,0.05);border-radius:9px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:10px;font-weight:600;cursor:pointer">⬡ Export</button>
+        ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
+      </div>
+
+      ${c.goals||c.injuries?(()=>{
+        const giKey='_gi_'+c.id;
+        const giOpen=window[giKey]||false;
+        const giBody=`${c.goals?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:5px">Goals</div><div style="font-size:13px;line-height:1.6;color:rgba(232,237,245,0.8)">${c.goals}</div>`:''}${c.goals&&c.injuries?`<div style="height:1px;background:rgba(100,160,255,0.07);margin:10px 0"></div>`:''}${c.injuries?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.5);font-weight:600;margin-bottom:5px">Injuries / Notes</div><div style="font-size:13px;color:rgba(255,179,71,0.8);line-height:1.6">${c.injuries}</div>`:''}`;
+        return `<div style="margin-bottom:14px;">
+          <button onclick="window['${giKey}']=!window['${giKey}'];renderClientModal(clients.find(x=>x.id==='${c.id}'));openModal('clientModal');" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:${giOpen?'12px 12px 0 0':'12px'};padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;">
+            <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.3);font-weight:700;text-transform:uppercase;">Goals &amp; Notes</div>
+            <div style="color:rgba(180,200,230,0.35);font-size:11px;">${giOpen?'▲':'▼'}</div>
+          </button>
+          ${giOpen?`<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-top:none;border-radius:0 0 12px 12px;padding:12px 14px;">${giBody}</div>`:''}
+        </div>`;
+      })():''}
+
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600">Session History</div>
+          <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
+        </div>
+        ${sessHtml}
+        <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:11px;color:rgba(180,200,230,0.35)">Portal link</span>
+          <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
         </div>
       </div>
-      ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
-    </div>
-
-    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Monthly Summary &middot; ${new Date().toLocaleString('default',{month:'long'})}</div>
-        <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Share ↗</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit</button>
+        <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.4)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(100,160,255,0.08)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
       </div>
-      <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
+      <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
+      <div style="padding-bottom:24px;"></div>
     </div>
 
-    ${c.goals||c.injuries?(()=>{
-      const giKey='_gi_'+c.id;
-      const giOpen=window[giKey]||false;
-      const giBody=`${c.goals?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600;margin-bottom:5px">Goals</div><div style="font-size:13px;line-height:1.6;color:rgba(232,237,245,0.8)">${c.goals}</div>`:''}${c.goals&&c.injuries?`<div style="height:1px;background:rgba(100,160,255,0.07);margin:10px 0"></div>`:''}${c.injuries?`<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.5);font-weight:600;margin-bottom:5px">Injuries / Notes</div><div style="font-size:13px;color:rgba(255,179,71,0.8);line-height:1.6">${c.injuries}</div>`:''}`;
-      return `<div style="margin-bottom:14px;">
-        <button onclick="window['${giKey}']=!window['${giKey}'];renderClientModal(clients.find(x=>x.id==='${c.id}'));openModal('clientModal');" style="width:100%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:${giOpen?'12px 12px 0 0':'12px'};padding:11px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;text-align:left;">
-          <div style="font-size:10px;letter-spacing:1.5px;color:rgba(180,200,230,0.3);font-weight:700;text-transform:uppercase;">Goals &amp; Notes</div>
-          <div style="color:rgba(180,200,230,0.35);font-size:11px;">${giOpen?'▲':'▼'}</div>
-        </button>
-        ${giOpen?`<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-top:none;border-radius:0 0 12px 12px;padding:12px 14px;">${giBody}</div>`:''}
-      </div>`;
-    })():''}
-
-    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <div style="flex:1">
-          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
-          <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':'No program yet'}</div>
+    <div id="cmt-${c.id}-program" style="display:${tbc('program')}">
+      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="flex:1">
+            <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
+            <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':'No program yet'}</div>
+          </div>
+          ${c.structured_program
+            ?`<button onclick="openBuildProgram('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.55);border:1px solid rgba(100,160,255,0.12);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✎ Edit Structure</button>`
+            :`<button onclick="openBuildProgram('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 10px rgba(37,99,235,0.35)">+ Build Program</button>`}
         </div>
-        ${c.structured_program
-          ?`<button onclick="openBuildProgram('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.55);border:1px solid rgba(100,160,255,0.12);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✎ Edit Structure</button>`
-          :`<button onclick="openBuildProgram('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 10px rgba(37,99,235,0.35)">+ Build Program</button>`}
+        <div id="prog-${c.id}">${progSection}</div>
       </div>
-      <div id="prog-${c.id}">${progSection}</div>
+      ${runProgramSection}
+      <div style="padding-bottom:24px;"></div>
     </div>
 
-    ${runProgramSection}
+    <div id="cmt-${c.id}-progress" style="display:${tbc('progress')}">
+      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Monthly Summary &middot; ${new Date().toLocaleString('default',{month:'long'})}</div>
+          <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Share ↗</button>
+        </div>
+        <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
+      </div>
 
-    <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
-        <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
+      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
+          <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
+        </div>
+        <div id="bodystats-form-${c.id}" style="display:none"></div>
+        <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
       </div>
-      <div id="bodystats-form-${c.id}" style="display:none"></div>
-      <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
-    </div>
 
-    <div style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600">Session History</div>
-        <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
+      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>
+          <select id="mhPeriod-${c.id}" onchange="loadMuscleHeatmap('${c.id}','mhChart-${c.id}',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:'Instrument Sans',sans-serif;cursor:pointer;outline:none;">
+            <option value="all">All Time</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="month">This Month</option>
+            <option value="week">This Week</option>
+          </select>
+        </div>
+        <div id="mhChart-${c.id}"><div class="skeleton" style="height:160px;border-radius:10px;"></div></div>
       </div>
-      ${sessHtml}
-      <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:11px;color:rgba(180,200,230,0.35)">Portal link</span>
-        <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit</button>
-      <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.4)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(100,160,255,0.08)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
-    </div>
-    <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
-    <div style="padding-bottom:24px;"></div>`;
+
+      <div style="padding-bottom:24px;"></div>
+    </div>`;
+  setupModalSwipe(c.id);
+}
+
+function setClientModalTab(cid,tab){
+  window['_cmTab_'+cid]=tab;
+  ['overview','program','progress'].forEach(t=>{
+    const el=document.getElementById('cmt-'+cid+'-'+t);
+    const btn=document.getElementById('cmtb-'+cid+'-'+t);
+    if(el)el.style.display=t===tab?'block':'none';
+    if(btn){
+      btn.style.background=t===tab?'rgba(255,255,255,0.09)':'';
+      btn.style.color=t===tab?'#fff':'rgba(180,200,230,0.4)';
+      btn.style.fontWeight=t===tab?'700':'600';
+    }
+  });
+  if(tab==='progress'){
+    const c=clients.find(x=>x.id===cid);
+    if(c){renderMonthlyReport(c);renderBodyStatsCoach(c);}
+    const period=(document.getElementById('mhPeriod-'+cid)||{value:'all'}).value;
+    loadMuscleHeatmap(cid,'mhChart-'+cid,period);
+  }
+}
+
+function setupModalSwipe(cid){
+  const el=document.getElementById('clientModalBody');
+  if(!el)return;
+  if(el._swipeCid===cid)return;
+  el._swipeCid=cid;
+  if(el._swipeStart){el.removeEventListener('touchstart',el._swipeStart);el.removeEventListener('touchend',el._swipeEnd);}
+  let sx=0,sy=0;
+  el._swipeStart=e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;};
+  el._swipeEnd=e=>{
+    const dx=e.changedTouches[0].clientX-sx;
+    const dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.5){
+      const tabs=['overview','program','progress'];
+      const cur=window['_cmTab_'+cid]||'overview';
+      const idx=tabs.indexOf(cur);
+      if(dx<0&&idx<tabs.length-1)setClientModalTab(cid,tabs[idx+1]);
+      else if(dx>0&&idx>0)setClientModalTab(cid,tabs[idx-1]);
+    }
+  };
+  el.addEventListener('touchstart',el._swipeStart,{passive:true});
+  el.addEventListener('touchend',el._swipeEnd,{passive:true});
 }
 
 // ── STRUCTURED PROGRAM ──
@@ -3742,6 +3818,24 @@ function startClientPortal(id) {
       }).catch(function(){ var el=document.getElementById('recent-sessions-list'); if(el) el.innerHTML=''; });
 
       window._loadPortalBodyStats();
+
+      // Muscle heatmap card
+      var mhCard = document.createElement('div');
+      mhCard.style.cssText = 'background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-top:20px;';
+      mhCard.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>' +
+          '<select id="portal-mh-period" onchange="loadMuscleHeatmap(window._portalClientId,\'portal-mh-chart\',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:\'Instrument Sans\',sans-serif;cursor:pointer;outline:none;">' +
+            '<option value="all">All Time</option>' +
+            '<option value="30d">Last 30 Days</option>' +
+            '<option value="month">This Month</option>' +
+            '<option value="week">This Week</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="portal-mh-chart"><div class="skeleton" style="height:160px;border-radius:10px;"></div></div>';
+      var portalBodyEl = document.getElementById('portal-body');
+      if (portalBodyEl) portalBodyEl.appendChild(mhCard);
+      setTimeout(function(){ loadMuscleHeatmap(window._portalClientId,'portal-mh-chart','all'); }, 200);
     }
 
     // -------- BODY STAT SHEET --------
@@ -4997,6 +5091,119 @@ async function openProgressReport(cid) {
 }
 
 // ── BODY STATS ──
+// ── MUSCLE HEATMAP ──
+function exerciseToMuscle(name) {
+  var n=(name||'').toLowerCase();
+  if(/tricep|skull.?crush|pushdown|close.?grip/.test(n))return'triceps';
+  if(/bicep|hammer curl|chin.?up/.test(n))return'biceps';
+  if(/\bcurl\b/.test(n)&&!/leg curl/.test(n))return'biceps';
+  if(/bench|chest.?fly|pec deck|push.?up/.test(n))return'chest';
+  if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
+  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|upright row/.test(n))return'shoulders';
+  if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))return'shoulders';
+  if(/shrug|face pull/.test(n))return'traps';
+  if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))return'back';
+  if(/\brow\b/.test(n)&&!/upright/.test(n))return'back';
+  if(/\bdeadlift\b|romanian deadlift|rdl|stiff.?leg/.test(n))return'back';
+  if(/back extension|hyperextension|lower back|erector/.test(n))return'lower_back';
+  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb/.test(n))return'abs';
+  if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian/.test(n))return'quads';
+  if(/leg curl|hamstring|nordic|good morning/.test(n))return'hamstrings';
+  if(/glute|hip thrust|hip extension|donkey|kickback/.test(n))return'glutes';
+  if(/\bcalf\b|\bcalves\b/.test(n))return'calves';
+  if(/forearm|wrist curl/.test(n))return'forearms';
+  return null;
+}
+function _mhColor(count,max){
+  if(!count||!max)return null;
+  var r=count/max;
+  if(r<0.15)return'#0d7a65';
+  if(r<0.30)return'#1aab80';
+  if(r<0.50)return'#2ecc71';
+  if(r<0.65)return'#f1c40f';
+  if(r<0.80)return'#e67e22';
+  return'#e74c3c';
+}
+function renderMuscleDiagram(scores){
+  var max=Math.max(1,...Object.values(scores).filter(function(v){return v>0;}));
+  function c(m){return _mhColor(scores[m]||0,max)||'rgba(255,255,255,0.05)';}
+  function o(m){return(scores[m]||0)>0?'0.95':'0.18';}
+  var bg='rgba(28,36,50,0.95)',bs='rgba(100,150,200,0.1)';
+  var front='<svg viewBox="0 0 100 215" style="width:100%;height:auto;">'+
+    '<path d="M32,34 C16,36 12,52 12,70 L12,108 Q12,118 22,122 L22,162 Q22,170 18,198 L36,198 Q34,172 34,164 L46,164 L46,198 L54,198 L54,164 L66,164 Q66,172 64,198 L82,198 Q78,170 78,162 L78,122 Q88,118 88,108 L88,70 C88,52 84,36 68,34 Z" fill="'+bg+'" stroke="'+bs+'" stroke-width="0.5"/>'+
+    '<circle cx="50" cy="16" r="13" fill="'+bg+'" stroke="'+bs+'" stroke-width="0.5"/>'+
+    '<rect x="44" y="28" width="12" height="8" rx="2" fill="'+bg+'"/>'+
+    '<ellipse cx="9" cy="54" rx="7" ry="16" fill="'+c('shoulders')+'" opacity="'+o('shoulders')+'"/>'+
+    '<ellipse cx="91" cy="54" rx="7" ry="16" fill="'+c('shoulders')+'" opacity="'+o('shoulders')+'"/>'+
+    '<path d="M13,37 C11,41 11,60 14,65 L47,65 L47,37 Q32,35 13,37 Z" fill="'+c('chest')+'" opacity="'+o('chest')+'"/>'+
+    '<path d="M53,37 L53,65 L86,65 C89,60 89,41 87,37 Q68,35 53,37 Z" fill="'+c('chest')+'" opacity="'+o('chest')+'"/>'+
+    '<rect x="26" y="67" width="48" height="38" rx="4" fill="'+c('abs')+'" opacity="'+o('abs')+'"/>'+
+    '<ellipse cx="6" cy="78" rx="5" ry="12" fill="'+c('biceps')+'" opacity="'+o('biceps')+'"/>'+
+    '<ellipse cx="94" cy="78" rx="5" ry="12" fill="'+c('biceps')+'" opacity="'+o('biceps')+'"/>'+
+    '<ellipse cx="7" cy="103" rx="4" ry="10" fill="'+c('forearms')+'" opacity="'+o('forearms')+'"/>'+
+    '<ellipse cx="93" cy="103" rx="4" ry="10" fill="'+c('forearms')+'" opacity="'+o('forearms')+'"/>'+
+    '<path d="M20,124 L46,124 L44,162 L18,162 Z" fill="'+c('quads')+'" opacity="'+o('quads')+'"/>'+
+    '<path d="M54,124 L80,124 L82,162 L56,162 Z" fill="'+c('quads')+'" opacity="'+o('quads')+'"/>'+
+    '<path d="M18,164 L42,164 L40,196 L18,196 Z" fill="'+c('calves')+'" opacity="'+o('calves')+'"/>'+
+    '<path d="M58,164 L82,164 L82,196 L60,196 Z" fill="'+c('calves')+'" opacity="'+o('calves')+'"/>'+
+    '<text x="50" y="211" text-anchor="middle" fill="rgba(180,200,230,0.3)" font-size="7" font-family="\'Instrument Sans\',sans-serif" letter-spacing="1.5">FRONT</text>'+
+    '</svg>';
+  var back='<svg viewBox="0 0 100 215" style="width:100%;height:auto;">'+
+    '<path d="M32,34 C16,36 12,52 12,70 L12,108 Q12,118 22,122 L22,162 Q22,170 18,198 L36,198 Q34,172 34,164 L46,164 L46,198 L54,198 L54,164 L66,164 Q66,172 64,198 L82,198 Q78,170 78,162 L78,122 Q88,118 88,108 L88,70 C88,52 84,36 68,34 Z" fill="'+bg+'" stroke="'+bs+'" stroke-width="0.5"/>'+
+    '<circle cx="50" cy="16" r="13" fill="'+bg+'" stroke="'+bs+'" stroke-width="0.5"/>'+
+    '<rect x="44" y="28" width="12" height="8" rx="2" fill="'+bg+'"/>'+
+    '<ellipse cx="9" cy="54" rx="7" ry="16" fill="'+c('shoulders')+'" opacity="'+o('shoulders')+'"/>'+
+    '<ellipse cx="91" cy="54" rx="7" ry="16" fill="'+c('shoulders')+'" opacity="'+o('shoulders')+'"/>'+
+    '<path d="M15,37 L85,37 L78,62 L22,62 Z" fill="'+c('traps')+'" opacity="'+o('traps')+'"/>'+
+    '<path d="M13,64 C9,74 9,94 13,103 L31,103 L29,64 Z" fill="'+c('back')+'" opacity="'+o('back')+'"/>'+
+    '<path d="M87,64 C91,74 91,94 87,103 L69,103 L71,64 Z" fill="'+c('back')+'" opacity="'+o('back')+'"/>'+
+    '<rect x="29" y="64" width="42" height="41" rx="3" fill="'+c('back')+'" opacity="'+o('back')+'"/>'+
+    '<rect x="29" y="107" width="42" height="15" rx="3" fill="'+c('lower_back')+'" opacity="'+o('lower_back')+'"/>'+
+    '<ellipse cx="6" cy="78" rx="5" ry="12" fill="'+c('triceps')+'" opacity="'+o('triceps')+'"/>'+
+    '<ellipse cx="94" cy="78" rx="5" ry="12" fill="'+c('triceps')+'" opacity="'+o('triceps')+'"/>'+
+    '<ellipse cx="7" cy="103" rx="4" ry="10" fill="'+c('forearms')+'" opacity="'+o('forearms')+'"/>'+
+    '<ellipse cx="93" cy="103" rx="4" ry="10" fill="'+c('forearms')+'" opacity="'+o('forearms')+'"/>'+
+    '<path d="M22,124 Q20,148 50,150 Q80,148 78,124 Z" fill="'+c('glutes')+'" opacity="'+o('glutes')+'"/>'+
+    '<path d="M20,152 L46,152 L44,188 L18,188 Z" fill="'+c('hamstrings')+'" opacity="'+o('hamstrings')+'"/>'+
+    '<path d="M54,152 L80,152 L82,188 L56,188 Z" fill="'+c('hamstrings')+'" opacity="'+o('hamstrings')+'"/>'+
+    '<path d="M18,190 L42,190 L40,196 L18,196 Z" fill="'+c('calves')+'" opacity="'+o('calves')+'"/>'+
+    '<path d="M58,190 L82,190 L82,196 L60,196 Z" fill="'+c('calves')+'" opacity="'+o('calves')+'"/>'+
+    '<text x="50" y="211" text-anchor="middle" fill="rgba(180,200,230,0.3)" font-size="7" font-family="\'Instrument Sans\',sans-serif" letter-spacing="1.5">BACK</text>'+
+    '</svg>';
+  var legend='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px;">'+
+    [['rgba(255,255,255,0.06)','None'],['#0d7a65','Low'],['#2ecc71','Mid'],['#f1c40f','High'],['#e74c3c','Peak']].map(function(l){
+      return'<div style="display:flex;align-items:center;gap:3px;"><span style="width:9px;height:9px;border-radius:2px;background:'+l[0]+';border:1px solid rgba(255,255,255,0.08);display:inline-block;"></span><span style="font-size:10px;color:rgba(180,200,230,0.4);">'+l[1]+'</span></div>';
+    }).join('')+'</div>';
+  return'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+front+back+'</div>'+legend;
+}
+async function loadMuscleHeatmap(clientId,containerId,period){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML='<div class="skeleton" style="height:160px;border-radius:10px;"></div>';
+  try{
+    var url=SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+clientId+'&select=exercise_name,session_date&limit=2000';
+    var r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    var logs=await r.json();
+    if(!Array.isArray(logs))logs=[];
+    if(period&&period!=='all'){
+      var now=new Date(),since;
+      if(period==='month')since=new Date(now.getFullYear(),now.getMonth(),1);
+      else if(period==='week')since=new Date(now.getTime()-7*86400000);
+      else if(period==='30d')since=new Date(now.getTime()-30*86400000);
+      if(since)logs=logs.filter(function(l){return l.session_date&&new Date(l.session_date)>=since;});
+    }
+    var scores={};
+    logs.forEach(function(l){var m=exerciseToMuscle(l.exercise_name);if(m)scores[m]=(scores[m]||0)+1;});
+    if(!Object.values(scores).some(function(v){return v>0;})){
+      el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);text-align:center;padding:16px 0;">No exercise data for this period</div>';
+      return;
+    }
+    el.innerHTML=renderMuscleDiagram(scores);
+  }catch(e){
+    el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);padding:8px 0;">Unable to load</div>';
+  }
+}
+
 function bsScanGalleryHtml(entries) {
   var scanned = entries.filter(function(e){ return e.scan_urls && e.scan_urls.length > 0; });
   if (!scanned.length) return '';
