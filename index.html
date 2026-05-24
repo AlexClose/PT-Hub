@@ -5106,8 +5106,33 @@ function openCoachBodyStatForm(cid) {
       <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Notes</div>
         <input id="bsNotes-${cid}" type="text" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
     </div>
-    <button onclick="saveCoachBodyStat('${cid}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Save Entry</button>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:9px;font-weight:400;color:rgba(180,200,230,0.2);">(optional)</span></div>
+      <label for="bsFiles-${cid}" style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--surface2);border:1px dashed rgba(100,160,255,0.2);border-radius:8px;cursor:pointer;">
+        <span style="font-size:14px;line-height:1;">📎</span>
+        <span id="bsFilesLbl-${cid}" style="font-size:12px;color:rgba(126,200,255,0.45);">Attach scan or photo</span>
+      </label>
+      <input id="bsFiles-${cid}" type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="onCoachBSScanChange('${cid}',this)">
+      <div id="bsFilesPrev-${cid}" style="margin-top:4px;"></div>
+    </div>
+    <button id="bsSaveBtn-${cid}" onclick="saveCoachBodyStat('${cid}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Save Entry</button>
   </div>`;
+}
+
+function onCoachBSScanChange(cid, input) {
+  const lbl = document.getElementById('bsFilesLbl-'+cid);
+  const prev = document.getElementById('bsFilesPrev-'+cid);
+  const files = Array.from(input.files || []);
+  if (lbl) lbl.textContent = files.length ? files.length+' file'+(files.length!==1?'s':'')+' selected' : 'Attach scan or photo';
+  if (!prev) return;
+  prev.innerHTML = files.map(f => {
+    const kb = f.size>1048576 ? (f.size/1048576).toFixed(1)+' MB' : Math.round(f.size/1024)+' KB';
+    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 2px;font-size:11px;">
+      <span>${f.type.startsWith('image/')? '🖼️':'📄'}</span>
+      <span style="color:rgba(180,200,230,0.6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+      <span style="color:rgba(180,200,230,0.3);flex-shrink:0;">${kb}</span>
+    </div>`;
+  }).join('');
 }
 
 async function saveCoachBodyStat(cid) {
@@ -5115,12 +5140,30 @@ async function saveCoachBodyStat(cid) {
   const wEl=document.getElementById('bsWeight-'+cid);
   const bfEl=document.getElementById('bsBF-'+cid);
   const nEl=document.getElementById('bsNotes-'+cid);
+  const fEl=document.getElementById('bsFiles-'+cid);
+  const btn=document.getElementById('bsSaveBtn-'+cid);
   if(!dateEl||!dateEl.value){toast('Please enter a date');return;}
   const entry={client_id:cid,date:dateEl.value};
   if(wEl&&wEl.value)entry.weight_lbs=parseFloat(wEl.value);
   if(bfEl&&bfEl.value)entry.body_fat_pct=parseFloat(bfEl.value);
   if(nEl&&nEl.value)entry.notes=nEl.value;
+  const files = fEl&&fEl.files ? Array.from(fEl.files) : [];
+  if(btn){btn.disabled=true;btn.textContent=files.length?'Uploading...':'Saving...';}
   try {
+    if (files.length) {
+      const ts = Date.now();
+      const scanUrls = await Promise.all(files.map((f,i) => {
+        const safeName = ts+'-'+i+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path = cid+'/'+safeName;
+        return fetch(SB_URL+'/storage/v1/object/body-scans/'+path, {
+          method:'POST',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type||'application/octet-stream','x-upsert':'false'},
+          body:f
+        }).then(r=>{ if(!r.ok)throw new Error('upload'); return {url:SB_URL+'/storage/v1/object/public/body-scans/'+path,name:f.name,type:f.type}; });
+      }));
+      entry.scan_urls = scanUrls;
+    }
+    if(btn)btn.textContent='Saving...';
     await db.addBodyStat(entry);
     toast('Stats saved ✓');
     window['_bsf_'+cid]=false;
@@ -5128,7 +5171,10 @@ async function saveCoachBodyStat(cid) {
     if(fe)fe.style.display='none';
     const c=clients.find(x=>x.id===cid);
     if(c)renderBodyStatsCoach(c);
-  } catch(e){toast('Error saving — check Supabase table exists');}
+  } catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Save Entry';}
+    toast('Error saving');
+  }
 }
 
 startApp();
