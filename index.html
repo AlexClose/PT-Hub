@@ -3775,7 +3775,8 @@ function startClientPortal(id) {
           '</div>' +
           '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-bottom:10px;">'+latest.date+'</div>' +
           renderBodyStatsChart(entries,'weight_lbs','#4fa3e8') +
-          (entries.filter(function(e){return e.body_fat_pct>0;}).length>=2 ? renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc') : '');
+          (entries.filter(function(e){return e.body_fat_pct>0;}).length>=2 ? renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc') : '') +
+          bsScanGalleryHtml(entries);
       }).catch(function(){ var e=document.getElementById('portal-body-stats'); if(e) e.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>'; });
     };
 
@@ -3793,9 +3794,17 @@ function startClientPortal(id) {
           '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;"></div>' +
           '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Body Fat % <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
           '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;"></div>' +
-          '<div style="margin-bottom:28px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+          '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
           '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;"></div>' +
-          '<button onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">Save Stats</button>' +
+          '<div style="margin-bottom:28px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+          '<label for="portal-bs-files" style="display:flex;align-items:center;gap:10px;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px dashed rgba(100,160,255,0.2);border-radius:12px;cursor:pointer;">' +
+          '<span style="font-size:18px;line-height:1;">📎</span>' +
+          '<span id="portal-bs-files-lbl" style="font-size:13px;color:rgba(126,200,255,0.5);">Attach scan or photo</span>' +
+          '</label>' +
+          '<input id="portal-bs-files" type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="window._onBSScanFilesChange(this)">' +
+          '<div id="portal-bs-files-preview" style="margin-top:6px;"></div>' +
+          '</div>' +
+          '<button id="portal-bs-save-btn" onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">Save Stats</button>' +
         '</div>';
       requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
       setTimeout(function(){var w=document.getElementById('portal-bs-weight');if(w)w.focus();},400);
@@ -3808,18 +3817,55 @@ function startClientPortal(id) {
       setTimeout(function(){sheet.innerHTML='';},380);
     };
 
+    window._onBSScanFilesChange = function(input) {
+      var lbl = document.getElementById('portal-bs-files-lbl');
+      var prev = document.getElementById('portal-bs-files-preview');
+      var files = Array.from(input.files || []);
+      if (lbl) lbl.textContent = files.length ? files.length + ' file' + (files.length !== 1 ? 's' : '') + ' selected' : 'Attach scan or photo';
+      if (!prev) return;
+      var html = '';
+      files.forEach(function(f) {
+        var kb = f.size > 1048576 ? (f.size/1048576).toFixed(1)+' MB' : Math.round(f.size/1024)+' KB';
+        var isImg = f.type.startsWith('image/');
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(100,160,255,0.06);">' +
+          '<span style="font-size:14px;">'+(isImg?'🖼️':'📄')+'</span>' +
+          '<span style="font-size:12px;color:rgba(180,200,230,0.6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.name+'</span>' +
+          '<span style="font-size:11px;color:rgba(180,200,230,0.3);flex-shrink:0;">'+kb+'</span>' +
+        '</div>';
+      });
+      prev.innerHTML = html;
+    };
+
     window._saveBodyStat = function() {
-      var wEl=document.getElementById('portal-bs-weight'), bfEl=document.getElementById('portal-bs-bf'), nEl=document.getElementById('portal-bs-notes');
+      var wEl=document.getElementById('portal-bs-weight'), bfEl=document.getElementById('portal-bs-bf'), nEl=document.getElementById('portal-bs-notes'), fEl=document.getElementById('portal-bs-files');
       if (!wEl||!wEl.value) { if(wEl) wEl.style.borderColor='rgba(255,92,106,0.5)'; return; }
-      var btn=document.querySelector('#body-stat-sheet button');
-      if(btn){btn.disabled=true;btn.textContent='Saving...';}
+      var btn=document.getElementById('portal-bs-save-btn');
+      var files = fEl && fEl.files ? Array.from(fEl.files) : [];
+      if(btn){btn.disabled=true;btn.textContent=files.length?'Uploading...':'Saving...';}
       var today2=new Date().toISOString().split('T')[0];
       var body={client_id:window._portalClientId,date:today2,weight_lbs:parseFloat(wEl.value)};
       if(bfEl&&bfEl.value)body.body_fat_pct=parseFloat(bfEl.value);
       if(nEl&&nEl.value)body.notes=nEl.value;
-      fetch(SUPABASE_URL+'/rest/v1/body_stats',{
-        method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify(body)
+      var ts=Date.now(), cid=window._portalClientId;
+      var uploadAll = files.length ? Promise.all(files.map(function(f,i){
+        var safeName=ts+'-'+i+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        var path=cid+'/'+safeName;
+        return fetch(SUPABASE_URL+'/storage/v1/object/body-scans/'+path,{
+          method:'POST',
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':f.type||'application/octet-stream','x-upsert':'false'},
+          body:f
+        }).then(function(r){
+          if(!r.ok)throw new Error('upload');
+          return {url:SUPABASE_URL+'/storage/v1/object/public/body-scans/'+path,name:f.name,type:f.type};
+        });
+      })) : Promise.resolve([]);
+      uploadAll.then(function(scanUrls){
+        if(scanUrls.length)body.scan_urls=scanUrls;
+        if(btn)btn.textContent='Saving...';
+        return fetch(SUPABASE_URL+'/rest/v1/body_stats',{
+          method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+          body:JSON.stringify(body)
+        });
       }).then(function(r){
         if(!r.ok)throw new Error();
         window._closeBodyStatSheet();
@@ -4951,6 +4997,34 @@ async function openProgressReport(cid) {
 }
 
 // ── BODY STATS ──
+function bsScanGalleryHtml(entries) {
+  var scanned = entries.filter(function(e){ return e.scan_urls && e.scan_urls.length > 0; });
+  if (!scanned.length) return '';
+  var html = '<div style="margin-top:12px;border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;">' +
+    '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:700;margin-bottom:8px;">Scans</div>';
+  scanned.slice().reverse().forEach(function(e) {
+    html += '<div style="margin-bottom:10px;">' +
+      '<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-bottom:5px;">' + e.date + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    (e.scan_urls || []).forEach(function(s) {
+      var isImg = s.type && s.type.startsWith('image/');
+      if (isImg) {
+        html += '<a href="' + s.url + '" target="_blank" style="display:block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid rgba(100,160,255,0.15);flex-shrink:0;">' +
+          '<img src="' + s.url + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy">' +
+          '</a>';
+      } else {
+        html += '<a href="' + s.url + '" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 10px;background:rgba(100,160,255,0.06);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:rgba(126,200,255,0.7);font-size:11px;text-decoration:none;max-width:150px;overflow:hidden;">' +
+          '<span>📄</span>' +
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (s.name || 'Scan') + '</span>' +
+          '</a>';
+      }
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
 function renderBodyStatsChart(entries, field, color) {
   var pts = entries.filter(function(e){ return parseFloat(e[field]) > 0; });
   if (pts.length < 2) return '';
@@ -5001,9 +5075,10 @@ async function renderBodyStatsCoach(c) {
   if (entries.length >= 2) html += renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc');
   html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:8px;">';
   entries.slice(-5).reverse().forEach(e=>{
+    const scanBadge = (e.scan_urls&&e.scan_urls.length) ? `<a href="${e.scan_urls[0].url}" target="_blank" style="font-size:11px;color:rgba(126,200,255,0.5);text-decoration:none;margin-left:6px;" title="${e.scan_urls.length} scan(s)">📎${e.scan_urls.length>1?' '+e.scan_urls.length:''}</a>` : '';
     html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(100,160,255,0.05);">
       <span style="font-size:12px;color:rgba(180,200,230,0.4);">${e.date}</span>
-      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">${e.weight_lbs?parseFloat(e.weight_lbs).toFixed(1)+' lbs':'—'}${e.body_fat_pct?' · '+parseFloat(e.body_fat_pct).toFixed(1)+'% BF':''}</span>
+      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">${e.weight_lbs?parseFloat(e.weight_lbs).toFixed(1)+' lbs':'—'}${e.body_fat_pct?' · '+parseFloat(e.body_fat_pct).toFixed(1)+'% BF':''}${scanBadge}</span>
     </div>`;
   });
   html += '</div>';
