@@ -5097,21 +5097,33 @@ async function openProgressReport(cid) {
 function exerciseToMuscles(name) {
   var n=(name||'').toLowerCase();
   // Returns [{muscle, weight}] — weight 1.0 = primary, 0.5 = secondary
-  // Triceps isolation
-  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|\bdip\b|\bdips\b/.test(n))
+  // Dips — triceps primary, chest secondary
+  if(/\bdip\b|\bdips\b/.test(n))
+    return[{muscle:'triceps',weight:1.0},{muscle:'chest',weight:0.5}];
+  // Triceps isolation (no chest involvement)
+  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension/.test(n))
     return[{muscle:'triceps',weight:1.0}];
+  // Chin-up — back primary, biceps secondary (same as pull-up)
+  if(/chin.?up/.test(n))
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
   // Biceps isolation
-  if(/bicep|hammer curl|chin.?up/.test(n))
+  if(/bicep|hammer curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
   if(/\bcurls?\b/.test(n)&&!/leg curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
+  // Chest fly / pec dec — isolation, no tricep involvement
+  if(/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
+    return[{muscle:'chest',weight:1.0}];
   // Chest press — triceps secondary
-  if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))
+  if(/bench|push.?up/.test(n))
     return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))
     return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
   if(/cable.*press|press.*cable/.test(n)&&!/overhead|shoulder|tricep/.test(n))
     return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+  // Face pull — shoulders (rear delt) primary, traps secondary
+  if(/face pull/.test(n))
+    return[{muscle:'shoulders',weight:1.0},{muscle:'traps',weight:0.5}];
   // Shoulders — rear delt isolation
   if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))
     return[{muscle:'shoulders',weight:1.0}];
@@ -5120,11 +5132,8 @@ function exerciseToMuscles(name) {
     return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
   if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))
     return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
-  // Chest fly isolation — no tricep involvement
-  if(/\bfly\b|\bflye\b/.test(n))
-    return[{muscle:'chest',weight:1.0}];
   // Traps
-  if(/shrug|face pull|upright row/.test(n))
+  if(/shrug|upright row/.test(n))
     return[{muscle:'traps',weight:1.0}];
   // Back — pullover
   if(/pullover/.test(n))
@@ -5140,9 +5149,9 @@ function exerciseToMuscles(name) {
   // RDL — hamstrings primary, glutes + lower back secondary
   if(/romanian deadlift|rdl|stiff.?leg/.test(n))
     return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'lower_back',weight:0.5}];
-  // Lower back isolation
+  // Hyperextension / back extension — lower back primary, glutes secondary
   if(/back extension|hyperextension|lower back|erector/.test(n))
-    return[{muscle:'lower_back',weight:1.0}];
+    return[{muscle:'lower_back',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Abs
   if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))
     return[{muscle:'abs',weight:1.0}];
@@ -5158,8 +5167,11 @@ function exerciseToMuscles(name) {
   // Leg extension — quad isolation
   if(/leg extension/.test(n))
     return[{muscle:'quads',weight:1.0}];
+  // Good morning — hamstrings primary, lower back + glutes secondary
+  if(/good morning/.test(n))
+    return[{muscle:'hamstrings',weight:1.0},{muscle:'lower_back',weight:0.5},{muscle:'glutes',weight:0.5}];
   // Hamstrings
-  if(/leg curl|hamstring|nordic|good morning/.test(n))
+  if(/leg curl|hamstring|nordic/.test(n))
     return[{muscle:'hamstrings',weight:1.0}];
   // KB swing — hip hinge, hamstrings primary, glutes secondary
   if(/kettlebell.*swing|kb.*swing/.test(n))
