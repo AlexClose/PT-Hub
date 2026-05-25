@@ -1809,7 +1809,7 @@ function renderClientModal(c){
             <option value="30d">Last 30 Days</option>
             <option value="14d">Last 14 Days</option>
             <option value="month">This Month</option>
-            <option value="week">This Week</option>
+            <option value="week" selected>This Week</option>
           </select>
         </div>
         <div id="mhChart-${c.id}"><div class="skeleton" style="height:160px;border-radius:10px;"></div></div>
@@ -1835,7 +1835,7 @@ function setClientModalTab(cid,tab){
   if(tab==='progress'){
     const c=clients.find(x=>x.id===cid);
     if(c){renderMonthlyReport(c);renderBodyStatsCoach(c);}
-    const period=(document.getElementById('mhPeriod-'+cid)||{value:'all'}).value;
+    const period=(document.getElementById('mhPeriod-'+cid)||{value:'week'}).value;
     loadMuscleHeatmap(cid,'mhChart-'+cid,period);
   }
 }
@@ -3831,13 +3831,13 @@ function startClientPortal(id) {
             '<option value="30d">Last 30 Days</option>' +
             '<option value="14d">Last 14 Days</option>' +
             '<option value="month">This Month</option>' +
-            '<option value="week">This Week</option>' +
+            '<option value="week" selected>This Week</option>' +
           '</select>' +
         '</div>' +
         '<div id="portal-mh-chart"><div class="skeleton" style="height:160px;border-radius:10px;"></div></div>';
       var portalBodyEl = document.getElementById('portal-body');
       if (portalBodyEl) portalBodyEl.appendChild(mhCard);
-      setTimeout(function(){ loadMuscleHeatmap(window._portalClientId,'portal-mh-chart','all'); }, 200);
+      setTimeout(function(){ loadMuscleHeatmap(window._portalClientId,'portal-mh-chart','week'); }, 200);
     }
 
     // -------- BODY STAT SHEET --------
