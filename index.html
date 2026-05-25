@@ -1807,6 +1807,7 @@ function renderClientModal(c){
           <select id="mhPeriod-${c.id}" onchange="loadMuscleHeatmap('${c.id}','mhChart-${c.id}',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:'Instrument Sans',sans-serif;cursor:pointer;outline:none;">
             <option value="all">All Time</option>
             <option value="30d">Last 30 Days</option>
+            <option value="14d">Last 14 Days</option>
             <option value="month">This Month</option>
             <option value="week">This Week</option>
           </select>
@@ -3828,6 +3829,7 @@ function startClientPortal(id) {
           '<select id="portal-mh-period" onchange="loadMuscleHeatmap(window._portalClientId,\'portal-mh-chart\',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:\'Instrument Sans\',sans-serif;cursor:pointer;outline:none;">' +
             '<option value="all">All Time</option>' +
             '<option value="30d">Last 30 Days</option>' +
+            '<option value="14d">Last 14 Days</option>' +
             '<option value="month">This Month</option>' +
             '<option value="week">This Week</option>' +
           '</select>' +
@@ -5098,7 +5100,7 @@ function exerciseToMuscle(name) {
   if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|\bdip\b|\bdips\b/.test(n))return'triceps';
   // Biceps
   if(/bicep|hammer curl|chin.?up/.test(n))return'biceps';
-  if(/\bcurl\b/.test(n)&&!/leg curl/.test(n))return'biceps';
+  if(/\bcurls?\b/.test(n)&&!/leg curl/.test(n))return'biceps';
   // Chest — specific patterns
   if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))return'chest';
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
@@ -5126,7 +5128,7 @@ function exerciseToMuscle(name) {
   // Hamstrings — kb/kettlebell swings are hip-hinge dominant
   if(/leg curl|hamstring|nordic|good morning|kettlebell.*swing|kb.*swing/.test(n))return'hamstrings';
   // Glutes — donkey here only catches "donkey kick", not "donkey calf raise" (calves already returned above)
-  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct|pull.?through/.test(n))return'glutes';
+  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct|abduction|adduction|pull.?through/.test(n))return'glutes';
   // Forearms
   if(/forearm|wrist curl/.test(n))return'forearms';
   return null;
@@ -5868,7 +5870,8 @@ async function loadMuscleHeatmap(clientId,containerId,period){
     if(period&&period!=='all'){
       var now=new Date(),since;
       if(period==='month')since=new Date(now.getFullYear(),now.getMonth(),1);
-      else if(period==='week')since=new Date(now.getTime()-7*86400000);
+      else if(period==='week'){var dow=now.getDay();var daysToMon=dow===0?6:dow-1;since=new Date(now.getFullYear(),now.getMonth(),now.getDate()-daysToMon);}
+      else if(period==='14d')since=new Date(now.getTime()-14*86400000);
       else if(period==='30d')since=new Date(now.getTime()-30*86400000);
       if(since)logs=logs.filter(function(l){return l.session_date&&new Date(l.session_date)>=since;});
     }
@@ -5902,6 +5905,7 @@ async function loadMuscleHeatmap(clientId,containerId,period){
     // Determine weeks in period so colors reflect weekly-average vs RP targets
     var weeksInPeriod=1;
     if(period==='week')weeksInPeriod=1;
+    else if(period==='14d')weeksInPeriod=2;
     else if(period==='month')weeksInPeriod=4.33;
     else if(period==='30d')weeksInPeriod=30/7;
     else{
