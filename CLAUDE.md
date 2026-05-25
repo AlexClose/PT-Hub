@@ -1,7 +1,7 @@
 # PT-Hub Coaching App — Context & Status
 
 ## Project Overview
-Single-file SPA at `/home/user/PT-Hub/index.html` (~5065 lines) for a personal training coaching platform. Two portals:
+Single-file SPA at `/home/user/PT-Hub/index.html` (~5393 lines) for a personal training coaching platform. Two portals:
 - **Coaching Portal** (`#coach-*`): Coach manages clients, logs sessions, views dashboards
 - **Client Portal** (`#client-*`): Clients log workouts, view training programs
 
@@ -14,17 +14,58 @@ Single-file SPA at `/home/user/PT-Hub/index.html` (~5065 lines) for a personal t
 
 ## Git Workflow (IMPORTANT)
 
-The GitHub MCP server (`mcp__github__*`) is available and authenticated. Use it for PR operations.
-For merging, the squash-merge conflict pattern is no longer needed — we now push directly to `main`:
+Push directly to `main` — no feature branches, no PRs (solo project):
 
 ```bash
-# Direct push to main (current workflow):
-git add <files>
+git add index.html
 git commit -m "Message"
 git push -u origin main
 ```
 
-The old feature-branch + squash-merge workflow caused repeated conflicts. Direct pushes to main are now the standard approach since this is a solo project.
+The old feature-branch + squash-merge workflow caused repeated conflicts. Direct pushes to main are standard.
+
+## Current Commit State
+
+**Current HEAD**: `9104e89` — "Refactor client modal into 3 swipeable tabs + add muscle heatmap"
+**File**: `index.html`, 5393 lines
+
+### What is WORKING at this commit:
+- Auto-login (reads `bm_session` from localStorage via `startApp()`)
+- Manual sign-in (`signIn()` function)
+- All core coaching portal features
+- Client modal with **3 swipeable tabs**: Overview / Program / Progress
+- Body stats section in Progress tab
+- Muscle heatmap loads correctly (calls `loadMuscleHeatmap()` → `renderMuscleDiagram()`)
+
+### What is BROKEN and needs fixing (priority order):
+
+#### 1. Muscle diagram uses blocky geometric shapes — needs professional anatomical SVG
+- Current `renderMuscleDiagram()` at lines **5127–5178** uses hand-drawn ellipses/rects
+- User wants the **professional anatomical figure** (see screenshot description below)
+- The correct version exists at git commit `68c7539` — `renderMuscleDiagram()` starts at line 5144 and ends around line 5865 in that commit (it embeds a full SVG, ~720 lines)
+- The SVG uses `viewBox="0 0 3528.37 3203.47"` from the adanzan/workout-planner GitHub repo
+- To extract it: `git show 68c7539:index.html | sed -n '5144,5865p'`
+- **Fix approach**: Replace ONLY lines 5127–5178 in current index.html with the full function from 68c7539. Do NOT touch auth code, CSS variables, or anything else.
+
+#### 2. White/blank tabs when switching between Overview/Program/Progress
+- When clicking Program tab, Overview and Progress tabs go white/blank
+- Root cause: **CSS variable en-dash bug** — throughout the file, `var(–surface)` uses Unicode en-dash (`–`, U+2013) instead of ASCII double-dash (`var(--surface)`)
+- There are **93 occurrences** of `var(–` in the file (confirmed via grep)
+- This makes ALL CSS custom properties fail to resolve → backgrounds are white instead of dark
+- **Previous fix attempt**: `sed -i 's/var(–/var(--/g'` ran fine but **broke sign-in for unknown reasons** — was reverted
+- **Safe fix approach**: Use Python to replace ONLY within the `<style>` block (lines ~1 to ~500), not touching JavaScript strings. Example:
+  ```python
+  # Read file, find <style> block, fix only within it, write back
+  import re
+  content = open('index.html').read()
+  style_match = re.search(r'(<style>)(.*?)(</style>)', content, re.DOTALL)
+  fixed_style = style_match.group(2).replace('var(–', 'var(--')
+  content = content[:style_match.start(2)] + fixed_style + content[style_match.end(2):]
+  open('index.html', 'w').write(content)
+  ```
+  OR: Fix ALL occurrences but verify sign-in still works before pushing. The en-dash only appears in CSS `var()` calls, so the sed should be safe — the previous breakage may have been coincidental.
+
+---
 
 ## API Files (Vercel Serverless)
 
@@ -44,9 +85,8 @@ The old feature-branch + squash-merge workflow caused repeated conflicts. Direct
 - **Bearer token** (plaintext, share with Chris): `pt_623eada17872f337ba23ff7e51f929e1c2886250932fdfd1771e838815700b68`
 - **Token hash** stored in `api_tokens` table: `1bfd697a68c6f2d0991250795cc31ffb3b2953efc02192ccde01e84c7e8f5552`
 - **Live endpoint**: `GET https://pt-hub.vercel.app/api/v1/export` with `Authorization: Bearer pt_623eada...`
-- **One-time SQL setup**: Run `api/_migration.sql` in Supabase Dashboard → SQL Editor (creates `api_tokens` table, RLS, `tick_api_token` function, inserts Chris's token)
+- **One-time SQL setup**: Run `api/_migration.sql` in Supabase Dashboard → SQL Editor
 - **Legacy URL** (still works): `https://pt-hub.vercel.app/api/export?id=761e9a06-c9f8-4d2c-b5ac-468b7ebd7d8b&key=pthub_9r4xw2m8k6j3`
-- **Export button** in app: Coach opens Chris's profile → "⬡ Export" button copies the legacy URL to clipboard
 
 ### v1 API Details
 - Rate limit: 100 req/hr per token, tracked atomically via `tick_api_token()` plpgsql function
@@ -54,6 +94,8 @@ The old feature-branch + squash-merge workflow caused repeated conflicts. Direct
 - `?since=<ISO8601>` filters sessions + exercise_logs; PRs and exercise_history are always full snapshots
 - Errors: `{ error: { code, message } }` — 401 invalid token, 403 revoked, 429 rate limited
 - New tokens: `POST /api/v1/mint` with `{ secret: MINT_SECRET, client_id, label }`
+
+---
 
 ## Key Data Model
 
@@ -72,12 +114,11 @@ The old feature-branch + squash-merge workflow caused repeated conflicts. Direct
 - `paused` — boolean
 
 ### structured_program.started_at
-Added recently. Tracks when the current program cycle began.
+Tracks when the current program cycle began.
 - Set automatically when a new program is saved or a template is applied
 - Preserved when editing existing program days
 - Reset via "↺ New Cycle" button in client modal (calls `resetProgramCycle(clientId)`)
 - Displayed as "Started [date] · Week N" above the program days in client modal
-- If not set, shows "No start date set" with a "▶ Start Now" button
 
 ### Package/Remaining Logic (critical)
 - `package_size=0 && remaining>0` → pay-per-session but tracked ("N remaining")
@@ -101,18 +142,23 @@ Added recently. Tracks when the current program cycle began.
 - `id`, `client_id`, `token_hash` (SHA-256), `label`, `revoked_at`, `created_at`, `request_count`, `rate_window_start`
 - RLS enabled; anon can SELECT. `tick_api_token(p_hash)` function handles atomic rate-limit increment.
 
+---
+
 ## Code Locations (Key Functions)
 
 | Function | Approx Line | Purpose |
 |----------|-------------|---------|
 | `maxWeight(str)` | ~923 | Parse comma/slash/space-separated weight string, return max number |
+| `startApp()` | ~950 | Auto-login entry point — reads `bm_session` from localStorage |
+| `signIn()` | ~972 | Manual sign-in — POSTs to Supabase auth |
 | `getTodayClients()` | ~1235 | Returns clients scheduled for today |
 | `clientTodayWorkout(c)` | ~1254 | Returns today's workout name from program+schedule |
 | `renderTodaySessions()` | ~1265 | Coach dashboard Today card |
 | `renderDashboard()` | ~1313 | Coach dashboard: stat tiles, alerts, client cards |
 | `clientRowHtml(c)` | ~1353 | Coach dashboard client card |
 | `renderClientList()` | ~1420 | Clients tab — compact rows |
-| `renderClientModal(c)` | ~1600 | Coach client detail modal |
+| `renderClientModal(c)` | ~1600 | Coach client detail modal (now has 3-tab layout) |
+| `setClientModalTab(cid,tab)` | ~1822 | Switches Overview/Program/Progress tab in client modal |
 | `renderStructuredProgram(c)` | ~1840 | Renders program days with start date banner, history, edit buttons |
 | `resetProgramCycle(clientId)` | ~1831 | Resets structured_program.started_at to today |
 | `openLogSession(id)` | ~1970 | Log workout form (opens logModal) |
@@ -126,6 +172,102 @@ Added recently. Tracks when the current program cycle began.
 | `startClientPortal(id)` | ~2940 | Client portal entry point |
 | `renderDayPicker(days)` | ~3220 | Client portal home screen |
 | `renderRunDetail(run)` | ~3560 | Client portal run detail + LOG RUN button |
+| `renderMuscleDiagram(scores)` | **~5127** | Muscle heatmap SVG — currently BLOCKY, needs replacement |
+| `loadMuscleHeatmap(clientId,containerId,period)` | **~5179** | Fetches exercise_logs, calls renderMuscleDiagram |
+
+---
+
+## 3-Tab Client Modal (Added in 9104e89)
+
+Client modal now has 3 swipeable tabs: **Overview** / **Program** / **Progress**
+
+```javascript
+// Tab switching function (~line 1822)
+function setClientModalTab(cid, tab) {
+  window['_cmTab_' + cid] = tab;
+  // Sets display:block on active tab div, display:none on others
+  // Tab divs: cmt-{cid}-overview, cmt-{cid}-program, cmt-{cid}-progress
+  // Tab buttons: cmtb-{cid}-overview, cmtb-{cid}-program, cmtb-{cid}-progress
+  if (tab === 'progress') {
+    // Loads monthly report + body stats + muscle heatmap
+    const c = clients.find(x => x.id === cid);
+    if (c) { renderMonthlyReport(c); renderBodyStatsCoach(c); }
+    loadMuscleHeatmap(cid, 'mhChart-' + cid, period);
+  }
+}
+```
+
+**White tab bug**: When switching tabs, inactive tabs show white background. Caused by CSS `var(–xxx)` (en-dash) failing to resolve. Fix: replace en-dash with `--` in CSS only.
+
+---
+
+## Muscle Heatmap / Body Diagram
+
+### Current state (BROKEN — blocky geometric shapes)
+`renderMuscleDiagram()` at lines 5127–5178 uses simple `<ellipse>`, `<rect>`, `<path>` shapes. Looks like a stick figure.
+
+### Target state (WORKING — professional anatomical SVG)
+The correct version is in git commit `68c7539`. It uses a full professional anatomical body diagram from the adanzan/workout-planner repo:
+- `viewBox="0 0 3528.37 3203.47"` 
+- Shows both front and back views with real muscle anatomy
+- Colors muscles based on training volume using `_mhColor()` function
+- Muscle IDs in SVG are colored via regex replacement: e.g. `id="chest"`, `id="quads"`, etc.
+- Legend: None / Low / Light / Mid / High / Very High / Peak
+
+**To fix**: Extract function from 68c7539 and replace current function:
+```bash
+# Step 1: Extract the correct function
+git show 68c7539:index.html | sed -n '5144,5865p' > /tmp/good_diagram.txt
+
+# Step 2: Verify it starts/ends correctly
+head -3 /tmp/good_diagram.txt   # should be: function renderMuscleDiagram(scores){
+tail -3 /tmp/good_diagram.txt   # should be: }
+
+# Step 3: In index.html, replace lines 5127-5178 with the content of /tmp/good_diagram.txt
+# Use Python or careful Edit tool — do NOT use sed (risk of corrupting other code)
+```
+
+### Muscle group mappings (`exerciseToMuscle` function)
+Maps exercise names to muscle groups for heatmap scoring. Located ~line 5100. Groups: `chest`, `back`, `shoulders`, `biceps`, `triceps`, `forearms`, `abs`, `quads`, `hamstrings`, `glutes`, `calves`, `traps`, `lower_back`.
+
+### Color scale (`_mhColor` function)
+Volume-based teal→green→yellow→orange→red gradient. Located ~line 5120.
+
+---
+
+## Auto-Login Flow (CRITICAL — do not break)
+
+```javascript
+// startApp() at ~line 950 — called on DOMContentLoaded
+async function startApp() {
+  const hash = location.hash;
+  if (hash.startsWith('#client-')) { startClientPortal(hash.slice(8)); return; }
+  const raw = localStorage.getItem('bm_session');
+  if (!raw) { showAuthScreen(); return; }
+  let session;
+  try { session = JSON.parse(raw); } catch(e) { showAuthScreen(); return; }
+  if (Date.now()/1000 > (session.expires_at||0) - 60) {
+    // Token refresh attempt
+    try {
+      const res = await fetch(`${AUTH_URL}/token?grant_type=refresh_token`, { ... });
+      if (!res.ok) throw new Error('refresh failed');
+      const newData = await res.json();
+      session = newData;
+      localStorage.setItem('bm_session', JSON.stringify(newData));
+    } catch(e) {
+      localStorage.removeItem('bm_session');
+      showAuthScreen();
+      return;
+    }
+  }
+  hideAuthScreen();
+  await init();
+}
+```
+
+**The user NEVER manually clicks Sign In** — the app auto-logs in from `bm_session` in localStorage. If auto-login breaks, the user sees the auth screen with Face ID prompt and the Sign In button does nothing.
+
+---
 
 ## Critical Code Snippets
 
@@ -155,20 +297,24 @@ if (newDone >= weekRuns.length && currentWeek < totalWeeks) {
 }
 ```
 
+---
+
 ## Features Completed
 
 ### Coaching Portal
 - **Dashboard** — 4 colored stat tiles (Active Clients, Sessions This Month, Low Sessions, Invoice Needed)
 - **Today card** — collapsible, shows client dots + names + workout name + time + quick Log button
-- **Client cards** — compact, shows name + level + run week badge + package bar; badges show "N / package_size"
+- **Client cards** — compact, shows name + level + run week badge + package bar
 - **Client list tab** — compact single-line rows (dot + name + level + last session + status badge)
-- **Client modal** — collapsible Goals/Injuries section, Monthly Summary with 5 stats, Share ↗ progress overlay
-- **Monthly stats** — Sessions, Volume, PRs Hit, Best Lift, Most Improved (with trend indicators vs last month)
-- **Progress share overlay** — full-screen, screenshot-ready, triggered by "Share ↗" on Monthly Summary card
+- **Client modal** — 3 swipeable tabs (Overview/Program/Progress), collapsible Goals/Injuries
+- **Monthly stats** — Sessions, Volume, PRs Hit, Best Lift, Most Improved (with trend indicators)
+- **Progress share overlay** — full-screen, screenshot-ready, triggered by "Share ↗" on Monthly Summary
+- **Body stats section** — in Progress tab; coach can log weight/measurements/scan photos
+- **Muscle heatmap** — in Progress tab; shows volume by muscle group (diagram needs fixing — see above)
 - **Programs section** — shows "Started [date] · Week N" + "↺ New Cycle" button above program days
 - **Programs tab** — styled section headers (blue bar for Lift, orange for Run), compact template rows
-- **Add/Edit client form** — secondary fields hidden under "+ More options"; 13-session package option added
-- **Log session** — "＋ Add Exercise" button adds ad-hoc exercises inline during session logging
+- **Add/Edit client form** — secondary fields hidden under "+ More options"; 13-session package option
+- **Log session** — "＋ Add Exercise" button adds ad-hoc exercises inline
 - **⬡ Export button** — on every client modal; copies live export URL to clipboard
 - **Business tab** — Needs Attention, Inactive 10+ days, Renewals This Month, Long-Term Clients
 - **Nav tabs** — SVG icons; inactive tabs show icon only, active tab shows icon + label
@@ -188,7 +334,9 @@ if (newDone >= weekRuns.length && currentWeek < totalWeeks) {
 
 ### Shared
 - **Shared packages** — `shared_package_id` links two clients, deducts from shared remaining
-- **Exercise history carries over** — `exercise_history` and `exercise_logs` are never cleared on program change; PRs are cross-program all-time
+- **Exercise history carries over** — `exercise_history` and `exercise_logs` are never cleared on program change
+
+---
 
 ## Monthly Report Details (`renderMonthlyReport`)
 Fetches 3 datasets in parallel:
@@ -198,11 +346,15 @@ Fetches 3 datasets in parallel:
 
 Stats: Sessions (+ trend), Volume lbs (+ trend), PRs Hit, Best Lift, Most Improved
 
+---
+
 ## Run Program Auto-Progression
 1. Client has `run_program_id`, `run_program_week`, `run_week_done` on their record
 2. When LOG RUN tapped, `_logRunSession` increments `run_week_done`
 3. If `run_week_done >= weekRuns.length` → advance `run_program_week`, reset `run_week_done = 0`
 4. Green "Week N complete!" banner shown to client
+
+---
 
 ## Known Patterns & Gotchas
 - **Line numbers shift** every session as code grows — always grep to find current positions
@@ -213,11 +365,17 @@ Stats: Sessions (+ trend), Volume lbs (+ trend), PRs Hit, Best Lift, Most Improv
 - **`_sessions` array** on each client object is loaded via `db.getSessions(c.id)` and cached in-memory
 - **SQL in Supabase**: apostrophes in strings must be escaped as `''` (e.g., "don''t") — learned the hard way with Joe's program upload
 - **Supabase blocked** from Vercel cloud execution environment — cannot curl Supabase directly; must provide SQL for user to run in dashboard, or use the app's runtime
+- **CSS en-dash bug**: `var(–xxx)` (U+2013 en-dash) appears 93 times instead of `var(--xxx)`. Fix ONLY within `<style>` block to avoid corrupting JS strings.
+
+---
 
 ## Pending / Known Issues
-- **Joe's program**: User ran SQL to load Joe's 3-day home gym program (Push/Pull/Full Upper) but hit a syntax error from apostrophes. Fixed SQL was provided (apostrophes replaced with "do not"/"will not"). User should confirm it ran with "1 row affected". Joe's actual name in the DB may differ — if SQL still fails, run `SELECT id, first, last FROM clients ORDER BY first;` to find the right name.
-- **Chris's api_tokens table**: The `_migration.sql` file must be run once in Supabase to create the table before `/api/v1/export` will work. Chris has his token — he just needs the table to exist.
-- **Export button**: The "⬡ Export" button in each client modal copies the legacy `?key=` URL. For clients other than Chris, the v1 Bearer endpoint would need a new token minted via `/api/v1/mint`.
+- **Muscle diagram blocky**: `renderMuscleDiagram()` lines 5127–5178 needs replacement with anatomical SVG from commit `68c7539` lines 5144–5865. See "Muscle Heatmap" section above for exact fix steps.
+- **White tabs on switch**: CSS en-dash bug prevents `var(–surface)` etc. from resolving. Fix: replace `var(–` → `var(--` ONLY within `<style>...</style>` block.
+- **Joe's program**: SQL to load Joe's 3-day home gym program (Push/Pull/Full Upper) had apostrophe syntax errors. Fixed SQL was provided (apostrophes → "do not"/"will not"). User should confirm it ran with "1 row affected".
+- **Chris's api_tokens table**: Run `api/_migration.sql` once in Supabase Dashboard → SQL Editor before `/api/v1/export` will work.
+
+---
 
 ## Potential Next Improvements
 - Session log flow: pre-select today's program day based on schedule
@@ -228,4 +386,4 @@ Stats: Sessions (+ trend), Volume lbs (+ trend), PRs Hit, Best Lift, Most Improv
 - Business tab: revenue tracking / invoice generation
 
 ---
-**Last Updated:** May 20, 2026
+**Last Updated:** May 25, 2026
