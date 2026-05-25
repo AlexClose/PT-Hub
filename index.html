@@ -5127,8 +5127,12 @@ function exerciseToMuscle(name) {
   if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian|box.*jump|jump.*squat/.test(n))return'quads';
   // Hamstrings — kb/kettlebell swings are hip-hinge dominant
   if(/leg curl|hamstring|nordic|good morning|kettlebell.*swing|kb.*swing/.test(n))return'hamstrings';
-  // Glutes — donkey here only catches "donkey kick", not "donkey calf raise" (calves already returned above)
-  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct|abduction|adduction|pull.?through/.test(n))return'glutes';
+  // Glute medius / hip abductors (outer hip) — split from glute max
+  if(/abduct/.test(n))return'glute_med';
+  // Inner thigh / adductors
+  if(/adduct/.test(n))return'adductors';
+  // Glutes (maximus) — donkey only catches donkey kick, calves already handled above
+  if(/glute|hip thrust|hip extension|donkey|kickback|pull.?through/.test(n))return'glutes';
   // Forearms
   if(/forearm|wrist curl/.test(n))return'forearms';
   return null;
@@ -5145,11 +5149,12 @@ function _mhColor(weeklyAvg,weeklyTarget){
   return'#b91c1c';
 }
 // Weekly set targets per muscle (RP Strength MAV research)
-// Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders
+// Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders.
+// Smaller stabilisers (glute_med, adductors) only need ~3 sets/week to be in optimal range.
 var _MH_TARGETS={
   chest:10,back:12,shoulders:10,quads:10,
-  hamstrings:8,glutes:8,biceps:8,triceps:8,
-  calves:10,abs:8,traps:6,lower_back:4,forearms:4,
+  hamstrings:8,glutes:8,glute_med:3,adductors:3,
+  biceps:8,triceps:8,calves:10,abs:8,traps:6,lower_back:4,forearms:4,
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
@@ -5826,6 +5831,8 @@ function renderMuscleDiagram(scores,weeksInPeriod){
     'quads':      ['quads'],
     'hamstrings': ['hamstrings'],
     'glutes':     ['glutes'],
+    'glute_med':  ['hip_abductor'],
+    'adductors':  ['hip_adductor'],
     'calves':     ['calves'],
     'biceps':     ['biceps'],
     'triceps':    ['triceps'],
