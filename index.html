@@ -5104,6 +5104,7 @@ function exerciseToMuscle(name) {
   // Chest — specific patterns
   if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))return'chest';
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
+  if(/cable.*press|press.*cable/.test(n)&&!/overhead|shoulder|tricep/.test(n))return'chest';
   // Shoulders — rear delt / reverse fly BEFORE generic fly rule
   if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))return'shoulders';
   if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))return'shoulders';
