@@ -5788,31 +5788,40 @@ function renderMuscleDiagram(scores){
 </svg>
 `;
   
-  // Parse and color the muscle paths based on exercise training frequency
+  // muscle key (from exerciseToMuscle) → actual SVG <g id=""> elements
   var muscleMappings = {
-    'biceps': 'biceps',
-    'triceps': 'triceps',
-    'forearms': 'forearms',
-    'lats': 'lats',
-    'pecs': 'chest',
-    'delts': 'anterior_deltoids',
-    'traps': 'traps',
-    'quads': 'quads',
-    'hamstrings': 'hamstrings',
-    'glutes': 'glutes',
-    'calves': 'calves',
-    'obliques': 'obliques'
+    'chest':      ['upper_pecs','lower_pecs','middle_pecs'],
+    'back':       ['lats','rhomboids'],
+    'shoulders':  ['front_delts','side_delts','rear_delts'],
+    'traps':      ['upper_traps','lower_traps'],
+    'abs':        ['upper_abs','lower_abs','obliques'],
+    'lower_back': ['lower_back'],
+    'quads':      ['quads'],
+    'hamstrings': ['hamstrings'],
+    'glutes':     ['glutes'],
+    'calves':     ['calves'],
+    'biceps':     ['biceps'],
+    'triceps':    ['triceps'],
+    'forearms':   ['forearms'],
   };
-  
-  // Apply colors by replacing fill attributes for muscle groups
-  var colored = svg;
-  for (var group in muscleMappings) {
-    var muscleKey = muscleMappings[group];
+
+  // st4/st5 hardcode fill:#FF0000 which overrides parent <g> fill via CSS specificity.
+  // Switch them to inherit so our group-level fills propagate down to each path.
+  var colored = svg
+    .replace(/\.st4\{fill:#FF0000;stroke:#FF0000;/g, '.st4{fill:inherit;stroke:inherit;')
+    .replace(/\.st5\{fill:#FF0000;stroke:#FF0000;/g, '.st5{fill:inherit;stroke:inherit;')
+    .replace('xml:space="preserve">', 'xml:space="preserve" style="fill:rgba(255,255,255,0.06);stroke:rgba(255,255,255,0.06)">');
+
+  for (var muscleKey in muscleMappings) {
+    var svgIds = muscleMappings[muscleKey];
     var color = c(muscleKey);
-    var opacity = o(muscleKey);
-    // Find and replace muscle group fill colors
-    var pattern = new RegExp('id="' + group + '"[^>]*>', 'g');
-    colored = colored.replace(pattern, 'id="' + group + '" style="fill:' + color + '; opacity:' + opacity + '">');
+    var opac = o(muscleKey);
+    svgIds.forEach(function(gid){
+      colored = colored.replace(
+        new RegExp('id="'+gid+'"[^>]*>','g'),
+        'id="'+gid+'" style="fill:'+color+';stroke:'+color+';opacity:'+opac+'">'
+      );
+    });
   }
   
   var legend='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;font-size:11px;">'+
