@@ -5094,23 +5094,40 @@ async function openProgressReport(cid) {
 // ── MUSCLE HEATMAP ──
 function exerciseToMuscle(name) {
   var n=(name||'').toLowerCase();
-  if(/tricep|skull.?crush|pushdown|close.?grip/.test(n))return'triceps';
+  // Triceps — overhead extension variants before generic press catch
+  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|\bdip\b|\bdips\b/.test(n))return'triceps';
+  // Biceps
   if(/bicep|hammer curl|chin.?up/.test(n))return'biceps';
   if(/\bcurl\b/.test(n)&&!/leg curl/.test(n))return'biceps';
-  if(/bench|chest.?fly|pec deck|push.?up/.test(n))return'chest';
+  // Chest — specific patterns
+  if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))return'chest';
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
-  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|upright row/.test(n))return'shoulders';
+  // Shoulders — rear delt / reverse fly BEFORE generic fly rule
+  if(/reverse.?fly|rear.?delt/.test(n))return'shoulders';
+  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))return'shoulders';
   if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))return'shoulders';
-  if(/shrug|face pull/.test(n))return'traps';
+  // Chest — generic fly catches cable fly, incline fly, dumbbell fly, machine fly, pec fly
+  if(/\bfly\b|\bflye\b/.test(n))return'chest';
+  // Traps — upright row here so it doesn't fall into the row→back rule below
+  if(/shrug|face pull|upright row/.test(n))return'traps';
+  // Back — pullover (lats) before generic row/pull checks
+  if(/pullover/.test(n))return'back';
   if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))return'back';
   if(/\brow\b/.test(n)&&!/upright/.test(n))return'back';
   if(/\bdeadlift\b|romanian deadlift|rdl|stiff.?leg/.test(n))return'back';
+  // Lower back
   if(/back extension|hyperextension|lower back|erector/.test(n))return'lower_back';
-  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb/.test(n))return'abs';
+  // Abs
+  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))return'abs';
+  // Quads
   if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian/.test(n))return'quads';
+  // Hamstrings
   if(/leg curl|hamstring|nordic|good morning/.test(n))return'hamstrings';
-  if(/glute|hip thrust|hip extension|donkey|kickback/.test(n))return'glutes';
+  // Glutes
+  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct/.test(n))return'glutes';
+  // Calves
   if(/\bcalf\b|\bcalves\b/.test(n))return'calves';
+  // Forearms
   if(/forearm|wrist curl/.test(n))return'forearms';
   return null;
 }
@@ -5126,10 +5143,11 @@ function _mhColor(weeklyAvg,weeklyTarget){
   return'#b91c1c';
 }
 // Weekly set targets per muscle (RP Strength MAV research)
+// Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders
 var _MH_TARGETS={
-  chest:14,back:15,shoulders:13,quads:14,
-  hamstrings:12,glutes:12,biceps:10,triceps:10,
-  calves:14,abs:12,traps:8,lower_back:6,forearms:6,
+  chest:10,back:12,shoulders:10,quads:10,
+  hamstrings:8,glutes:8,biceps:8,triceps:8,
+  calves:10,abs:8,traps:6,lower_back:4,forearms:4,
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
