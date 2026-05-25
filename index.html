@@ -1826,7 +1826,7 @@ function setClientModalTab(cid,tab){
     const btn=document.getElementById('cmtb-'+cid+'-'+t);
     if(el)el.style.display=t===tab?'block':'none';
     if(btn){
-      btn.style.background=t===tab?'rgba(255,255,255,0.09)':'';
+      btn.style.background=t===tab?'rgba(255,255,255,0.09)':'transparent';
       btn.style.color=t===tab?'#fff':'rgba(180,200,230,0.4)';
       btn.style.fontWeight=t===tab?'700':'600';
     }
