@@ -5114,19 +5114,26 @@ function exerciseToMuscle(name) {
   if(/forearm|wrist curl/.test(n))return'forearms';
   return null;
 }
-function _mhColor(count,max){
-  if(!count||!max)return null;
-  var r=count/max;
-  if(r<0.15)return'#0d7a65';
-  if(r<0.30)return'#1aab80';
-  if(r<0.50)return'#2ecc71';
-  if(r<0.65)return'#f1c40f';
-  if(r<0.80)return'#e67e22';
-  return'#e74c3c';
+// weeklyAvg = sets/week for this muscle; weeklyTarget = RP MAV for this muscle
+function _mhColor(weeklyAvg,weeklyTarget){
+  if(!weeklyAvg||!weeklyTarget)return null;
+  var r=weeklyAvg/weeklyTarget;
+  if(r<0.25)return'#fef9c3';
+  if(r<0.50)return'#fde68a';
+  if(r<0.75)return'#fbbf24';
+  if(r<1.00)return'#f97316';
+  if(r<1.50)return'#ef4444';
+  return'#b91c1c';
 }
-function renderMuscleDiagram(scores){
-  var max=Math.max(1,...Object.values(scores).filter(function(v){return v>0;}));
-  function c(m){return _mhColor(scores[m]||0,max)||'rgba(255,255,255,0.05)';}
+// Weekly set targets per muscle (RP Strength MAV research)
+var _MH_TARGETS={
+  chest:14,back:15,shoulders:13,quads:14,
+  hamstrings:12,glutes:12,biceps:10,triceps:10,
+  calves:14,abs:12,traps:8,lower_back:6,forearms:6,
+};
+function renderMuscleDiagram(scores,weeksInPeriod){
+  var weeks=weeksInPeriod||1;
+  function c(m){var wk=(scores[m]||0)/weeks;return _mhColor(wk,_MH_TARGETS[m]||10)||'rgba(255,255,255,0.05)';}
   function o(m){return(scores[m]||0)>0?'0.85':'0.12';}
   
   // Professional anatomical diagram from workout-planner GitHub
@@ -5825,7 +5832,7 @@ function renderMuscleDiagram(scores){
   }
   
   var legend='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;font-size:11px;">'+
-    [['rgba(255,255,255,0.08)','None'],['#0d7a65','Low'],['#1aab80','Light'],['#2ecc71','Mid'],['#f1c40f','High'],['#e67e22','Very High'],['#e74c3c','Peak']].map(function(l){
+    [['rgba(255,255,255,0.08)','None'],['#fef9c3','<25%'],['#fde68a','25–50%'],['#fbbf24','50–75%'],['#f97316','75–100%'],['#ef4444','Optimal'],['#b91c1c','Above']].map(function(l){
       return'<div style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:'+l[0]+';border:1px solid rgba(255,255,255,0.08);display:inline-block;"></span><span style="font-size:10px;color:rgba(180,200,230,0.55);">'+l[1]+'</span></div>';
     }).join('')+'</div>';
   
@@ -5853,7 +5860,20 @@ async function loadMuscleHeatmap(clientId,containerId,period){
       el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);text-align:center;padding:16px 0;">No exercise data for this period</div>';
       return;
     }
-    el.innerHTML=renderMuscleDiagram(scores);
+    // Determine weeks in period so colors reflect weekly-average vs RP targets
+    var weeksInPeriod=1;
+    if(period==='week')weeksInPeriod=1;
+    else if(period==='month')weeksInPeriod=4.33;
+    else if(period==='30d')weeksInPeriod=30/7;
+    else{
+      // 'all' — span from earliest log to today
+      var parsedDates=logs.map(function(l){return new Date(l.session_date);}).filter(function(d){return!isNaN(d.getTime());});
+      if(parsedDates.length>0){
+        var earliest=new Date(Math.min.apply(null,parsedDates));
+        weeksInPeriod=Math.max(1,(Date.now()-earliest.getTime())/(7*24*3600*1000));
+      }
+    }
+    el.innerHTML=renderMuscleDiagram(scores,weeksInPeriod);
   }catch(e){
     el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);padding:8px 0;">Unable to load</div>';
   }
