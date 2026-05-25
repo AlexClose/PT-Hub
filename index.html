@@ -5127,8 +5127,11 @@ function exerciseToMuscles(name) {
   // Shoulders — rear delt isolation
   if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))
     return[{muscle:'shoulders',weight:1.0}];
+  // Shoulder isolation — lateral/front raise, no tricep involvement
+  if(/lateral raise|front raise/.test(n))
+    return[{muscle:'shoulders',weight:1.0}];
   // OHP — triceps secondary
-  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))
+  if(/overhead press|shoulder press|military press|arnold|push press|landmine/.test(n))
     return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
   if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))
     return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
@@ -5947,10 +5950,14 @@ async function loadMuscleHeatmap(clientId,containerId,period){
       library.forEach(function(ex){if(ex.name&&ex.muscle_group)_libLookup[ex.name.toLowerCase()]=ex.muscle_group.toLowerCase();});
     }
     var _libGroupMap={chest:'chest',back:'back',shoulders:'shoulders',core:'abs',glutes:'glutes'};
-    // Parse sets from reps string — "3x10" → 3, "10" → 1
+    // Parse sets from reps string. "3x10" → 3. If no "Nx" prefix, count
+    // comma-separated values: "8,8,8" → 3, "X10,8,6,4,10" → 5. Default to 1.
     function parseSets(repsStr){
-      var m=String(repsStr||'').match(/^(\d+)\s*[xX×]/);
-      return m?Math.max(1,parseInt(m[1])):1;
+      var s=String(repsStr||'').trim();
+      if(!s)return 1;
+      var m=s.match(/^(\d+)\s*[xX×]/);
+      if(m)return Math.max(1,parseInt(m[1]));
+      return Math.max(1,s.split(',').filter(function(v){return v.trim().length>0;}).length);
     }
     // Pattern matching first (includes secondaries), library fallback for unrecognized names
     function resolveMuscleFull(name){
