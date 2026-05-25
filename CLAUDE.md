@@ -26,44 +26,17 @@ The old feature-branch + squash-merge workflow caused repeated conflicts. Direct
 
 ## Current Commit State
 
-**Current HEAD**: `9104e89` — "Refactor client modal into 3 swipeable tabs + add muscle heatmap"
-**File**: `index.html`, 5393 lines
+**Current HEAD**: `66caf9a` — "Fix white inactive tabs: set background transparent not empty string"
+**File**: `index.html`, 6039 lines
 
-### What is WORKING at this commit:
+### What is WORKING:
 - Auto-login (reads `bm_session` from localStorage via `startApp()`)
 - Manual sign-in (`signIn()` function)
 - All core coaching portal features
-- Client modal with **3 swipeable tabs**: Overview / Program / Progress
+- Client modal with **3 swipeable tabs**: Overview / Program / Progress — tabs stay dark when inactive
 - Body stats section in Progress tab
-- Muscle heatmap loads correctly (calls `loadMuscleHeatmap()` → `renderMuscleDiagram()`)
-
-### What is BROKEN and needs fixing (priority order):
-
-#### 1. Muscle diagram uses blocky geometric shapes — needs professional anatomical SVG
-- Current `renderMuscleDiagram()` at lines **5127–5178** uses hand-drawn ellipses/rects
-- User wants the **professional anatomical figure** (see screenshot description below)
-- The correct version exists at git commit `68c7539` — `renderMuscleDiagram()` starts at line 5144 and ends around line 5865 in that commit (it embeds a full SVG, ~720 lines)
-- The SVG uses `viewBox="0 0 3528.37 3203.47"` from the adanzan/workout-planner GitHub repo
-- To extract it: `git show 68c7539:index.html | sed -n '5144,5865p'`
-- **Fix approach**: Replace ONLY lines 5127–5178 in current index.html with the full function from 68c7539. Do NOT touch auth code, CSS variables, or anything else.
-
-#### 2. White/blank tabs when switching between Overview/Program/Progress
-- When clicking Program tab, Overview and Progress tabs go white/blank
-- Root cause: **CSS variable en-dash bug** — throughout the file, `var(–surface)` uses Unicode en-dash (`–`, U+2013) instead of ASCII double-dash (`var(--surface)`)
-- There are **93 occurrences** of `var(–` in the file (confirmed via grep)
-- This makes ALL CSS custom properties fail to resolve → backgrounds are white instead of dark
-- **Previous fix attempt**: `sed -i 's/var(–/var(--/g'` ran fine but **broke sign-in for unknown reasons** — was reverted
-- **Safe fix approach**: Use Python to replace ONLY within the `<style>` block (lines ~1 to ~500), not touching JavaScript strings. Example:
-  ```python
-  # Read file, find <style> block, fix only within it, write back
-  import re
-  content = open('index.html').read()
-  style_match = re.search(r'(<style>)(.*?)(</style>)', content, re.DOTALL)
-  fixed_style = style_match.group(2).replace('var(–', 'var(--')
-  content = content[:style_match.start(2)] + fixed_style + content[style_match.end(2):]
-  open('index.html', 'w').write(content)
-  ```
-  OR: Fix ALL occurrences but verify sign-in still works before pushing. The en-dash only appears in CSS `var()` calls, so the sed should be safe — the previous breakage may have been coincidental.
+- Muscle heatmap with **professional anatomical SVG** (front + back, volume-colored)
+- CSS custom properties all resolve correctly (en-dash bug fixed)
 
 ---
 
@@ -177,9 +150,9 @@ Tracks when the current program cycle began.
 
 ---
 
-## 3-Tab Client Modal (Added in 9104e89)
+## 3-Tab Client Modal
 
-Client modal now has 3 swipeable tabs: **Overview** / **Program** / **Progress**
+Client modal has 3 swipeable tabs: **Overview** / **Program** / **Progress**
 
 ```javascript
 // Tab switching function (~line 1822)
@@ -188,6 +161,7 @@ function setClientModalTab(cid, tab) {
   // Sets display:block on active tab div, display:none on others
   // Tab divs: cmt-{cid}-overview, cmt-{cid}-program, cmt-{cid}-progress
   // Tab buttons: cmtb-{cid}-overview, cmtb-{cid}-program, cmtb-{cid}-progress
+  // IMPORTANT: inactive btn.style.background must be 'transparent', NOT '' (empty removes inline style → browser default white)
   if (tab === 'progress') {
     // Loads monthly report + body stats + muscle heatmap
     const c = clients.find(x => x.id === cid);
@@ -197,35 +171,17 @@ function setClientModalTab(cid, tab) {
 }
 ```
 
-**White tab bug**: When switching tabs, inactive tabs show white background. Caused by CSS `var(–xxx)` (en-dash) failing to resolve. Fix: replace en-dash with `--` in CSS only.
-
 ---
 
 ## Muscle Heatmap / Body Diagram
 
-### Current state (BROKEN — blocky geometric shapes)
-`renderMuscleDiagram()` at lines 5127–5178 uses simple `<ellipse>`, `<rect>`, `<path>` shapes. Looks like a stick figure.
-
-### Target state (WORKING — professional anatomical SVG)
-The correct version is in git commit `68c7539`. It uses a full professional anatomical body diagram from the adanzan/workout-planner repo:
-- `viewBox="0 0 3528.37 3203.47"` 
-- Shows both front and back views with real muscle anatomy
+### Current state (WORKING)
+`renderMuscleDiagram()` uses the full professional anatomical body diagram from the adanzan/workout-planner repo:
+- `viewBox="0 0 3528.37 3203.47"`
+- Shows both front and back views with real muscle anatomy (~700 lines of SVG)
 - Colors muscles based on training volume using `_mhColor()` function
-- Muscle IDs in SVG are colored via regex replacement: e.g. `id="chest"`, `id="quads"`, etc.
+- Muscle IDs in SVG colored via regex replacement: `id="chest"`, `id="quads"`, etc.
 - Legend: None / Low / Light / Mid / High / Very High / Peak
-
-**To fix**: Extract function from 68c7539 and replace current function:
-```bash
-# Step 1: Extract the correct function
-git show 68c7539:index.html | sed -n '5144,5865p' > /tmp/good_diagram.txt
-
-# Step 2: Verify it starts/ends correctly
-head -3 /tmp/good_diagram.txt   # should be: function renderMuscleDiagram(scores){
-tail -3 /tmp/good_diagram.txt   # should be: }
-
-# Step 3: In index.html, replace lines 5127-5178 with the content of /tmp/good_diagram.txt
-# Use Python or careful Edit tool — do NOT use sed (risk of corrupting other code)
-```
 
 ### Muscle group mappings (`exerciseToMuscle` function)
 Maps exercise names to muscle groups for heatmap scoring. Located ~line 5100. Groups: `chest`, `back`, `shoulders`, `biceps`, `triceps`, `forearms`, `abs`, `quads`, `hamstrings`, `glutes`, `calves`, `traps`, `lower_back`.
@@ -365,13 +321,11 @@ Stats: Sessions (+ trend), Volume lbs (+ trend), PRs Hit, Best Lift, Most Improv
 - **`_sessions` array** on each client object is loaded via `db.getSessions(c.id)` and cached in-memory
 - **SQL in Supabase**: apostrophes in strings must be escaped as `''` (e.g., "don''t") — learned the hard way with Joe's program upload
 - **Supabase blocked** from Vercel cloud execution environment — cannot curl Supabase directly; must provide SQL for user to run in dashboard, or use the app's runtime
-- **CSS en-dash bug**: `var(–xxx)` (U+2013 en-dash) appears 93 times instead of `var(--xxx)`. Fix ONLY within `<style>` block to avoid corrupting JS strings.
+- **Tab background**: inactive tabs must use `background:'transparent'` not `background:''` — empty string removes the inline style and browser renders default white button background
 
 ---
 
 ## Pending / Known Issues
-- **Muscle diagram blocky**: `renderMuscleDiagram()` lines 5127–5178 needs replacement with anatomical SVG from commit `68c7539` lines 5144–5865. See "Muscle Heatmap" section above for exact fix steps.
-- **White tabs on switch**: CSS en-dash bug prevents `var(–surface)` etc. from resolving. Fix: replace `var(–` → `var(--` ONLY within `<style>...</style>` block.
 - **Joe's program**: SQL to load Joe's 3-day home gym program (Push/Pull/Full Upper) had apostrophe syntax errors. Fixed SQL was provided (apostrophes → "do not"/"will not"). User should confirm it ran with "1 row affected".
 - **Chris's api_tokens table**: Run `api/_migration.sql` once in Supabase Dashboard → SQL Editor before `/api/v1/export` will work.
 
@@ -386,4 +340,4 @@ Stats: Sessions (+ trend), Volume lbs (+ trend), PRs Hit, Best Lift, Most Improv
 - Business tab: revenue tracking / invoice generation
 
 ---
-**Last Updated:** May 25, 2026
+**Last Updated:** May 25, 2026 (all known bugs fixed — clean state)
