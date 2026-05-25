@@ -5103,7 +5103,7 @@ function exerciseToMuscle(name) {
   if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))return'chest';
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
   // Shoulders — rear delt / reverse fly BEFORE generic fly rule
-  if(/reverse.?fly|rear.?delt/.test(n))return'shoulders';
+  if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))return'shoulders';
   if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))return'shoulders';
   if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))return'shoulders';
   // Chest — generic fly catches cable fly, incline fly, dumbbell fly, machine fly, pec fly
@@ -5119,14 +5119,14 @@ function exerciseToMuscle(name) {
   if(/back extension|hyperextension|lower back|erector/.test(n))return'lower_back';
   // Abs
   if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))return'abs';
-  // Quads
-  if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian/.test(n))return'quads';
-  // Hamstrings
-  if(/leg curl|hamstring|nordic|good morning/.test(n))return'hamstrings';
-  // Glutes
-  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct/.test(n))return'glutes';
-  // Calves
+  // Calves — checked BEFORE glutes so "donkey calf raise" doesn't match donkey→glutes first
   if(/\bcalf\b|\bcalves\b/.test(n))return'calves';
+  // Quads
+  if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian|box.*jump|jump.*squat/.test(n))return'quads';
+  // Hamstrings — kb/kettlebell swings are hip-hinge dominant
+  if(/leg curl|hamstring|nordic|good morning|kettlebell.*swing|kb.*swing/.test(n))return'hamstrings';
+  // Glutes — donkey here only catches "donkey kick", not "donkey calf raise" (calves already returned above)
+  if(/glute|hip thrust|hip extension|donkey|kickback|hip abduct|pull.?through/.test(n))return'glutes';
   // Forearms
   if(/forearm|wrist curl/.test(n))return'forearms';
   return null;
@@ -5873,7 +5873,28 @@ async function loadMuscleHeatmap(clientId,containerId,period){
       if(since)logs=logs.filter(function(l){return l.session_date&&new Date(l.session_date)>=since;});
     }
     var scores={};
-    logs.forEach(function(l){var m=exerciseToMuscle(l.exercise_name);if(m)scores[m]=(scores[m]||0)+1;});
+    // Build a lookup from the already-loaded exercise library so any exercise
+    // categorised in the library uses its stored muscle_group instead of relying
+    // purely on name pattern-matching. Pattern matching handles ad-hoc / unlisted exercises.
+    var _libLookup={};
+    if(Array.isArray(library)){
+      library.forEach(function(ex){if(ex.name&&ex.muscle_group)_libLookup[ex.name.toLowerCase()]=ex.muscle_group.toLowerCase();});
+    }
+    // Map library's broad category labels → heatmap muscle keys
+    // 'legs' and 'arms' are too broad to map directly — fall through to exerciseToMuscle
+    var _libGroupMap={chest:'chest',back:'back',shoulders:'shoulders',core:'abs',glutes:'glutes'};
+    function resolveMuscleFull(name){
+      var libGroup=_libLookup[(name||'').toLowerCase()];
+      if(libGroup){var mapped=_libGroupMap[libGroup];if(mapped)return mapped;}
+      return exerciseToMuscle(name);
+    }
+    var _unrecognized=new Set();
+    logs.forEach(function(l){
+      var m=resolveMuscleFull(l.exercise_name);
+      if(m)scores[m]=(scores[m]||0)+1;
+      else if(l.exercise_name)_unrecognized.add(l.exercise_name);
+    });
+    if(_unrecognized.size)console.warn('[Heatmap] unrecognized exercises (not mapped to any muscle):',[..._unrecognized].sort().join(', '));
     if(!Object.values(scores).some(function(v){return v>0;})){
       el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);text-align:center;padding:16px 0;">No exercise data for this period</div>';
       return;
