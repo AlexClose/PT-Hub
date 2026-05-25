@@ -5094,48 +5094,91 @@ async function openProgressReport(cid) {
 
 // ── BODY STATS ──
 // ── MUSCLE HEATMAP ──
-function exerciseToMuscle(name) {
+function exerciseToMuscles(name) {
   var n=(name||'').toLowerCase();
-  // Triceps — overhead extension variants before generic press catch
-  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|\bdip\b|\bdips\b/.test(n))return'triceps';
-  // Biceps
-  if(/bicep|hammer curl|chin.?up/.test(n))return'biceps';
-  if(/\bcurls?\b/.test(n)&&!/leg curl/.test(n))return'biceps';
-  // Chest — specific patterns
-  if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))return'chest';
-  if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))return'chest';
-  if(/cable.*press|press.*cable/.test(n)&&!/overhead|shoulder|tricep/.test(n))return'chest';
-  // Shoulders — rear delt / reverse fly BEFORE generic fly rule
-  if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))return'shoulders';
-  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))return'shoulders';
-  if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))return'shoulders';
-  // Chest — generic fly catches cable fly, incline fly, dumbbell fly, machine fly, pec fly
-  if(/\bfly\b|\bflye\b/.test(n))return'chest';
-  // Traps — upright row here so it doesn't fall into the row→back rule below
-  if(/shrug|face pull|upright row/.test(n))return'traps';
-  // Back — pullover (lats) before generic row/pull checks
-  if(/pullover/.test(n))return'back';
-  if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))return'back';
-  if(/\brow\b/.test(n)&&!/upright/.test(n))return'back';
-  if(/\bdeadlift\b|romanian deadlift|rdl|stiff.?leg/.test(n))return'back';
-  // Lower back
-  if(/back extension|hyperextension|lower back|erector/.test(n))return'lower_back';
+  // Returns [{muscle, weight}] — weight 1.0 = primary, 0.5 = secondary
+  // Triceps isolation
+  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|\bdip\b|\bdips\b/.test(n))
+    return[{muscle:'triceps',weight:1.0}];
+  // Biceps isolation
+  if(/bicep|hammer curl|chin.?up/.test(n))
+    return[{muscle:'biceps',weight:1.0}];
+  if(/\bcurls?\b/.test(n)&&!/leg curl/.test(n))
+    return[{muscle:'biceps',weight:1.0}];
+  // Chest press — triceps secondary
+  if(/bench|chest.?fly|pec.?dec|pec.?deck|push.?up/.test(n))
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+  if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+  if(/cable.*press|press.*cable/.test(n)&&!/overhead|shoulder|tricep/.test(n))
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+  // Shoulders — rear delt isolation
+  if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))
+    return[{muscle:'shoulders',weight:1.0}];
+  // OHP — triceps secondary
+  if(/overhead press|shoulder press|lateral raise|front raise|military press|arnold|push press|landmine/.test(n))
+    return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
+  if(/\bpress\b/.test(n)&&/shoulder|delt|ohp/.test(n))
+    return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
+  // Chest fly isolation — no tricep involvement
+  if(/\bfly\b|\bflye\b/.test(n))
+    return[{muscle:'chest',weight:1.0}];
+  // Traps
+  if(/shrug|face pull|upright row/.test(n))
+    return[{muscle:'traps',weight:1.0}];
+  // Back — pullover
+  if(/pullover/.test(n))
+    return[{muscle:'back',weight:1.0}];
+  // Back rows/pulls — biceps secondary
+  if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
+  if(/\brow\b/.test(n)&&!/upright/.test(n))
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
+  // Conventional deadlift — back primary, glutes + hamstrings secondary
+  if(/\bdeadlift\b/.test(n)&&!/romanian|rdl|stiff/.test(n))
+    return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5}];
+  // RDL — hamstrings primary, glutes + lower back secondary
+  if(/romanian deadlift|rdl|stiff.?leg/.test(n))
+    return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'lower_back',weight:0.5}];
+  // Lower back isolation
+  if(/back extension|hyperextension|lower back|erector/.test(n))
+    return[{muscle:'lower_back',weight:1.0}];
   // Abs
-  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))return'abs';
-  // Calves — checked BEFORE glutes so "donkey calf raise" doesn't match donkey→glutes first
-  if(/\bcalf\b|\bcalves\b/.test(n))return'calves';
-  // Quads
-  if(/squat|leg press|lunge|\bquad\b|hack squat|leg extension|step.?up|bulgarian|box.*jump|jump.*squat/.test(n))return'quads';
-  // Hamstrings — kb/kettlebell swings are hip-hinge dominant
-  if(/leg curl|hamstring|nordic|good morning|kettlebell.*swing|kb.*swing/.test(n))return'hamstrings';
-  // Glute medius / hip abductors (outer hip) — split from glute max
-  if(/abduct/.test(n))return'glute_med';
-  // Inner thigh / adductors
-  if(/adduct/.test(n))return'adductors';
-  // Glutes (maximus) — donkey only catches donkey kick, calves already handled above
-  if(/glute|hip thrust|hip extension|donkey|kickback|pull.?through/.test(n))return'glutes';
+  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))
+    return[{muscle:'abs',weight:1.0}];
+  // Calves — BEFORE glutes so "donkey calf raise" doesn't hit glutes first
+  if(/\bcalf\b|\bcalves\b/.test(n))
+    return[{muscle:'calves',weight:1.0}];
+  // Squats / leg press — quads primary, glutes + hamstrings secondary
+  if(/squat|leg press|\bquad\b|hack squat|pendulum squat/.test(n))
+    return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5}];
+  // Lunges / split squats — quads primary, glutes secondary
+  if(/lunge|step.?up|bulgarian|split squat|box.*jump|jump.*squat/.test(n))
+    return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5}];
+  // Leg extension — quad isolation
+  if(/leg extension/.test(n))
+    return[{muscle:'quads',weight:1.0}];
+  // Hamstrings
+  if(/leg curl|hamstring|nordic|good morning/.test(n))
+    return[{muscle:'hamstrings',weight:1.0}];
+  // KB swing — hip hinge, hamstrings primary, glutes secondary
+  if(/kettlebell.*swing|kb.*swing/.test(n))
+    return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5}];
+  // Hip thrust / glute bridge — glutes primary, hamstrings secondary
+  if(/hip thrust|hip extension|glute bridge/.test(n))
+    return[{muscle:'glutes',weight:1.0},{muscle:'hamstrings',weight:0.5}];
+  // Glute med
+  if(/abduct/.test(n))
+    return[{muscle:'glute_med',weight:1.0}];
+  // Adductors
+  if(/adduct/.test(n))
+    return[{muscle:'adductors',weight:1.0}];
+  // Glutes
+  if(/glute|donkey|kickback|pull.?through/.test(n))
+    return[{muscle:'glutes',weight:1.0}];
   // Forearms
-  if(/forearm|wrist curl/.test(n))return'forearms';
+  if(/forearm|wrist curl/.test(n))
+    return[{muscle:'forearms',weight:1.0}];
   return null;
 }
 // weeklyAvg = sets/week for this muscle; weeklyTarget = RP MAV for this muscle
@@ -5153,9 +5196,9 @@ function _mhColor(weeklyAvg,weeklyTarget){
 // Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders.
 // Smaller stabilisers (glute_med, adductors) only need ~3 sets/week to be in optimal range.
 var _MH_TARGETS={
-  chest:10,back:12,shoulders:10,quads:10,
-  hamstrings:8,glutes:8,glute_med:3,adductors:3,
-  biceps:8,triceps:8,calves:10,abs:8,traps:6,lower_back:4,forearms:4,
+  chest:12,back:12,shoulders:12,quads:12,
+  hamstrings:12,glutes:12,glute_med:4,adductors:4,
+  biceps:14,triceps:14,calves:6,abs:8,traps:6,lower_back:5,forearms:4,
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
@@ -5871,7 +5914,7 @@ async function loadMuscleHeatmap(clientId,containerId,period){
   if(!el)return;
   el.innerHTML='<div class="skeleton" style="height:160px;border-radius:10px;"></div>';
   try{
-    var url=SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+clientId+'&select=exercise_name,session_date&limit=2000';
+    var url=SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+clientId+'&select=exercise_name,session_date,reps&limit=2000';
     var r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
     var logs=await r.json();
     if(!Array.isArray(logs))logs=[];
@@ -5891,19 +5934,27 @@ async function loadMuscleHeatmap(clientId,containerId,period){
     if(Array.isArray(library)){
       library.forEach(function(ex){if(ex.name&&ex.muscle_group)_libLookup[ex.name.toLowerCase()]=ex.muscle_group.toLowerCase();});
     }
-    // Map library's broad category labels → heatmap muscle keys
-    // 'legs' and 'arms' are too broad to map directly — fall through to exerciseToMuscle
     var _libGroupMap={chest:'chest',back:'back',shoulders:'shoulders',core:'abs',glutes:'glutes'};
+    // Parse sets from reps string — "3x10" → 3, "10" → 1
+    function parseSets(repsStr){
+      var m=String(repsStr||'').match(/^(\d+)\s*[xX×]/);
+      return m?Math.max(1,parseInt(m[1])):1;
+    }
+    // Pattern matching first (includes secondaries), library fallback for unrecognized names
     function resolveMuscleFull(name){
+      var muscles=exerciseToMuscles(name);
+      if(muscles)return muscles;
       var libGroup=_libLookup[(name||'').toLowerCase()];
-      if(libGroup){var mapped=_libGroupMap[libGroup];if(mapped)return mapped;}
-      return exerciseToMuscle(name);
+      if(libGroup){var mapped=_libGroupMap[libGroup];if(mapped)return[{muscle:mapped,weight:1.0}];}
+      return null;
     }
     var _unrecognized=new Set();
     logs.forEach(function(l){
-      var m=resolveMuscleFull(l.exercise_name);
-      if(m)scores[m]=(scores[m]||0)+1;
-      else if(l.exercise_name)_unrecognized.add(l.exercise_name);
+      var muscles=resolveMuscleFull(l.exercise_name);
+      var sets=parseSets(l.reps);
+      if(muscles){
+        muscles.forEach(function(m){scores[m.muscle]=(scores[m.muscle]||0)+sets*m.weight;});
+      }else if(l.exercise_name){_unrecognized.add(l.exercise_name);}
     });
     if(_unrecognized.size)console.warn('[Heatmap] unrecognized exercises (not mapped to any muscle):',[..._unrecognized].sort().join(', '));
     if(!Object.values(scores).some(function(v){return v>0;})){
