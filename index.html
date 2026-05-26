@@ -2110,23 +2110,23 @@ function updateLogWorkout(clientId){
     const exCount=day.exercises.length;
     window._coachExCount=exCount;
     window._coachExData=day.exercises.map(ex=>{const k=ex.name.toLowerCase().replace(/\s+/g,'_');const l=history[k];return{lastWeight:l?maxWeight(l.weight):0};});
-    // Pre-compute superset group first/last indices
-    const ssBounds={};
-    day.exercises.forEach((ex,ei)=>{const m=ex.name.match(/^SS(\d+)/i);if(m){const g=m[1];if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}});
+    // Pre-compute superset group first/last indices — supports both SS1: and SS: formats
+    const ssBounds={};const exSSGroup={};let _ssRunG=0,_ssRunKey='',_ssPrev=false;
+    day.exercises.forEach((ex,ei)=>{const _isSS=/^SS/i.test(ex.name);if(_isSS){const m=ex.name.match(/^SS(\d+)/i);let g;if(m){g=m[1];}else{if(!_ssPrev){_ssRunG++;_ssRunKey='_r'+_ssRunG;}g=_ssRunKey;}exSSGroup[ei]=g;if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}_ssPrev=_isSS;});
     let html=`<div style="position:sticky;top:0;z-index:5;background:rgba(10,13,18,0.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(100,160,255,0.07);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ${exCount}</div></div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:3px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div></div></div><button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(79,163,232,0.2)';this.style.borderColor='rgba(79,163,232,0.5)';" onmouseout="this.style.background='rgba(79,163,232,0.15)';this.style.borderColor='rgba(79,163,232,0.35)';">⚡ Fill Last Session</button>`;
     day.exercises.forEach((ex,ei)=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
       const isSuperset=/^SS/i.test(ex.name);
-      const ssGroupMatch=ex.name.match(/^SS(\d+)/i);
-      const ssGroup=ssGroupMatch?ssGroupMatch[1]:null;
+      const ssGroup=exSSGroup[ei]||null;
+      const ssLabel=ssGroup&&!ssGroup.startsWith('_r')?'Superset '+ssGroup:'Superset';
       const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
       const isFirst=ssGroup&&ssBounds[ssGroup].first===ei;
       const isLast=ssGroup&&ssBounds[ssGroup].last===ei;
       if(isFirst){
         html+=`<div style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:12px;background:rgba(255,140,71,0.03);overflow:hidden;">
           <div style="padding:8px 14px 6px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,140,71,0.15);">
-            <span style="flex:1;height:1px;background:rgba(255,140,71,0.3);display:inline-block;border-radius:1px;"></span>Superset ${ssGroup}<span style="flex:1;height:1px;background:rgba(255,140,71,0.3);display:inline-block;border-radius:1px;"></span>
+            <span style="flex:1;height:1px;background:rgba(255,140,71,0.3);display:inline-block;border-radius:1px;"></span>${ssLabel}<span style="flex:1;height:1px;background:rgba(255,140,71,0.3);display:inline-block;border-radius:1px;"></span>
           </div>`;
       } else if(isSuperset&&ssGroup){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
