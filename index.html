@@ -1596,10 +1596,11 @@ function renderClientModal(c){
     :'flex:1;background:none;border:none;border-radius:9px;padding:9px 0;font-family:\'Syne\',sans-serif;font-size:12px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;';
   const tbc=t=>t===curTab?'block':'none';
 
-  const sessionRowHtml=s=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${(s.workout&&s.workout.length>0&&(s.workout[0]?.day||s.note))||(s.note&&(!s.workout||s.workout.length===0))?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${s.workout&&s.workout.length>0?s.workout[0]?.day||s.note||'':s.note}</div>`:''}</div></div></div>`;
-  const sessHtml=sessions.length===0
+  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div></div>`;};
+  const buildSessHtml=dnm=>sessions.length===0
     ?'<div style="padding:10px 0;font-size:13px;color:rgba(180,200,230,0.3)">No sessions logged yet.</div>'
-    :sessions.slice(0,3).map(sessionRowHtml).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(sessionRowHtml).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
+    :sessions.slice(0,3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
+  const sessHtml=buildSessHtml(null);
 
   let progSection='';
   if(c.structured_program)progSection=renderStructuredProgram(c);
@@ -1752,7 +1753,7 @@ function renderClientModal(c){
           <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:600">Session History</div>
           <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
         </div>
-        ${sessHtml}
+        <div id="sess-hist-${c.id}">${sessHtml}</div>
         <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:11px;color:rgba(180,200,230,0.35)">Portal link</span>
           <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
@@ -1818,6 +1819,15 @@ function renderClientModal(c){
       <div style="padding-bottom:24px;"></div>
     </div>`;
   setupModalSwipe(c.id);
+  // Async: enrich session history with workout day names from exercise_logs
+  if(sessions.length>0){
+    sb().from('exercise_logs').select('session_date,day_name').eq('client_id',c.id).order('session_date',{ascending:false}).limit(50).then(({data})=>{
+      const dnm={};
+      (data||[]).forEach(l=>{if(!dnm[l.session_date]&&l.day_name)dnm[l.session_date]=l.day_name;});
+      const el=document.getElementById('sess-hist-'+c.id);
+      if(el)el.innerHTML=buildSessHtml(dnm);
+    }).catch(()=>{});
+  }
 }
 
 function setClientModalTab(cid,tab){
@@ -2303,7 +2313,7 @@ async function confirmLogSession(){
         const newW=maxWeight(wt),isPB=newW>0&&newW>prev;
         if(isPB)coachPBs.push(ex.name.replace(/^SS\w+:\s*/i,''));
         newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?wt:(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
-        workout.push({name:ex.name,reps:wr||'',weight:wt||''});
+        workout.push({...(workout.length===0?{day:day.name}:{}),name:ex.name,reps:wr||'',weight:wt||''});
         exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
       }
     });
