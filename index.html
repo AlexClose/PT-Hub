@@ -5141,7 +5141,7 @@ function exerciseToMuscles(name) {
   if(/\bdip\b|\bdips\b/.test(n))
     return[{muscle:'triceps',weight:1.0},{muscle:'chest',weight:0.5}];
   // Triceps isolation (no chest involvement)
-  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension/.test(n))
+  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|french.?press/.test(n))
     return[{muscle:'triceps',weight:1.0}];
   // Chin-up — back primary, biceps secondary (same as pull-up)
   if(/chin.?up/.test(n))
