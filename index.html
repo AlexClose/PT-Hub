@@ -1821,12 +1821,13 @@ function renderClientModal(c){
   setupModalSwipe(c.id);
   // Async: enrich session history with workout day names from exercise_logs
   if(sessions.length>0){
-    sb().from('exercise_logs').select('session_date,day_name').eq('client_id',c.id).order('session_date',{ascending:false}).limit(50).then(({data})=>{
-      const dnm={};
-      (data||[]).forEach(l=>{if(!dnm[l.session_date]&&l.day_name)dnm[l.session_date]=l.day_name;});
-      const el=document.getElementById('sess-hist-'+c.id);
-      if(el)el.innerHTML=buildSessHtml(dnm);
-    }).catch(()=>{});
+    fetch(SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+c.id+'&select=session_date,day_name&order=session_date.desc&limit=50',{headers:H})
+      .then(r=>r.json()).then(data=>{
+        const dnm={};
+        (data||[]).forEach(l=>{if(!dnm[l.session_date]&&l.day_name)dnm[l.session_date]=l.day_name;});
+        const el=document.getElementById('sess-hist-'+c.id);
+        if(el)el.innerHTML=buildSessHtml(dnm);
+      }).catch(()=>{});
   }
 }
 
