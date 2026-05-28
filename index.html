@@ -1525,13 +1525,13 @@ async function openClientDetail(id){
   if(!c._sessions) c._sessions=[];
   renderClientModal(c);
   openModal('clientModal');
-  setTimeout(function(){renderMonthlyReport(c);renderBodyStatsCoach(c);},370);
+  setTimeout(function(){renderMonthlyReport(c,window['_rptPeriod_'+c.id]||'month');renderBodyStatsCoach(c);},370);
   try{
     const fresh=await db.getSessions(id);
     if(JSON.stringify(fresh)!==JSON.stringify(c._sessions)){
       c._sessions=fresh;
       renderClientModal(c);
-      renderMonthlyReport(c);
+      renderMonthlyReport(c,window['_rptPeriod_'+c.id]||'month');
       renderBodyStatsCoach(c);
     }
   }catch(e){}
@@ -1786,9 +1786,13 @@ function renderClientModal(c){
 
     <div id="cmt-${c.id}-progress" style="display:${tbc('progress')}">
       <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Monthly Summary &middot; ${new Date().toLocaleString('default',{month:'long'})}</div>
-          <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Share ↗</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="display:flex;gap:3px;background:rgba(0,0,0,0.25);border-radius:9px;padding:3px;flex:1;margin-right:10px;">
+            <button id="rpt-tab-${c.id}-week" onclick="setReportPeriod('${c.id}','week')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">Week</button>
+            <button id="rpt-tab-${c.id}-14d" onclick="setReportPeriod('${c.id}','14d')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">14 Days</button>
+            <button id="rpt-tab-${c.id}-month" onclick="setReportPeriod('${c.id}','month')" style="flex:1;background:rgba(255,255,255,0.09);border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;">Month</button>
+          </div>
+          <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;flex-shrink:0;">Share ↗</button>
         </div>
         <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
       </div>
@@ -1845,7 +1849,7 @@ function setClientModalTab(cid,tab){
   });
   if(tab==='progress'){
     const c=clients.find(x=>x.id===cid);
-    if(c){renderMonthlyReport(c);renderBodyStatsCoach(c);}
+    if(c){renderMonthlyReport(c,window['_rptPeriod_'+cid]||'month');renderBodyStatsCoach(c);}
     const period=(document.getElementById('mhPeriod-'+cid)||{value:'week'}).value;
     loadMuscleHeatmap(cid,'mhChart-'+cid,period);
   }
@@ -2575,7 +2579,7 @@ async function saveBuildProgram(){
   try{
     await db.updateClient(buildingClientId,{structured_program:prog});
     c.structured_program=prog;closeModal('buildProgramModal');
-    renderClientModal(c);renderMonthlyReport(c);toast('Program saved ✓');
+    renderClientModal(c);renderMonthlyReport(c,window['_rptPeriod_'+c.id]||'month');toast('Program saved ✓');
   }catch(e){toast('Error saving program');}
 }
 
@@ -2593,7 +2597,7 @@ async function saveBuildProgramAsTemplate(){
     const res=await db.addTemplate({name:name.trim(),days:JSON.parse(JSON.stringify(buildingDays))});
     if(res&&res[0])templates.push(res[0]);
     closeModal('buildProgramModal');
-    renderClientModal(c);renderMonthlyReport(c);
+    renderClientModal(c);renderMonthlyReport(c,window['_rptPeriod_'+c.id]||'month');
     toast(`Program saved & "${name.trim()}" added to Templates ✓`);
   }catch(e){toast('Error saving — check connection');}
 }
@@ -4673,25 +4677,59 @@ function startClientPortal(id) {
     if (label) label.textContent = done + ' / ' + total;
   };
 
-async function renderMonthlyReport(c) {
+function setReportPeriod(cid, period) {
+  window['_rptPeriod_'+cid] = period;
+  ['week','14d','month'].forEach(t => {
+    const btn = document.getElementById('rpt-tab-'+cid+'-'+t);
+    if (!btn) return;
+    const active = t === period;
+    btn.style.background = active ? 'rgba(255,255,255,0.09)' : 'transparent';
+    btn.style.color = active ? '#fff' : 'rgba(180,200,230,0.4)';
+    btn.style.fontWeight = active ? '700' : '600';
+  });
+  const c = clients.find(x => x.id === cid);
+  if (c) renderMonthlyReport(c, period);
+}
+
+async function renderMonthlyReport(c, period) {
+  period = period || window['_rptPeriod_'+c.id] || 'month';
   const el = document.getElementById('monthly-' + c.id);
   if (!el) return;
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  let periodStart, prevStart, prevEnd, periodLabel;
 
-  // Get exercise logs from Supabase for this client
+  if (period === 'week') {
+    const dow = now.getDay();
+    const daysToMon = dow === 0 ? 6 : dow - 1;
+    periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysToMon);
+    prevEnd = new Date(periodStart - 1);
+    prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() - 6);
+    periodLabel = 'This Week';
+  } else if (period === '14d') {
+    periodStart = new Date(now.getTime() - 13 * 86400000);
+    periodStart.setHours(0,0,0,0);
+    prevEnd = new Date(periodStart.getTime() - 1);
+    prevStart = new Date(prevEnd.getTime() - 13 * 86400000);
+    prevStart.setHours(0,0,0,0);
+    periodLabel = 'Last 14 Days';
+  } else {
+    periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    periodLabel = now.toLocaleString('default', {month: 'long'});
+  }
+
+  const periodStr = periodStart.toISOString().split('T')[0];
+  const prevStr = prevStart.toISOString().split('T')[0];
+  const prevEndStr = prevEnd.toISOString().split('T')[0];
+
   let logs = [], lastMonthLogs = [], prevLogs = [];
   try {
-    const monthStr = monthStart.toISOString().split('T')[0];
-    const lastStr = lastMonthStart.toISOString().split('T')[0];
-    const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
     [logs, lastMonthLogs, prevLogs] = await Promise.all([
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`),
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${lastStr}&session_date=lte.${lastEndStr}`),
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${monthStr}`)
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${periodStr}&order=session_date.desc`),
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${prevStr}&session_date=lte.${prevEndStr}`),
+      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${periodStr}`)
     ]);
   } catch(e) { logs = []; lastMonthLogs = []; prevLogs = []; }
 
@@ -4699,12 +4737,12 @@ async function renderMonthlyReport(c) {
   const monthlySessions = sessions.filter(s => {
     if (!s.date) return false;
     const d = new Date(s.date);
-    return d >= monthStart;
+    return d >= periodStart;
   });
   const lastMonthSessions = sessions.filter(s => {
     if (!s.date) return false;
     const d = new Date(s.date);
-    return d >= lastMonthStart && d <= lastMonthEnd;
+    return d >= prevStart && d <= prevEnd;
   });
 
   // Calculate volume for this month and last month
@@ -4776,12 +4814,12 @@ async function renderMonthlyReport(c) {
   const volTrend = totalVolume > 0 && lastMonthVolume > 0 ? trendBadge(totalVolume, lastMonthVolume, 'lbs') : '';
 
   if (monthlySessions.length === 0 && logs.length === 0) {
-    el.innerHTML = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged this month yet.</div>`;
+    el.innerHTML = `<div class="muted" style="font-size:13px;padding:8px 0">No sessions logged for this period yet.</div>`;
     return;
   }
 
   let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
-    ${statTile('Sessions', monthlySessions.length, now.toLocaleString('default',{month:'short'}), '#4fa3e8', sessionTrend)}
+    ${statTile('Sessions', monthlySessions.length, periodLabel, '#4fa3e8', sessionTrend)}
     ${statTile('Volume', totalVolume > 0 ? (totalVolume >= 1000 ? (Math.round(totalVolume/100)/10)+'k' : Math.round(totalVolume).toLocaleString()) : '--', totalVolume > 0 ? 'lbs' : 'log weights', '#93c5fd', volTrend)}
     ${statTile('PRs Hit', prCount || '--', prCount === 1 ? 'exercise' : 'exercises', '#ff8c47')}
   </div>
