@@ -5206,7 +5206,7 @@ function exerciseToMuscles(name) {
   if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))
     return[{muscle:'shoulders',weight:1.0}];
   // Shoulder isolation — lateral/front raise, no tricep involvement
-  if(/lateral raise|front raise/.test(n))
+  if(/lateral raise|front raise|arsenal.*lat/.test(n))
     return[{muscle:'shoulders',weight:1.0}];
   // OHP — triceps secondary
   if(/overhead press|shoulder press|military press|arnold|push press|landmine/.test(n))
