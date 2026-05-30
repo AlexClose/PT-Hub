@@ -3902,21 +3902,59 @@ function startClientPortal(id) {
             '</div>';
           return;
         }
-        var latest = entries[entries.length-1];
-        var prev = entries.length > 1 ? entries[entries.length-2] : null;
-        var diff = prev && latest.weight_lbs && prev.weight_lbs ? parseFloat(latest.weight_lbs)-parseFloat(prev.weight_lbs) : null;
-        var trendHtml = diff !== null ? '<span style="font-size:11px;color:'+(diff<0?'#43d9a2':diff>0?'#ff5c6a':'rgba(180,200,230,0.35)')+';font-weight:700;margin-left:6px;">'+(diff>0?'+':'')+diff.toFixed(1)+' lbs</span>' : '';
+        window._portalBsEntries = entries;
+        if (!window._portalBsField) window._portalBsField = 'weight_lbs';
+        var fmtD = function(iso){return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});};
+        var delt = function(curr,prv,unit){if(!curr||!prv)return '';var d=parseFloat(curr)-parseFloat(prv);var col=d<0?'#43d9a2':d>0?'#ff5c6a':'rgba(180,200,230,0.35)';return '<span style="font-size:11px;font-weight:700;color:'+col+';">'+(d>0?'+':'')+d.toFixed(1)+unit+' from last</span>';};
+        var latestW=[].concat(entries).reverse().find(function(e){return e.weight_lbs>0;})||null;
+        var prevW=latestW?([].concat(entries).filter(function(e){return e.weight_lbs>0&&e.id!==latestW.id;}).pop()||null):null;
+        var latestBF=[].concat(entries).reverse().find(function(e){return e.body_fat_pct>0;})||null;
+        var prevBF=latestBF?([].concat(entries).filter(function(e){return e.body_fat_pct>0&&e.id!==latestBF.id;}).pop()||null):null;
+        var hasBFData=entries.filter(function(e){return e.body_fat_pct>0;}).length>=2;
+        var wActive=window._portalBsField==='weight_lbs';
+        var chartHtml=wActive?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):(hasBFData?renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc'):'');
         bsEl2.innerHTML =
-          '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">' +
-            '<span style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">'+(latest.weight_lbs?parseFloat(latest.weight_lbs).toFixed(1):'—')+'</span>' +
-            '<span style="font-size:13px;color:rgba(180,200,230,0.4);">lbs'+trendHtml+'</span>' +
-            (latest.body_fat_pct?'<span style="font-size:13px;color:rgba(192,132,252,0.6);margin-left:8px;">· '+parseFloat(latest.body_fat_pct).toFixed(1)+'% BF</span>':'') +
-            '<button onclick="window._openBodyStatSheet()" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;margin-left:auto;flex-shrink:0;">+ Log</button>' +
+          '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">' +
+            '<button onclick="window._openBodyStatSheet()" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>' +
           '</div>' +
-          '<div style="font-size:11px;color:rgba(180,200,230,0.3);margin-bottom:10px;">'+latest.date+'</div>' +
-          renderBodyStatsChart(entries,'weight_lbs','#4fa3e8') +
-          (entries.filter(function(e){return e.body_fat_pct>0;}).length>=2 ? renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc') : '') +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+            '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:12px;cursor:pointer;">' +
+              '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:5px;">Weight'+(wActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">'+(latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—')+'<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:3px;">lbs</span></div>' +
+              '<div style="margin-top:5px;min-height:14px;">'+delt(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')+'</div>' +
+            '</div>' +
+            '<div data-bs-tile="body_fat_pct" onclick="window._switchPortalBsChart(\'body_fat_pct\')" style="background:'+(!wActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)')+';border:'+(!wActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)')+';border-radius:12px;padding:12px;cursor:'+(hasBFData?'pointer':'default')+';'+(!hasBFData?'opacity:0.5;':'')+'">'+
+              '<div data-bs-label="Body Fat" data-bs-tile="body_fat_pct" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,'+(!wActive?'0.8':'0.45')+');margin-bottom:5px;">Body Fat'+(!wActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">'+(latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—')+'<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>' +
+              '<div style="margin-top:5px;min-height:14px;">'+delt(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')+'</div>' +
+            '</div>' +
+          '</div>' +
+          '<div id="portal-bs-chart">'+chartHtml+'</div>' +
           bsScanGalleryHtml(entries);
+
+        window._switchPortalBsChart = function(field) {
+          var ents = window._portalBsEntries || [];
+          if (field === 'body_fat_pct' && ents.filter(function(e){return e.body_fat_pct>0;}).length < 2) return;
+          window._portalBsField = field;
+          var isW = field === 'weight_lbs';
+          // Swap chart
+          var chartEl = document.getElementById('portal-bs-chart');
+          if (chartEl) {
+            var data = isW ? ents : ents.filter(function(e){return e.body_fat_pct>0;});
+            chartEl.innerHTML = renderBodyStatsChart(data, field, isW ? '#4fa3e8' : '#c084fc');
+          }
+          // Update tile styles
+          var tiles = document.querySelectorAll('#portal-body-stats [data-bs-tile]');
+          tiles.forEach(function(t) {
+            var tw = t.dataset.bsTile === 'weight_lbs';
+            var active = (tw && isW) || (!tw && !isW);
+            var col = tw ? '79,163,232' : '192,132,252';
+            t.style.background = active ? 'rgba('+col+',0.14)' : 'rgba('+col+',0.04)';
+            t.style.border = active ? '1.5px solid rgba('+col+',0.45)' : '1px solid rgba('+col+',0.1)';
+            var lbl = t.querySelector('[data-bs-label]');
+            if (lbl) { lbl.style.color = 'rgba('+col+','+(active?'0.8':'0.45')+')'; lbl.textContent = lbl.dataset.bsLabel + (active ? ' ▾' : ''); }
+          });
+        };
       }).catch(function(){ var e=document.getElementById('portal-body-stats'); if(e) e.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>'; });
     };
 
