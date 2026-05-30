@@ -3213,8 +3213,8 @@ function startClientPortal(id) {
     document.body.style.minHeight = '100vh';
     document.body.style.overflowX = 'hidden';
     var tabItem = function(id, tab, icon, label, active) {
-      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px 12px;cursor:pointer;color:'+(active?'#7ec8ff':'rgba(180,200,230,0.32)')+';border-top:2px solid '+(active?'#4fa3e8':'transparent')+';transition:color .2s,border-color .2s;">'+
-        icon+'<span style="font-size:9px;font-weight:700;letter-spacing:0.5px;margin-top:5px;">'+label+'</span></div>';
+      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 4px 14px;cursor:pointer;color:'+(active?'#7ec8ff':'rgba(180,200,230,0.55)')+';border-top:2.5px solid '+(active?'#4fa3e8':'transparent')+';transition:color .2s,border-color .2s;">'+
+        icon+'<span style="font-size:10px;font-weight:700;letter-spacing:0.3px;margin-top:5px;">'+label+'</span></div>';
     };
     var icoHome='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
     var icoTrain='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
@@ -3242,12 +3242,12 @@ function startClientPortal(id) {
         '<div class="skeleton" style="height:60px;margin-bottom:10px;border-radius:12px;"></div>' +
         '<div class="skeleton" style="height:60px;border-radius:12px;"></div>' +
       '</div>' +
-      '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(10,12,15,0.97);border-top:1px solid rgba(100,160,255,0.1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">' +
+      '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(8,10,14,0.98);border-top:1.5px solid rgba(100,160,255,0.22);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -8px 32px rgba(0,0,0,0.65);">' +
         '<div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,0px);">' +
           tabItem('home','home',icoHome,'Home',true) +
           tabItem('train','train',icoTrain,'Train',false) +
           tabItem('prs','prs',icoPRs,'PRs',false) +
-          tabItem('stats','stats',icoStats,'Stats',false) +
+          tabItem('stats','stats',icoStats,'Body',false) +
         '</div>' +
       '</div>';
     setTimeout(function() { renderCalendarStrip(); }, 0);
@@ -3459,7 +3459,7 @@ function startClientPortal(id) {
         var el = document.getElementById('ptab-' + t);
         if (!el) return;
         var active = (t === tab);
-        el.style.color = active ? '#7ec8ff' : 'rgba(180,200,230,0.32)';
+        el.style.color = active ? '#7ec8ff' : 'rgba(180,200,230,0.55)';
         el.style.borderTopColor = active ? '#4fa3e8' : 'transparent';
       });
       if (tab === 'home') renderPortalHome();
