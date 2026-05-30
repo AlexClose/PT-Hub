@@ -6124,7 +6124,7 @@ function renderBodyStatsChart(entries, field, color) {
   for(var i=1;i<xs.length;i++){var cpx=xs[i-1]+(xs[i]-xs[i-1])/2;d+=' C'+f(cpx)+','+f(ys[i-1])+' '+f(cpx)+','+f(ys[i])+' '+f(xs[i])+','+f(ys[i]);}
   var uid='bsc'+Math.random().toString(36).slice(2,7);
   var fD=d+' L'+f(xs[xs.length-1])+','+(H-pB)+' L'+f(xs[0])+','+(H-pB)+' Z';
-  function fmt(s){var p=s.split('-');return +p[1]+'/'+(+p[2]);}
+  function fmt(s){const d=new Date(s+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-bottom:4px;">'+
     '<defs><linearGradient id="'+uid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>'+
     '<path d="'+fD+'" fill="url(#'+uid+')"/>'+
@@ -6146,28 +6146,54 @@ async function renderBodyStatsCoach(c) {
     el.innerHTML = '<div style="font-size:13px;color:rgba(180,200,230,0.3);padding:4px 0;">No stats logged yet.</div>';
     return;
   }
-  const latest = entries[entries.length-1];
-  const prev = entries.length > 1 ? entries[entries.length-2] : null;
-  const wDiff = prev&&latest.weight_lbs&&prev.weight_lbs ? parseFloat(latest.weight_lbs)-parseFloat(prev.weight_lbs) : null;
-  const trendHtml = wDiff!==null ? `<span style="font-size:11px;color:${wDiff<0?'#43d9a2':wDiff>0?'#ff5c6a':'rgba(180,200,230,0.35)'};font-weight:700;margin-left:6px;">${wDiff>0?'+':''}${wDiff.toFixed(1)}</span>` : '';
-  let html = `<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:12px;">
-    <span style="font-family:Syne,sans-serif;font-size:32px;font-weight:800;color:#fff;line-height:1;">${latest.weight_lbs?parseFloat(latest.weight_lbs).toFixed(1):'—'}</span>
-    <span style="font-size:13px;color:rgba(180,200,230,0.4);">lbs${trendHtml}</span>
-    ${latest.body_fat_pct?`<span style="font-size:13px;color:rgba(192,132,252,0.6);margin-left:8px;">· ${parseFloat(latest.body_fat_pct).toFixed(1)}% BF</span>`:''}
-    <span style="font-size:11px;color:rgba(180,200,230,0.3);margin-left:auto;">${latest.date}</span>
+  const fmtDate = iso => new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const delta = (curr,prv,unit) => {
+    if(!curr||!prv)return '';
+    const d=parseFloat(curr)-parseFloat(prv);
+    const col=d<0?'#43d9a2':d>0?'#ff5c6a':'rgba(180,200,230,0.35)';
+    return `<span style="font-size:11px;font-weight:700;color:${col};">${d>0?'+':''}${d.toFixed(1)}${unit} from last</span>`;
+  };
+  // Find latest entry that actually has weight or BF
+  const latestW = [...entries].reverse().find(e=>e.weight_lbs>0) || null;
+  const prevW = latestW ? [...entries].filter(e=>e.weight_lbs>0&&e.id!==latestW.id).pop() || null : null;
+  const latestBF = [...entries].reverse().find(e=>e.body_fat_pct>0) || null;
+  const prevBF = latestBF ? [...entries].filter(e=>e.body_fat_pct>0&&e.id!==latestBF.id).pop() || null : null;
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+    <div style="background:rgba(79,163,232,0.07);border:1px solid rgba(79,163,232,0.14);border-radius:12px;padding:12px;">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.55);margin-bottom:5px;">Weight</div>
+      <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:3px;">lbs</span></div>
+      <div style="margin-top:5px;min-height:14px;">${delta(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')}</div>
+    </div>
+    <div style="background:rgba(192,132,252,0.07);border:1px solid rgba(192,132,252,0.14);border-radius:12px;padding:12px;">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.55);margin-bottom:5px;">Body Fat</div>
+      <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>
+      <div style="margin-top:5px;min-height:14px;">${delta(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')}</div>
+    </div>
   </div>`;
   html += renderBodyStatsChart(entries,'weight_lbs','#4fa3e8');
-  if (entries.length >= 2) html += renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc');
-  html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:8px;">';
-  entries.slice(-5).reverse().forEach(e=>{
-    const scanBadge = (e.scan_urls&&e.scan_urls.length) ? `<a href="${e.scan_urls[0].url}" target="_blank" style="font-size:11px;color:rgba(126,200,255,0.5);text-decoration:none;margin-left:6px;" title="${e.scan_urls.length} scan(s)">📎${e.scan_urls.length>1?' '+e.scan_urls.length:''}</a>` : '';
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(100,160,255,0.05);">
-      <span style="font-size:12px;color:rgba(180,200,230,0.4);">${e.date}</span>
-      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">${e.weight_lbs?parseFloat(e.weight_lbs).toFixed(1)+' lbs':'—'}${e.body_fat_pct?' · '+parseFloat(e.body_fat_pct).toFixed(1)+'% BF':''}${scanBadge}</span>
+  if(entries.filter(e=>e.body_fat_pct>0).length>=2)html+=renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc');
+  html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:6px;">';
+  entries.slice(-6).reverse().forEach(e=>{
+    const hasW=parseFloat(e.weight_lbs)>0, hasBF=parseFloat(e.body_fat_pct)>0;
+    const scanLink=(e.scan_urls&&e.scan_urls.length)?`<a href="${e.scan_urls[0].url}" target="_blank" style="font-size:13px;color:rgba(126,200,255,0.45);text-decoration:none;" title="${e.scan_urls.length} scan(s)">📎</a>`:'';
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.05);">
+      <span style="font-size:12px;color:rgba(180,200,230,0.4);flex:1;">${fmtDate(e.date)}</span>
+      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.85);">${hasW?parseFloat(e.weight_lbs).toFixed(1)+' lbs':''}${hasW&&hasBF?'<span style="color:rgba(180,200,230,0.2);margin:0 4px;">·</span>':''}${hasBF?'<span style="color:rgba(192,132,252,0.75);">'+parseFloat(e.body_fat_pct).toFixed(1)+'% BF</span>':''}${!hasW&&!hasBF?'<span style="color:rgba(180,200,230,0.25);font-size:11px;">Scan only</span>':''}</span>
+      ${scanLink}
+      <button onclick="deleteBodyStat('${c.id}','${e.id}')" style="background:none;border:none;font-size:12px;color:rgba(255,92,106,0.25);cursor:pointer;padding:0 2px;line-height:1;" title="Delete">✕</button>
     </div>`;
   });
-  html += '</div>';
-  el.innerHTML = html;
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+async function deleteBodyStat(cid, id) {
+  if(!confirm('Delete this entry?'))return;
+  try{
+    await db.delBodyStat(id);
+    const c=clients.find(x=>x.id===cid);
+    if(c)renderBodyStatsCoach(c);
+  }catch(e){toast('Error deleting');}
 }
 
 function openCoachBodyStatForm(cid) {
