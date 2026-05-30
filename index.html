@@ -3949,6 +3949,7 @@ function startClientPortal(id) {
         var tileValSize=bigTile?'28px':'20px';
         var tileLblSize=bigTile?'9px':'8px';
         bsEl2.innerHTML =
+          '<button onclick="window._openBodyStatSheet()" style="width:100%;margin-bottom:12px;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Stats</button>' +
           '<div style="display:grid;grid-template-columns:repeat('+tileCount+',1fr);gap:8px;margin-bottom:12px;">' +
             '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:'+tilePad+';cursor:pointer;">' +
               '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:'+tileLblSize+';font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:4px;">Weight'+(wActive?' ▾':'')+'</div>' +
@@ -3968,8 +3969,7 @@ function startClientPortal(id) {
           '</div>' +
           '<div id="portal-bs-chart">'+chartHtml+'</div>' +
           bsScanGalleryHtml(entries) +
-          histHtml +
-          '<button onclick="window._openBodyStatSheet()" style="width:100%;margin-top:14px;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Stats</button>';
+          histHtml;
 
         window._switchPortalBsChart = function(field) {
           var ents = window._portalBsEntries || [];
