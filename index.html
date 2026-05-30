@@ -6137,6 +6137,22 @@ function renderBodyStatsChart(entries, field, color) {
     '</svg>';
 }
 
+function switchBodyStatChart(cid, field) {
+  const entries = window['_bsEntries_'+cid];
+  if (!entries) return;
+  if (field === 'body_fat_pct' && entries.filter(e=>e.body_fat_pct>0).length < 2) return;
+  window['_bsField_'+cid] = field;
+  const chartEl = document.getElementById('bs-chart-'+cid);
+  if (chartEl) {
+    const data = field === 'weight_lbs' ? entries : entries.filter(e=>e.body_fat_pct>0);
+    const color = field === 'weight_lbs' ? '#4fa3e8' : '#c084fc';
+    chartEl.innerHTML = renderBodyStatsChart(data, field, color);
+  }
+  // Re-render tiles to update active state
+  const c = clients.find(x=>x.id===cid);
+  if (c) renderBodyStatsCoach(c);
+}
+
 async function renderBodyStatsCoach(c) {
   const el = document.getElementById('bodystats-coach-'+c.id);
   if (!el) return;
@@ -6158,20 +6174,23 @@ async function renderBodyStatsCoach(c) {
   const prevW = latestW ? [...entries].filter(e=>e.weight_lbs>0&&e.id!==latestW.id).pop() || null : null;
   const latestBF = [...entries].reverse().find(e=>e.body_fat_pct>0) || null;
   const prevBF = latestBF ? [...entries].filter(e=>e.body_fat_pct>0&&e.id!==latestBF.id).pop() || null : null;
+  const activeField = window['_bsField_'+c.id] || 'weight_lbs';
+  window['_bsEntries_'+c.id] = entries;
+  const hasBFData = entries.filter(e=>e.body_fat_pct>0).length >= 2;
+  const wActive = activeField === 'weight_lbs';
   let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-    <div style="background:rgba(79,163,232,0.07);border:1px solid rgba(79,163,232,0.14);border-radius:12px;padding:12px;">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,0.55);margin-bottom:5px;">Weight</div>
+    <div onclick="switchBodyStatChart('${c.id}','weight_lbs')" style="background:${wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)'};border:${wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)'};border-radius:12px;padding:12px;cursor:pointer;transition:all 0.15s;">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,${wActive?'0.8':'0.45'});margin-bottom:5px;">Weight${wActive?' ▾':''}</div>
       <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:3px;">lbs</span></div>
       <div style="margin-top:5px;min-height:14px;">${delta(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')}</div>
     </div>
-    <div style="background:rgba(192,132,252,0.07);border:1px solid rgba(192,132,252,0.14);border-radius:12px;padding:12px;">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.55);margin-bottom:5px;">Body Fat</div>
+    <div onclick="switchBodyStatChart('${c.id}','body_fat_pct')" style="background:${!wActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)'};border:${!wActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)'};border-radius:12px;padding:12px;cursor:${hasBFData?'pointer':'default'};transition:all 0.15s;${!hasBFData?'opacity:0.5;':''}">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,${!wActive?'0.8':'0.45'});margin-bottom:5px;">Body Fat${!wActive?' ▾':''}</div>
       <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>
       <div style="margin-top:5px;min-height:14px;">${delta(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')}</div>
     </div>
-  </div>`;
-  html += renderBodyStatsChart(entries,'weight_lbs','#4fa3e8');
-  if(entries.filter(e=>e.body_fat_pct>0).length>=2)html+=renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc');
+  </div>
+  <div id="bs-chart-${c.id}">${activeField==='weight_lbs'?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):(hasBFData?renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc'):'')}</div>`;
   html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:6px;">';
   entries.slice(-6).reverse().forEach(e=>{
     const hasW=parseFloat(e.weight_lbs)>0, hasBF=parseFloat(e.body_fat_pct)>0;
