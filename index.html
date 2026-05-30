@@ -3899,8 +3899,8 @@ function startClientPortal(id) {
           bsEl2.innerHTML =
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="font-size:13px;color:rgba(180,200,230,0.35);">No stats logged yet.</div>' +
-              '<button onclick="window._openBodyStatSheet()" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:8px 16px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;">+ Log Stats</button>' +
-            '</div>';
+            '</div>' +
+            '<button onclick="window._openBodyStatSheet()" style="width:100%;margin-top:14px;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Stats</button>';
           return;
         }
         window._portalBsEntries = entries;
@@ -3915,9 +3915,16 @@ function startClientPortal(id) {
         var prevMM=latestMM?([].concat(entries).filter(function(e){return e.muscle_mass_lbs>0&&e.id!==latestMM.id;}).pop()||null):null;
         var hasBFData=entries.filter(function(e){return e.body_fat_pct>0;}).length>=2;
         var hasMMData=entries.filter(function(e){return e.muscle_mass_lbs>0;}).length>=2;
+        var hasBFAny=entries.filter(function(e){return e.body_fat_pct>0;}).length>=1;
+        var hasMMny=entries.filter(function(e){return e.muscle_mass_lbs>0;}).length>=1;
         var af=window._portalBsField;
+        if(af==='body_fat_pct'&&!hasBFAny)af='weight_lbs';
+        if(af==='muscle_mass_lbs'&&!hasMMny)af='weight_lbs';
+        window._portalBsField=af;
         var wActive=af==='weight_lbs', bfActive=af==='body_fat_pct', mmActive=af==='muscle_mass_lbs';
         var chartHtml=wActive?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):bfActive&&hasBFData?renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc'):mmActive&&hasMMData?renderBodyStatsChart(entries.filter(function(e){return e.muscle_mass_lbs>0;}),'muscle_mass_lbs','#43d9a2'):'';
+        var tileCount=1+(hasBFAny?1:0)+(hasMMny?1:0);
+        var bigTile=tileCount===1;
         var histHtml='';
         if(entries.length>0){
           histHtml='<div style="margin-top:14px;border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;">' +
@@ -3938,30 +3945,31 @@ function startClientPortal(id) {
           });
           histHtml+='</div>';
         }
+        var tilePad=bigTile?'14px 16px':'10px';
+        var tileValSize=bigTile?'28px':'20px';
+        var tileLblSize=bigTile?'9px':'8px';
         bsEl2.innerHTML =
-          '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">' +
-            '<button onclick="window._openBodyStatSheet()" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>' +
-          '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
-            '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:10px;cursor:pointer;">' +
-              '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:4px;">Weight'+(wActive?' ▾':'')+'</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
+          '<div style="display:grid;grid-template-columns:repeat('+tileCount+',1fr);gap:8px;margin-bottom:12px;">' +
+            '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:'+tilePad+';cursor:pointer;">' +
+              '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:'+tileLblSize+';font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:4px;">Weight'+(wActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:'+tileValSize+';font-weight:800;color:#fff;line-height:1;">'+(latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
               '<div style="margin-top:4px;min-height:13px;">'+delt(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')+'</div>' +
             '</div>' +
-            '<div data-bs-tile="body_fat_pct" onclick="window._switchPortalBsChart(\'body_fat_pct\')" style="background:'+(bfActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)')+';border:'+(bfActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)')+';border-radius:12px;padding:10px;cursor:'+(hasBFData?'pointer':'default')+';'+(!hasBFData?'opacity:0.5;':'')+'">'+
-              '<div data-bs-label="Body Fat" data-bs-tile="body_fat_pct" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(192,132,252,'+(bfActive?'0.8':'0.45')+');margin-bottom:4px;">Body Fat'+(bfActive?' ▾':'')+'</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>' +
+            (hasBFAny?'<div data-bs-tile="body_fat_pct" onclick="window._switchPortalBsChart(\'body_fat_pct\')" style="background:'+(bfActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)')+';border:'+(bfActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)')+';border-radius:12px;padding:'+tilePad+';cursor:'+(hasBFData?'pointer':'default')+'">' +
+              '<div data-bs-label="Body Fat" data-bs-tile="body_fat_pct" style="font-size:'+tileLblSize+';font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(192,132,252,'+(bfActive?'0.8':'0.45')+');margin-bottom:4px;">Body Fat'+(bfActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:'+tileValSize+';font-weight:800;color:#fff;line-height:1;">'+(latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>' +
               '<div style="margin-top:4px;min-height:13px;">'+delt(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')+'</div>' +
-            '</div>' +
-            '<div data-bs-tile="muscle_mass_lbs" onclick="window._switchPortalBsChart(\'muscle_mass_lbs\')" style="background:'+(mmActive?'rgba(67,217,162,0.14)':'rgba(67,217,162,0.04)')+';border:'+(mmActive?'1.5px solid rgba(67,217,162,0.45)':'1px solid rgba(67,217,162,0.1)')+';border-radius:12px;padding:10px;cursor:'+(hasMMData?'pointer':'default')+';'+(!hasMMData?'opacity:0.5;':'')+'">'+
-              '<div data-bs-label="Muscle" data-bs-tile="muscle_mass_lbs" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(67,217,162,'+(mmActive?'0.8':'0.45')+');margin-bottom:4px;">Muscle'+(mmActive?' ▾':'')+'</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestMM?parseFloat(latestMM.muscle_mass_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
+            '</div>':'') +
+            (hasMMny?'<div data-bs-tile="muscle_mass_lbs" onclick="window._switchPortalBsChart(\'muscle_mass_lbs\')" style="background:'+(mmActive?'rgba(67,217,162,0.14)':'rgba(67,217,162,0.04)')+';border:'+(mmActive?'1.5px solid rgba(67,217,162,0.45)':'1px solid rgba(67,217,162,0.1)')+';border-radius:12px;padding:'+tilePad+';cursor:'+(hasMMData?'pointer':'default')+'">' +
+              '<div data-bs-label="Muscle" data-bs-tile="muscle_mass_lbs" style="font-size:'+tileLblSize+';font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(67,217,162,'+(mmActive?'0.8':'0.45')+');margin-bottom:4px;">Muscle'+(mmActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:'+tileValSize+';font-weight:800;color:#fff;line-height:1;">'+(latestMM?parseFloat(latestMM.muscle_mass_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
               '<div style="margin-top:4px;min-height:13px;">'+delt(latestMM&&latestMM.muscle_mass_lbs,prevMM&&prevMM.muscle_mass_lbs,' lbs')+'</div>' +
-            '</div>' +
+            '</div>':'') +
           '</div>' +
           '<div id="portal-bs-chart">'+chartHtml+'</div>' +
           bsScanGalleryHtml(entries) +
-          histHtml;
+          histHtml +
+          '<button onclick="window._openBodyStatSheet()" style="width:100%;margin-top:14px;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Stats</button>';
 
         window._switchPortalBsChart = function(field) {
           var ents = window._portalBsEntries || [];
