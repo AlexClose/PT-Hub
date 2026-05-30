@@ -914,6 +914,7 @@ const db={
   delRunProgram:   (id)  => sb('DELETE','run_programs',null,`?id=eq.${id}`),
   getBodyStats:  (cid,lim)=> sb('GET','body_stats',null,`?client_id=eq.${cid}&order=date.asc${lim?'&limit='+lim:''}`),
   addBodyStat:   (d)      => sb('POST','body_stats',d),
+  updateBodyStat:(id,d)   => sb('PATCH','body_stats',d,`?id=eq.${id}`),
   delBodyStat:   (id)     => sb('DELETE','body_stats',null,`?id=eq.${id}`),
 };
 
@@ -3910,45 +3911,78 @@ function startClientPortal(id) {
         var prevW=latestW?([].concat(entries).filter(function(e){return e.weight_lbs>0&&e.id!==latestW.id;}).pop()||null):null;
         var latestBF=[].concat(entries).reverse().find(function(e){return e.body_fat_pct>0;})||null;
         var prevBF=latestBF?([].concat(entries).filter(function(e){return e.body_fat_pct>0&&e.id!==latestBF.id;}).pop()||null):null;
+        var latestMM=[].concat(entries).reverse().find(function(e){return e.muscle_mass_lbs>0;})||null;
+        var prevMM=latestMM?([].concat(entries).filter(function(e){return e.muscle_mass_lbs>0&&e.id!==latestMM.id;}).pop()||null):null;
         var hasBFData=entries.filter(function(e){return e.body_fat_pct>0;}).length>=2;
-        var wActive=window._portalBsField==='weight_lbs';
-        var chartHtml=wActive?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):(hasBFData?renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc'):'');
+        var hasMMData=entries.filter(function(e){return e.muscle_mass_lbs>0;}).length>=2;
+        var af=window._portalBsField;
+        var wActive=af==='weight_lbs', bfActive=af==='body_fat_pct', mmActive=af==='muscle_mass_lbs';
+        var chartHtml=wActive?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):bfActive&&hasBFData?renderBodyStatsChart(entries.filter(function(e){return e.body_fat_pct>0;}),'body_fat_pct','#c084fc'):mmActive&&hasMMData?renderBodyStatsChart(entries.filter(function(e){return e.muscle_mass_lbs>0;}),'muscle_mass_lbs','#43d9a2'):'';
+        var histHtml='';
+        if(entries.length>0){
+          histHtml='<div style="margin-top:14px;border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;">' +
+            '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);font-weight:700;margin-bottom:8px;">History</div>';
+          [].concat(entries).reverse().slice(0,10).forEach(function(e){
+            var hasW=parseFloat(e.weight_lbs)>0,hasBF=parseFloat(e.body_fat_pct)>0,hasMM=parseFloat(e.muscle_mass_lbs)>0;
+            var vals=[
+              hasW?'<span style="color:rgba(79,163,232,0.8);">'+parseFloat(e.weight_lbs).toFixed(1)+' lbs</span>':'',
+              hasBF?'<span style="color:rgba(192,132,252,0.8);">'+parseFloat(e.body_fat_pct).toFixed(1)+'% BF</span>':'',
+              hasMM?'<span style="color:rgba(67,217,162,0.8);">'+parseFloat(e.muscle_mass_lbs).toFixed(1)+' muscle</span>':''
+            ].filter(Boolean).join('<span style="color:rgba(180,200,230,0.2);margin:0 4px;">·</span>');
+            histHtml+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.05);">' +
+              '<div style="font-size:12px;color:rgba(180,200,230,0.4);">'+fmtD(e.date)+'</div>' +
+              '<div style="display:flex;align-items:center;gap:10px;font-size:12px;">'+vals+
+                '<button onclick="window._openBodyStatSheet(window[\'_portalBsEntries\'].find(function(x){return x.id===\''+e.id+'\';}))" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Syne,sans-serif;">Edit</button>' +
+              '</div>' +
+            '</div>';
+          });
+          histHtml+='</div>';
+        }
         bsEl2.innerHTML =
           '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">' +
             '<button onclick="window._openBodyStatSheet()" style="background:rgba(37,99,235,0.15);color:#7ec8ff;border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
-            '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:12px;cursor:pointer;">' +
-              '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:5px;">Weight'+(wActive?' ▾':'')+'</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">'+(latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—')+'<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:3px;">lbs</span></div>' +
-              '<div style="margin-top:5px;min-height:14px;">'+delt(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')+'</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
+            '<div data-bs-tile="weight_lbs" onclick="window._switchPortalBsChart(\'weight_lbs\')" style="background:'+(wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)')+';border:'+(wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)')+';border-radius:12px;padding:10px;cursor:pointer;">' +
+              '<div data-bs-label="Weight" data-bs-tile="weight_lbs" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(79,163,232,'+(wActive?'0.8':'0.45')+');margin-bottom:4px;">Weight'+(wActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
+              '<div style="margin-top:4px;min-height:13px;">'+delt(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')+'</div>' +
             '</div>' +
-            '<div data-bs-tile="body_fat_pct" onclick="window._switchPortalBsChart(\'body_fat_pct\')" style="background:'+(!wActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)')+';border:'+(!wActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)')+';border-radius:12px;padding:12px;cursor:'+(hasBFData?'pointer':'default')+';'+(!hasBFData?'opacity:0.5;':'')+'">'+
-              '<div data-bs-label="Body Fat" data-bs-tile="body_fat_pct" style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,'+(!wActive?'0.8':'0.45')+');margin-bottom:5px;">Body Fat'+(!wActive?' ▾':'')+'</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">'+(latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—')+'<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>' +
-              '<div style="margin-top:5px;min-height:14px;">'+delt(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')+'</div>' +
+            '<div data-bs-tile="body_fat_pct" onclick="window._switchPortalBsChart(\'body_fat_pct\')" style="background:'+(bfActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)')+';border:'+(bfActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)')+';border-radius:12px;padding:10px;cursor:'+(hasBFData?'pointer':'default')+';'+(!hasBFData?'opacity:0.5;':'')+'">'+
+              '<div data-bs-label="Body Fat" data-bs-tile="body_fat_pct" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(192,132,252,'+(bfActive?'0.8':'0.45')+');margin-bottom:4px;">Body Fat'+(bfActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>' +
+              '<div style="margin-top:4px;min-height:13px;">'+delt(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')+'</div>' +
+            '</div>' +
+            '<div data-bs-tile="muscle_mass_lbs" onclick="window._switchPortalBsChart(\'muscle_mass_lbs\')" style="background:'+(mmActive?'rgba(67,217,162,0.14)':'rgba(67,217,162,0.04)')+';border:'+(mmActive?'1.5px solid rgba(67,217,162,0.45)':'1px solid rgba(67,217,162,0.1)')+';border-radius:12px;padding:10px;cursor:'+(hasMMData?'pointer':'default')+';'+(!hasMMData?'opacity:0.5;':'')+'">'+
+              '<div data-bs-label="Muscle" data-bs-tile="muscle_mass_lbs" style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(67,217,162,'+(mmActive?'0.8':'0.45')+');margin-bottom:4px;">Muscle'+(mmActive?' ▾':'')+'</div>' +
+              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;line-height:1;">'+(latestMM?parseFloat(latestMM.muscle_mass_lbs).toFixed(1):'—')+'<span style="font-size:10px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">lbs</span></div>' +
+              '<div style="margin-top:4px;min-height:13px;">'+delt(latestMM&&latestMM.muscle_mass_lbs,prevMM&&prevMM.muscle_mass_lbs,' lbs')+'</div>' +
             '</div>' +
           '</div>' +
           '<div id="portal-bs-chart">'+chartHtml+'</div>' +
-          bsScanGalleryHtml(entries);
+          bsScanGalleryHtml(entries) +
+          histHtml;
 
         window._switchPortalBsChart = function(field) {
           var ents = window._portalBsEntries || [];
           if (field === 'body_fat_pct' && ents.filter(function(e){return e.body_fat_pct>0;}).length < 2) return;
+          if (field === 'muscle_mass_lbs' && ents.filter(function(e){return e.muscle_mass_lbs>0;}).length < 2) return;
           window._portalBsField = field;
-          var isW = field === 'weight_lbs';
-          // Swap chart
+          var colMap = {'weight_lbs':'79,163,232','body_fat_pct':'192,132,252','muscle_mass_lbs':'67,217,162'};
+          var hexMap = {'weight_lbs':'#4fa3e8','body_fat_pct':'#c084fc','muscle_mass_lbs':'#43d9a2'};
+          var filterMap = {
+            'weight_lbs': function(e){return e.weight_lbs>0;},
+            'body_fat_pct': function(e){return e.body_fat_pct>0;},
+            'muscle_mass_lbs': function(e){return e.muscle_mass_lbs>0;}
+          };
           var chartEl = document.getElementById('portal-bs-chart');
-          if (chartEl) {
-            var data = isW ? ents : ents.filter(function(e){return e.body_fat_pct>0;});
-            chartEl.innerHTML = renderBodyStatsChart(data, field, isW ? '#4fa3e8' : '#c084fc');
-          }
-          // Update tile styles
+          if (chartEl) chartEl.innerHTML = renderBodyStatsChart(ents.filter(filterMap[field]), field, hexMap[field]);
           var tiles = document.querySelectorAll('#portal-body-stats [data-bs-tile]');
           tiles.forEach(function(t) {
-            var tw = t.dataset.bsTile === 'weight_lbs';
-            var active = (tw && isW) || (!tw && !isW);
-            var col = tw ? '79,163,232' : '192,132,252';
+            var tf = t.dataset.bsTile;
+            if (!colMap[tf]) return;
+            var active = tf === field;
+            var col = colMap[tf];
             t.style.background = active ? 'rgba('+col+',0.14)' : 'rgba('+col+',0.04)';
             t.style.border = active ? '1.5px solid rgba('+col+',0.45)' : '1px solid rgba('+col+',0.1)';
             var lbl = t.querySelector('[data-bs-label]');
@@ -3958,34 +3992,40 @@ function startClientPortal(id) {
       }).catch(function(){ var e=document.getElementById('portal-body-stats'); if(e) e.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);">Stats unavailable.</div>'; });
     };
 
-    window._openBodyStatSheet = function() {
+    window._openBodyStatSheet = function(entry) {
+      var isEdit = !!(entry && entry.id);
       var sheet = document.getElementById('body-stat-sheet');
       if (!sheet) { sheet = document.createElement('div'); sheet.id = 'body-stat-sheet'; document.body.appendChild(sheet); }
       sheet.innerHTML =
         '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 20px;height:54px;display:flex;align-items:center;gap:12px;max-width:480px;margin:0 auto;">' +
           '<div onclick="window._closeBodyStatSheet()" style="font-size:13px;font-weight:700;color:rgba(126,200,255,0.7);cursor:pointer;">&#8592; Cancel</div>' +
-          '<div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;text-align:center;">Log Body Stats</div>' +
+          '<div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;text-align:center;">'+(isEdit?'Edit Body Stats':'Log Body Stats')+'</div>' +
           '<div style="width:64px;"></div>' +
         '</div>' +
         '<div style="padding:24px 20px;max-width:480px;margin:0 auto;">' +
+          (isEdit ? '<input type="hidden" id="portal-bs-edit-id" value="'+entry.id+'">' : '') +
           '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Weight (lbs)</div>' +
-          '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;"></div>' +
+          '<input id="portal-bs-weight" type="number" step="0.1" placeholder="e.g. 165.5" inputmode="decimal" value="'+(isEdit&&entry.weight_lbs?entry.weight_lbs:'')+'" style="width:100%;box-sizing:border-box;padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:24px;font-weight:700;font-family:Syne,sans-serif;outline:none;"></div>' +
           '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Body Fat % <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
-          '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;"></div>' +
+          '<input id="portal-bs-bf" type="number" step="0.1" placeholder="e.g. 18.5" inputmode="decimal" value="'+(isEdit&&entry.body_fat_pct?entry.body_fat_pct:'')+'" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;"></div>' +
+          '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Muscle Mass (lbs) <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+          '<input id="portal-bs-muscle" type="number" step="0.1" placeholder="e.g. 145.0" inputmode="decimal" value="'+(isEdit&&entry.muscle_mass_lbs?entry.muscle_mass_lbs:'')+'" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:17px;font-family:Syne,sans-serif;outline:none;"></div>' +
           '<div style="margin-bottom:18px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Notes <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
-          '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;"></div>' +
-          '<div style="margin-bottom:28px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
-          '<label for="portal-bs-files" style="display:flex;align-items:center;gap:10px;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px dashed rgba(100,160,255,0.2);border-radius:12px;cursor:pointer;">' +
-          '<span style="font-size:18px;line-height:1;">📎</span>' +
-          '<span id="portal-bs-files-lbl" style="font-size:13px;color:rgba(126,200,255,0.5);">Attach scan or photo</span>' +
-          '</label>' +
-          '<input id="portal-bs-files" type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="window._onBSScanFilesChange(this)">' +
-          '<div id="portal-bs-files-preview" style="margin-top:6px;"></div>' +
-          '</div>' +
-          '<button id="portal-bs-save-btn" onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">Save Stats</button>' +
+          '<input id="portal-bs-notes" type="text" placeholder="How are you feeling?" value="'+(isEdit&&entry.notes?entry.notes.replace(/"/g,'&quot;'):'')+'" style="width:100%;box-sizing:border-box;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:12px;color:#fff;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;"></div>' +
+          (!isEdit ?
+            '<div style="margin-bottom:28px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:10px;color:rgba(180,200,230,0.25);font-weight:400;">(optional)</span></div>' +
+            '<label for="portal-bs-files" style="display:flex;align-items:center;gap:10px;padding:13px 16px;background:rgba(255,255,255,0.04);border:1px dashed rgba(100,160,255,0.2);border-radius:12px;cursor:pointer;">' +
+            '<span style="font-size:18px;line-height:1;">📎</span>' +
+            '<span id="portal-bs-files-lbl" style="font-size:13px;color:rgba(126,200,255,0.5);">Attach scan or photo</span>' +
+            '</label>' +
+            '<input id="portal-bs-files" type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="window._onBSScanFilesChange(this)">' +
+            '<div id="portal-bs-files-preview" style="margin-top:6px;"></div>' +
+            '</div>'
+          : '') +
+          '<button id="portal-bs-save-btn" onclick="window._saveBodyStat()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:14px;padding:17px;font-family:Syne,sans-serif;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(37,99,235,0.4);">'+(isEdit?'Update Stats':'Save Stats')+'</button>' +
         '</div>';
       requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
-      setTimeout(function(){var w=document.getElementById('portal-bs-weight');if(w)w.focus();},400);
+      if (!isEdit) setTimeout(function(){var w=document.getElementById('portal-bs-weight');if(w)w.focus();},400);
     };
 
     window._closeBodyStatSheet = function() {
@@ -4015,17 +4055,21 @@ function startClientPortal(id) {
     };
 
     window._saveBodyStat = function() {
-      var wEl=document.getElementById('portal-bs-weight'), bfEl=document.getElementById('portal-bs-bf'), nEl=document.getElementById('portal-bs-notes'), fEl=document.getElementById('portal-bs-files');
-      if (!wEl||!wEl.value) { if(wEl) wEl.style.borderColor='rgba(255,92,106,0.5)'; return; }
+      var wEl=document.getElementById('portal-bs-weight'), bfEl=document.getElementById('portal-bs-bf'), mmEl=document.getElementById('portal-bs-muscle'), nEl=document.getElementById('portal-bs-notes'), fEl=document.getElementById('portal-bs-files');
+      var editIdEl=document.getElementById('portal-bs-edit-id');
+      var editId=editIdEl?editIdEl.value:'';
+      if (!editId && (!wEl||!wEl.value)) { if(wEl) wEl.style.borderColor='rgba(255,92,106,0.5)'; return; }
       var btn=document.getElementById('portal-bs-save-btn');
       var files = fEl && fEl.files ? Array.from(fEl.files) : [];
       if(btn){btn.disabled=true;btn.textContent=files.length?'Uploading...':'Saving...';}
-      var today2=new Date().toISOString().split('T')[0];
-      var body={client_id:window._portalClientId,date:today2,weight_lbs:parseFloat(wEl.value)};
+      var body={};
+      if(!editId){body.client_id=window._portalClientId;body.date=new Date().toISOString().split('T')[0];}
+      if(wEl&&wEl.value)body.weight_lbs=parseFloat(wEl.value);
       if(bfEl&&bfEl.value)body.body_fat_pct=parseFloat(bfEl.value);
+      if(mmEl&&mmEl.value)body.muscle_mass_lbs=parseFloat(mmEl.value);
       if(nEl&&nEl.value)body.notes=nEl.value;
       var ts=Date.now(), cid=window._portalClientId;
-      var uploadAll = files.length ? Promise.all(files.map(function(f,i){
+      var uploadAll = (!editId && files.length) ? Promise.all(files.map(function(f,i){
         var safeName=ts+'-'+i+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
         var path=cid+'/'+safeName;
         return fetch(SUPABASE_URL+'/storage/v1/object/body-scans/'+path,{
@@ -4040,15 +4084,22 @@ function startClientPortal(id) {
       uploadAll.then(function(scanUrls){
         if(scanUrls.length)body.scan_urls=scanUrls;
         if(btn)btn.textContent='Saving...';
-        return fetch(SUPABASE_URL+'/rest/v1/body_stats',{
-          method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-          body:JSON.stringify(body)
-        });
+        if(editId){
+          return fetch(SUPABASE_URL+'/rest/v1/body_stats?id=eq.'+editId,{
+            method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+            body:JSON.stringify(body)
+          });
+        } else {
+          return fetch(SUPABASE_URL+'/rest/v1/body_stats',{
+            method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+            body:JSON.stringify(body)
+          });
+        }
       }).then(function(r){
         if(!r.ok)throw new Error();
         window._closeBodyStatSheet();
         setTimeout(function(){if(window._loadPortalBodyStats)window._loadPortalBodyStats();},420);
-      }).catch(function(){if(btn){btn.disabled=false;btn.textContent='Save Stats';}});
+      }).catch(function(){if(btn){btn.disabled=false;btn.textContent=editId?'Update Stats':'Save Stats';}});
     };
 
     window._showPortalTab('home');
@@ -6179,14 +6230,8 @@ function switchBodyStatChart(cid, field) {
   const entries = window['_bsEntries_'+cid];
   if (!entries) return;
   if (field === 'body_fat_pct' && entries.filter(e=>e.body_fat_pct>0).length < 2) return;
+  if (field === 'muscle_mass_lbs' && entries.filter(e=>e.muscle_mass_lbs>0).length < 2) return;
   window['_bsField_'+cid] = field;
-  const chartEl = document.getElementById('bs-chart-'+cid);
-  if (chartEl) {
-    const data = field === 'weight_lbs' ? entries : entries.filter(e=>e.body_fat_pct>0);
-    const color = field === 'weight_lbs' ? '#4fa3e8' : '#c084fc';
-    chartEl.innerHTML = renderBodyStatsChart(data, field, color);
-  }
-  // Re-render tiles to update active state
   const c = clients.find(x=>x.id===cid);
   if (c) renderBodyStatsCoach(c);
 }
@@ -6215,28 +6260,39 @@ async function renderBodyStatsCoach(c) {
   const activeField = window['_bsField_'+c.id] || 'weight_lbs';
   window['_bsEntries_'+c.id] = entries;
   const hasBFData = entries.filter(e=>e.body_fat_pct>0).length >= 2;
+  const hasMM = entries.filter(e=>e.muscle_mass_lbs>0).length >= 1;
+  const latestMM = [...entries].reverse().find(e=>e.muscle_mass_lbs>0)||null;
+  const prevMM = latestMM?([...entries].filter(e=>e.muscle_mass_lbs>0&&e.id!==latestMM.id).pop()||null):null;
+  const hasMM2 = entries.filter(e=>e.muscle_mass_lbs>0).length >= 2;
   const wActive = activeField === 'weight_lbs';
-  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-    <div onclick="switchBodyStatChart('${c.id}','weight_lbs')" style="background:${wActive?'rgba(79,163,232,0.14)':'rgba(79,163,232,0.04)'};border:${wActive?'1.5px solid rgba(79,163,232,0.45)':'1px solid rgba(79,163,232,0.1)'};border-radius:12px;padding:12px;cursor:pointer;transition:all 0.15s;">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(79,163,232,${wActive?'0.8':'0.45'});margin-bottom:5px;">Weight${wActive?' ▾':''}</div>
-      <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:3px;">lbs</span></div>
-      <div style="margin-top:5px;min-height:14px;">${delta(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs')}</div>
-    </div>
-    <div onclick="switchBodyStatChart('${c.id}','body_fat_pct')" style="background:${!wActive?'rgba(192,132,252,0.14)':'rgba(192,132,252,0.04)'};border:${!wActive?'1.5px solid rgba(192,132,252,0.45)':'1px solid rgba(192,132,252,0.1)'};border-radius:12px;padding:12px;cursor:${hasBFData?'pointer':'default'};transition:all 0.15s;${!hasBFData?'opacity:0.5;':''}">
-      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,${!wActive?'0.8':'0.45'});margin-bottom:5px;">Body Fat${!wActive?' ▾':''}</div>
-      <div style="font-family:Syne,sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;">${latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—'}<span style="font-size:12px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">%</span></div>
-      <div style="margin-top:5px;min-height:14px;">${delta(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%')}</div>
-    </div>
+  const bfActive = activeField === 'body_fat_pct';
+  const mmActive = activeField === 'muscle_mass_lbs';
+  const tile=(field,label,val,unit,dlt,col,active,hasData)=>`
+    <div onclick="switchBodyStatChart('${c.id}','${field}')" style="background:${active?`rgba(${col},0.14)`:`rgba(${col},0.04)`};border:${active?`1.5px solid rgba(${col},0.45)`:`1px solid rgba(${col},0.1)`};border-radius:12px;padding:12px;cursor:${hasData?'pointer':'default'};transition:all 0.15s;${!hasData?'opacity:0.45;':''}">
+      <div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(${col},${active?'0.8':'0.45'});margin-bottom:5px;">${label}${active?' ▾':''}</div>
+      <div style="font-family:Syne,sans-serif;font-size:24px;font-weight:800;color:#fff;line-height:1;">${val}<span style="font-size:11px;font-weight:400;color:rgba(180,200,230,0.35);margin-left:2px;">${unit}</span></div>
+      <div style="margin-top:5px;min-height:14px;">${dlt}</div>
+    </div>`;
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+    ${tile('weight_lbs','Weight',latestW?parseFloat(latestW.weight_lbs).toFixed(1):'—','lbs',delta(latestW&&latestW.weight_lbs,prevW&&prevW.weight_lbs,' lbs'),'79,163,232',wActive,true)}
+    ${tile('body_fat_pct','Body Fat',latestBF?parseFloat(latestBF.body_fat_pct).toFixed(1):'—','%',delta(latestBF&&latestBF.body_fat_pct,prevBF&&prevBF.body_fat_pct,'%'),'192,132,252',bfActive,hasBFData)}
+    ${tile('muscle_mass_lbs','Muscle',latestMM?parseFloat(latestMM.muscle_mass_lbs).toFixed(1):'—','lbs',delta(latestMM&&latestMM.muscle_mass_lbs,prevMM&&prevMM.muscle_mass_lbs,' lbs'),'67,217,162',mmActive,hasMM2)}
   </div>
-  <div id="bs-chart-${c.id}">${activeField==='weight_lbs'?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):(hasBFData?renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc'):'')}</div>`;
+  <div id="bs-chart-${c.id}">${wActive?renderBodyStatsChart(entries,'weight_lbs','#4fa3e8'):bfActive&&hasBFData?renderBodyStatsChart(entries.filter(e=>e.body_fat_pct>0),'body_fat_pct','#c084fc'):mmActive&&hasMM2?renderBodyStatsChart(entries.filter(e=>e.muscle_mass_lbs>0),'muscle_mass_lbs','#43d9a2'):''}</div>`;
   html += '<div style="margin-top:10px;border-top:1px solid rgba(100,160,255,0.07);padding-top:6px;">';
   entries.slice(-6).reverse().forEach(e=>{
-    const hasW=parseFloat(e.weight_lbs)>0, hasBF=parseFloat(e.body_fat_pct)>0;
+    const hasW=parseFloat(e.weight_lbs)>0, hasBF=parseFloat(e.body_fat_pct)>0, hasMM=parseFloat(e.muscle_mass_lbs)>0;
     const scanLink=(e.scan_urls&&e.scan_urls.length)?`<a href="${e.scan_urls[0].url}" target="_blank" style="font-size:13px;color:rgba(126,200,255,0.45);text-decoration:none;" title="${e.scan_urls.length} scan(s)">📎</a>`:'';
+    const vals=[
+      hasW?parseFloat(e.weight_lbs).toFixed(1)+' lbs':'',
+      hasBF?`<span style="color:rgba(192,132,252,0.8);">${parseFloat(e.body_fat_pct).toFixed(1)}% BF</span>`:'',
+      hasMM?`<span style="color:rgba(67,217,162,0.8);">${parseFloat(e.muscle_mass_lbs).toFixed(1)} muscle</span>`:'',
+    ].filter(Boolean).join('<span style="color:rgba(180,200,230,0.2);margin:0 4px;">·</span>');
     html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.05);">
-      <span style="font-size:12px;color:rgba(180,200,230,0.4);flex:1;">${fmtDate(e.date)}</span>
-      <span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.85);">${hasW?parseFloat(e.weight_lbs).toFixed(1)+' lbs':''}${hasW&&hasBF?'<span style="color:rgba(180,200,230,0.2);margin:0 4px;">·</span>':''}${hasBF?'<span style="color:rgba(192,132,252,0.75);">'+parseFloat(e.body_fat_pct).toFixed(1)+'% BF</span>':''}${!hasW&&!hasBF?'<span style="color:rgba(180,200,230,0.25);font-size:11px;">Scan only</span>':''}</span>
+      <span style="font-size:12px;color:rgba(180,200,230,0.4);flex-shrink:0;">${fmtDate(e.date)}</span>
+      <span style="font-size:12px;font-weight:600;color:rgba(232,237,245,0.85);flex:1;">${vals||'<span style="color:rgba(180,200,230,0.25);font-size:11px;">Scan only</span>'}</span>
       ${scanLink}
+      <button onclick="openCoachBodyStatForm('${c.id}',window['_bsEntries_${c.id}']&&window['_bsEntries_${c.id}'].find(function(x){return x.id==='${e.id}'||x.id===${JSON.stringify(e.id)};}))" style="background:none;border:none;font-size:12px;color:rgba(126,200,255,0.35);cursor:pointer;padding:0 3px;line-height:1;" title="Edit">✎</button>
       <button onclick="deleteBodyStat('${c.id}','${e.id}')" style="background:none;border:none;font-size:12px;color:rgba(255,92,106,0.25);cursor:pointer;padding:0 2px;line-height:1;" title="Delete">✕</button>
     </div>`;
   });
@@ -6253,38 +6309,49 @@ async function deleteBodyStat(cid, id) {
   }catch(e){toast('Error deleting');}
 }
 
-function openCoachBodyStatForm(cid) {
+function openCoachBodyStatForm(cid, entry) {
   const key='_bsf_'+cid;
-  window[key]=!window[key];
   const el=document.getElementById('bodystats-form-'+cid);
   if(!el)return;
-  if(!window[key]){el.style.display='none';return;}
+  // Toggle off if same mode (no entry = add mode) and already open
+  if(!entry){
+    window[key]=!window[key];
+    if(!window[key]){el.style.display='none';return;}
+  } else {
+    window[key]=true;
+  }
   el.style.display='block';
   const today=new Date().toISOString().split('T')[0];
+  const isEdit=!!entry;
+  const inp=(id,type,val,ph)=>`<input id="${id}" type="${type}" step="0.1" value="${val||''}" placeholder="${ph}" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;">`;
+  const lbl=t=>`<div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">${t}</div>`;
   el.innerHTML=`<div style="background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.18);border-radius:12px;padding:14px;margin-top:10px;">
+    ${isEdit?`<div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(126,200,255,0.5);font-weight:700;margin-bottom:10px;">Editing entry</div>`:''}
+    <input type="hidden" id="bsEditId-${cid}" value="${isEdit?entry.id:''}">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Date</div>
-        <input id="bsDate-${cid}" type="date" value="${today}" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
-      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Weight (lbs)</div>
-        <input id="bsWeight-${cid}" type="number" step="0.1" placeholder="e.g. 165.2" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+      <div>${lbl('Date')}<input id="bsDate-${cid}" type="date" value="${isEdit?entry.date:today}" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+      <div>${lbl('Weight (lbs)')}${inp('bsWeight-'+cid,'number',isEdit?entry.weight_lbs:'','e.g. 165.2')}</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Body Fat %</div>
-        <input id="bsBF-${cid}" type="number" step="0.1" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
-      <div><div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Notes</div>
-        <input id="bsNotes-${cid}" type="text" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div>${lbl('Body Fat %')}${inp('bsBF-'+cid,'number',isEdit?entry.body_fat_pct:'','optional')}</div>
+      <div>${lbl('Muscle Mass (lbs)')}${inp('bsMM-'+cid,'number',isEdit?entry.muscle_mass_lbs:'','optional')}</div>
+      <div>${lbl('Notes')}<input id="bsNotes-${cid}" type="text" value="${isEdit?entry.notes||'':''}" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
     </div>
     <div style="margin-bottom:10px;">
       <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:9px;font-weight:400;color:rgba(180,200,230,0.2);">(optional)</span></div>
       <label for="bsFiles-${cid}" style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--surface2);border:1px dashed rgba(100,160,255,0.2);border-radius:8px;cursor:pointer;">
         <span style="font-size:14px;line-height:1;">📎</span>
-        <span id="bsFilesLbl-${cid}" style="font-size:12px;color:rgba(126,200,255,0.45);">Attach scan or photo</span>
+        <span id="bsFilesLbl-${cid}" style="font-size:12px;color:rgba(126,200,255,0.45);">${isEdit&&entry.scan_urls&&entry.scan_urls.length?entry.scan_urls.length+' scan(s) on file — attach to replace':'Attach scan or photo'}</span>
       </label>
       <input id="bsFiles-${cid}" type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="onCoachBSScanChange('${cid}',this)">
       <div id="bsFilesPrev-${cid}" style="margin-top:4px;"></div>
     </div>
-    <button id="bsSaveBtn-${cid}" onclick="saveCoachBodyStat('${cid}')" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;">Save Entry</button>
+    <div style="display:flex;gap:8px;">
+      <button onclick="el=document.getElementById('bodystats-form-${cid}');if(el){el.style.display='none';}window['_bsf_${cid}']=false;" style="flex:1;background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.5);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Cancel</button>
+      <button id="bsSaveBtn-${cid}" onclick="saveCoachBodyStat('${cid}')" style="flex:2;background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;">${isEdit?'Update Entry':'Save Entry'}</button>
+    </div>
   </div>`;
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function onCoachBSScanChange(cid, input) {
@@ -6304,9 +6371,12 @@ function onCoachBSScanChange(cid, input) {
 }
 
 async function saveCoachBodyStat(cid) {
+  const editIdEl=document.getElementById('bsEditId-'+cid);
+  const editId=editIdEl&&editIdEl.value?editIdEl.value:null;
   const dateEl=document.getElementById('bsDate-'+cid);
   const wEl=document.getElementById('bsWeight-'+cid);
   const bfEl=document.getElementById('bsBF-'+cid);
+  const mmEl=document.getElementById('bsMM-'+cid);
   const nEl=document.getElementById('bsNotes-'+cid);
   const fEl=document.getElementById('bsFiles-'+cid);
   const btn=document.getElementById('bsSaveBtn-'+cid);
@@ -6314,33 +6384,34 @@ async function saveCoachBodyStat(cid) {
   const entry={client_id:cid,date:dateEl.value};
   if(wEl&&wEl.value)entry.weight_lbs=parseFloat(wEl.value);
   if(bfEl&&bfEl.value)entry.body_fat_pct=parseFloat(bfEl.value);
+  if(mmEl&&mmEl.value)entry.muscle_mass_lbs=parseFloat(mmEl.value);
   if(nEl&&nEl.value)entry.notes=nEl.value;
-  const files = fEl&&fEl.files ? Array.from(fEl.files) : [];
+  const files=fEl&&fEl.files?Array.from(fEl.files):[];
   if(btn){btn.disabled=true;btn.textContent=files.length?'Uploading...':'Saving...';}
-  try {
-    if (files.length) {
-      const ts = Date.now();
-      const scanUrls = await Promise.all(files.map((f,i) => {
-        const safeName = ts+'-'+i+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-        const path = cid+'/'+safeName;
-        return fetch(SB_URL+'/storage/v1/object/body-scans/'+path, {
+  try{
+    if(files.length){
+      const ts=Date.now();
+      const scanUrls=await Promise.all(files.map((f,i)=>{
+        const safeName=ts+'-'+i+'-'+f.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path=cid+'/'+safeName;
+        return fetch(SB_URL+'/storage/v1/object/body-scans/'+path,{
           method:'POST',
           headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':f.type||'application/octet-stream','x-upsert':'false'},
           body:f
-        }).then(r=>{ if(!r.ok)throw new Error('upload'); return {url:SB_URL+'/storage/v1/object/public/body-scans/'+path,name:f.name,type:f.type}; });
+        }).then(r=>{if(!r.ok)throw new Error('upload');return{url:SB_URL+'/storage/v1/object/public/body-scans/'+path,name:f.name,type:f.type};});
       }));
-      entry.scan_urls = scanUrls;
+      entry.scan_urls=scanUrls;
     }
     if(btn)btn.textContent='Saving...';
-    await db.addBodyStat(entry);
-    toast('Stats saved ✓');
+    if(editId){await db.updateBodyStat(editId,entry);}else{await db.addBodyStat(entry);}
+    toast(editId?'Entry updated ✓':'Stats saved ✓');
     window['_bsf_'+cid]=false;
     const fe=document.getElementById('bodystats-form-'+cid);
     if(fe)fe.style.display='none';
     const c=clients.find(x=>x.id===cid);
     if(c)renderBodyStatsCoach(c);
-  } catch(e){
-    if(btn){btn.disabled=false;btn.textContent='Save Entry';}
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent=editId?'Update Entry':'Save Entry';}
     toast('Error saving');
   }
 }
