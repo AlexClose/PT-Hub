@@ -2412,13 +2412,26 @@ async function confirmLogSession(){
 function openRenew(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
-  document.getElementById('renewPkg').value=c.package_size||12;openModal('renewModal');
+  const sharedPkg=c.shared_package_id?sharedPackages.find(p=>p.id===c.shared_package_id):null;
+  document.getElementById('renewPkg').value=sharedPkg?(sharedPkg.total_sessions||24):(c.package_size||12);
+  openModal('renewModal');
 }
 async function confirmRenew(){
   const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
   const pkg=parseInt(document.getElementById('renewPkg').value);
-  try{await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;closeModal('renewModal');renderClientModal(c);renderDashboard();toast(`${c.first} renewed — ${pkg} sessions ✓`);}
-  catch(e){toast('Error renewing package');}
+  const sharedPkg=c.shared_package_id?sharedPackages.find(p=>p.id===c.shared_package_id):null;
+  try{
+    if(sharedPkg){
+      await db.updateSharedPkg(sharedPkg.id,{remaining_sessions:pkg,total_sessions:pkg});
+      sharedPkg.remaining_sessions=pkg;sharedPkg.total_sessions=pkg;
+      closeModal('renewModal');renderClientModal(c);renderDashboard();
+      toast(`Shared package renewed — ${pkg} sessions ✓`);
+    } else {
+      await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;
+      closeModal('renewModal');renderClientModal(c);renderDashboard();
+      toast(`${c.first} renewed — ${pkg} sessions ✓`);
+    }
+  }catch(e){toast('Error renewing package');}
 }
 async function deleteClient(id){
   if(!confirm('Remove this client? This cannot be undone.'))return;
