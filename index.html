@@ -5392,8 +5392,8 @@ var _MH_TARGETS={
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
-  function c(m){var wk=(scores[m]||0)/weeks;return _mhColor(wk,_MH_TARGETS[m]||10)||'rgba(255,255,255,0.05)';}
-  function o(m){return(scores[m]||0)>0?'0.85':'0.12';}
+  function c(m){var wk=(scores[m]||0)/weeks;return _mhColor(wk,_MH_TARGETS[m]||10)||'#1e3c5e';}
+  function o(m){return(scores[m]||0)>0?'0.88':'0.5';}
   
   // Professional anatomical diagram from workout-planner GitHub
   // Muscle groups mapped to our heat map colors
@@ -6078,7 +6078,17 @@ function renderMuscleDiagram(scores,weeksInPeriod){
   var colored = svg
     .replace(/\.st4\{fill:#FF0000;stroke:#FF0000;/g, '.st4{fill:inherit;stroke:inherit;')
     .replace(/\.st5\{fill:#FF0000;stroke:#FF0000;/g, '.st5{fill:inherit;stroke:inherit;')
-    .replace('xml:space="preserve">', 'xml:space="preserve" style="fill:rgba(255,255,255,0.06);stroke:rgba(255,255,255,0.06)">');
+    // Body outline borders: visible blue-gray instead of black-on-dark
+    .replace('.st0{fill:none;stroke:#000000;stroke-width:5;stroke-miterlimit:10;}',
+             '.st0{fill:none;stroke:rgba(100,150,200,0.35);stroke-width:4;stroke-miterlimit:10;}')
+    // Muscle path inner strokes: inherit from parent group color instead of black
+    .replace('.st3{stroke:#000000;stroke-width:5;stroke-miterlimit:10;}',
+             '.st3{stroke:inherit;stroke-width:1.5;stroke-miterlimit:10;}')
+    // Face/detail paths: subtle instead of bright white
+    .replace('.st6{fill:#FFFFFF;stroke:#000000;stroke-width:5;stroke-miterlimit:10;}',
+             '.st6{fill:rgba(140,180,220,0.1);stroke:rgba(100,150,200,0.18);stroke-width:2;stroke-miterlimit:10;}')
+    // Base SVG fill: dark navy so non-muscle body areas have a visible shape
+    .replace('xml:space="preserve">', 'xml:space="preserve" style="fill:rgba(15,35,65,0.6);stroke:rgba(15,35,65,0.6)">');
 
   for (var muscleKey in muscleMappings) {
     var svgIds = muscleMappings[muscleKey];
