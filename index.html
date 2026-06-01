@@ -5284,7 +5284,7 @@ function exerciseToMuscles(name) {
   // Biceps isolation
   if(/bicep|hammer curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
-  if(/\bcurls?\b/.test(n)&&!/leg curl/.test(n))
+  if(/\bcurls?\b/.test(n)&&!/leg curl|hamstring|ham curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
   // Chest fly / pec dec — isolation, no tricep involvement
   if(/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
