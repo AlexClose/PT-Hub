@@ -898,6 +898,7 @@ const db={
   addEquipment: (name)  => sb('POST','equipment',{name}),
   delEquipment: (id)    => sb('DELETE','equipment',null,`?id=eq.${id}`),
   addExLog:     (d)     => sb('POST','exercise_logs',d),
+  updateSession:(id,d)  => sb('PATCH','sessions',d,`?id=eq.${id}`),
   getLibrary:   ()      => sb('GET','exercise_library',null,'?order=muscle_group.asc,name.asc'),
   getSharedPkgs: ()     => sb('GET','shared_packages',null,'?order=name.asc'),
   updateSharedPkg:(id,d)=> sb('PATCH','shared_packages',d,`?id=eq.${id}`),
@@ -1597,7 +1598,10 @@ function renderClientModal(c){
     :'flex:1;background:none;border:none;border-radius:9px;padding:9px 0;font-family:\'Syne\',sans-serif;font-size:12px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;';
   const tbc=t=>t===curTab?'block':'none';
 
-  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div></div>`;};
+  // Cache sessions by ID so Edit buttons can look them up by ID
+  window['_sessMap_'+c.id]={};
+  sessions.forEach(s=>{if(s.id)window['_sessMap_'+c.id][s.id]=s;});
+  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div>${s.id?`<button onclick="event.stopPropagation();openEditSession('${c.id}','${s.id}')" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 9px;cursor:pointer;font-family:Syne,sans-serif;flex-shrink:0;">Edit</button>`:''}</div>`;};
   const buildSessHtml=dnm=>sessions.length===0
     ?'<div style="padding:10px 0;font-size:13px;color:rgba(180,200,230,0.3)">No sessions logged yet.</div>'
     :sessions.slice(0,3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
@@ -2569,6 +2573,94 @@ function confirmAddDay(){
   if(!name){toast('Enter a day name');return;}
   buildingDays.push({name,color:_selectedDayColor,exercises:[]});
   closeModal('addDayModal');renderBuildDayList();
+}
+
+// ── Edit completed session (coach only) ─────────────────────────────────────
+function openEditSession(cid, sessionId) {
+  const sessMap = window['_sessMap_'+cid];
+  const s = sessMap && sessMap[sessionId];
+  if (!s) return;
+  const workout = Array.isArray(s.workout) ? s.workout : [];
+  const dayName = workout[0]?.day || '';
+  window._editSessionData = {cid, sessionId, workout, date: s.date, note: s.note||''};
+  let ov = document.getElementById('edit-sess-ov');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'edit-sess-ov'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
+  const rows = workout.length ? workout.map((ex, i) => {
+    const displayName = ex.name.replace(/^SS\w+:\s*/i,'');
+    const isSS = /^SS/i.test(ex.name);
+    return `<div style="padding:14px 0;border-bottom:1px solid rgba(100,160,255,0.07);">
+      ${isSS?`<div style="font-size:9px;color:rgba(126,200,255,0.4);letter-spacing:1.5px;font-weight:700;margin-bottom:4px;">SUPERSET</div>`:''}
+      <div style="font-size:14px;color:rgba(232,237,245,0.9);font-weight:600;margin-bottom:10px;">${displayName}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;">Reps</div>
+          <input id="es-reps-${i}" type="text" value="${ex.reps||''}" placeholder="e.g. 3x10" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;">Weight (lbs)</div>
+          <input id="es-wt-${i}" type="text" value="${ex.weight||''}" placeholder="e.g. 135" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div style="color:rgba(180,200,230,0.3);font-size:13px;padding:12px 0;">No exercises logged for this session.</div>';
+  ov.innerHTML = `<div style="max-width:500px;width:100%;margin:0 auto;padding:0 20px 60px;">
+    <div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:14px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:20px;">
+      <button onclick="closeEditSession()" style="background:none;border:none;color:rgba(126,200,255,0.7);cursor:pointer;font-size:13px;font-weight:700;padding:4px 0;font-family:Syne,sans-serif;">← Cancel</button>
+      <div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:#fff;text-align:center;">Edit Session</div>
+      <button id="es-save-btn" onclick="saveEditSession()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.35);">Save</button>
+    </div>
+    <div style="font-size:12px;color:rgba(126,200,255,0.55);margin-bottom:2px;">${s.date}</div>
+    ${dayName?`<div style="font-family:Syne,sans-serif;font-weight:700;font-size:20px;color:#fff;margin-bottom:20px;">${dayName}</div>`:'<div style="margin-bottom:20px;"></div>'}
+    ${rows}
+    <div style="margin-top:20px;">
+      <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Session Note</div>
+      <input id="es-note" type="text" value="${(s.note||'').replace(/"/g,'&quot;')}" placeholder="Optional note..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;">
+    </div>
+  </div>`;
+}
+
+async function saveEditSession() {
+  const d = window._editSessionData;
+  if (!d) return;
+  const btn = document.getElementById('es-save-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
+  const {cid, sessionId, workout, date} = d;
+  const note = document.getElementById('es-note')?.value.trim() || '';
+  const updatedWorkout = workout.map((ex, i) => ({
+    ...ex,
+    reps: document.getElementById('es-reps-'+i)?.value.trim() || '',
+    weight: document.getElementById('es-wt-'+i)?.value.trim() || '',
+  }));
+  try {
+    await db.updateSession(sessionId, {workout: updatedWorkout, note});
+    // Refresh exercise_logs: delete all for this date then re-insert
+    await sb('DELETE','exercise_logs',null,'?client_id=eq.'+cid+'&session_date=eq.'+encodeURIComponent(date));
+    const dayName = updatedWorkout.find(e=>e.day)?.day || updatedWorkout[0]?.day || '';
+    for (const ex of updatedWorkout) {
+      if (ex.reps || ex.weight) {
+        try { await db.addExLog({client_id:cid, session_date:date, exercise_name:ex.name.replace(/^SS\w+:\s*/i,''), reps:ex.reps||'', weight:ex.weight||'', day_name:dayName}); } catch(e){}
+      }
+    }
+    // Refresh in-memory sessions
+    const c = clients.find(x=>x.id===cid);
+    if (c) {
+      c._sessions = await db.getSessions(cid);
+      window['_sessMap_'+cid] = {};
+      c._sessions.forEach(s=>{ if(s.id) window['_sessMap_'+cid][s.id]=s; });
+    }
+    closeEditSession();
+    toast('Session updated');
+    if (c) renderClientModal(c);
+  } catch(e) {
+    if (btn) { btn.disabled=false; btn.textContent='Save'; }
+    toast('Failed to save — try again');
+  }
+}
+
+function closeEditSession() {
+  const ov = document.getElementById('edit-sess-ov');
+  if (ov) ov.style.display='none';
 }
 
 async function saveBuildProgram(){
