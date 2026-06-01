@@ -5331,7 +5331,7 @@ function exerciseToMuscles(name) {
   if(/back extension|hyperextension|lower back|erector/.test(n))
     return[{muscle:'lower_back',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Abs
-  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof/.test(n))
+  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof|v.?up|woodchop/.test(n))
     return[{muscle:'abs',weight:1.0}];
   // Calves — BEFORE glutes so "donkey calf raise" doesn't hit glutes first
   if(/\bcalf\b|\bcalves\b/.test(n))
@@ -5339,8 +5339,8 @@ function exerciseToMuscles(name) {
   // Squats / leg press — quads primary, glutes + hamstrings secondary
   if(/squat|leg press|\bquad\b|hack squat|pendulum squat/.test(n))
     return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5}];
-  // Lunges / split squats — quads primary, glutes secondary
-  if(/lunge|step.?up|bulgarian|split squat|box.*jump|jump.*squat/.test(n))
+  // Lunges / split squats / sit-to-stand — quads primary, glutes secondary
+  if(/lunge|step.?up|bulgarian|split squat|box.*jump|jump.*squat|sit.?to.?stand/.test(n))
     return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Leg extension — quad isolation
   if(/leg extension/.test(n))
