@@ -3319,13 +3319,17 @@ function startClientPortal(id) {
     document.body.style.minHeight = '100vh';
     document.body.style.overflowX = 'hidden';
     var tabItem = function(id, tab, icon, label, active) {
-      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 4px 14px;cursor:pointer;color:'+(active?'#7ec8ff':'rgba(180,200,230,0.55)')+';border-top:2.5px solid '+(active?'#4fa3e8':'transparent')+';transition:color .2s,border-color .2s;">'+
-        icon+'<span style="font-size:10px;font-weight:700;letter-spacing:0.3px;margin-top:5px;">'+label+'</span></div>';
+      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 10px;cursor:pointer;flex:1;">'+
+        '<div id="ptab-pill-'+id+'" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 14px;border-radius:14px;background:'+(active?'rgba(37,99,235,0.2)':'transparent')+';transition:background .18s;">'+
+          '<span id="ptab-ico-'+id+'" style="color:'+(active?'#7ec8ff':'rgba(160,185,220,0.6)')+';line-height:1;transition:color .18s;">'+icon+'</span>'+
+          '<span id="ptab-lbl-'+id+'" style="font-size:11px;font-weight:'+(active?'700':'500')+';letter-spacing:0.2px;color:'+(active?'#7ec8ff':'rgba(160,185,220,0.6)')+';transition:color .18s;white-space:nowrap;">'+label+'</span>'+
+        '</div>'+
+      '</div>';
     };
-    var icoHome='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
-    var icoTrain='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
-    var icoPRs='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>';
-    var icoStats='<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
+    var icoHome='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+    var icoTrain='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    var icoPRs='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>';
+    var icoStats='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
     document.body.innerHTML =
       '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.1);padding:14px 20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);">' +
         '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
@@ -3348,8 +3352,8 @@ function startClientPortal(id) {
         '<div class="skeleton" style="height:60px;margin-bottom:10px;border-radius:12px;"></div>' +
         '<div class="skeleton" style="height:60px;border-radius:12px;"></div>' +
       '</div>' +
-      '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:rgba(8,10,14,0.98);border-top:1.5px solid rgba(100,160,255,0.22);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -8px 32px rgba(0,0,0,0.65);">' +
-        '<div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,0px);">' +
+      '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:#0b0e16;border-top:2px solid rgba(100,160,255,0.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -6px 30px rgba(0,0,0,0.85);">' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,4px);">' +
           tabItem('home','home',icoHome,'Home',true) +
           tabItem('train','train',icoTrain,'Train',false) +
           tabItem('prs','prs',icoPRs,'PRs',false) +
@@ -3562,11 +3566,13 @@ function startClientPortal(id) {
     window._showPortalTab = function(tab) {
       window._portalActiveTab = tab;
       ['home','train','prs','stats'].forEach(function(t) {
-        var el = document.getElementById('ptab-' + t);
-        if (!el) return;
         var active = (t === tab);
-        el.style.color = active ? '#7ec8ff' : 'rgba(180,200,230,0.55)';
-        el.style.borderTopColor = active ? '#4fa3e8' : 'transparent';
+        var pill = document.getElementById('ptab-pill-' + t);
+        var ico  = document.getElementById('ptab-ico-'  + t);
+        var lbl  = document.getElementById('ptab-lbl-'  + t);
+        if (pill) pill.style.background = active ? 'rgba(37,99,235,0.2)' : 'transparent';
+        if (ico)  ico.style.color  = active ? '#7ec8ff' : 'rgba(160,185,220,0.6)';
+        if (lbl)  { lbl.style.color = active ? '#7ec8ff' : 'rgba(160,185,220,0.6)'; lbl.style.fontWeight = active ? '700' : '500'; }
       });
       if (tab === 'home') renderPortalHome();
       else if (tab === 'train') renderPortalTrain();
