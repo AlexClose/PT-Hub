@@ -922,24 +922,21 @@ const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4
 
 // Extracts highest numeric value from weight strings like "55,65,75" or "135"
 function maxWeight(str){if(!str)return 0;return Math.max(0,...String(str).split(/[,\/\s]+/).map(v=>parseFloat(v)||0));}
+var _KNOWN_EXERCISES=['Bench Press','Incline Bench Press','Decline Bench Press','Squat','Front Squat','Goblet Squat',
+  'Deadlift','Romanian Deadlift','Sumo Deadlift','Pull-Up','Chin-Up','Overhead Press','Push Press',
+  'Bent Over Row','Pendlay Row','T-Bar Row','Leg Press','Hack Squat','Lat Pulldown',
+  'Cable Row','Seated Cable Row','Dumbbell Curl','Barbell Curl','Hammer Curl','Preacher Curl',
+  'Tricep Pushdown','Skull Crushers','Close Grip Bench Press','Tricep Dips','Leg Extension','Leg Curl',
+  'Nordic Curl','Hip Thrust','Glute Bridge','Lunges','Bulgarian Split Squat','Step Ups',
+  'Calf Raises','Standing Calf Raise','Seated Calf Raise','Face Pull','Rear Delt Fly','Reverse Fly',
+  'Lateral Raise','Front Raise','Arnold Press','Chest Fly','Cable Fly','Pec Deck','Dips','Ring Dips',
+  'Plank','Side Plank','Russian Twist','V-Ups','Ab Wheel','Hanging Leg Raise','Crunches','Shrugs','Upright Row'];
 function canonExName(str){
   if(!str)return str;
   var s=str.trim().replace(/\s+/g,' ');
   var sl=s.toLowerCase();
-  // Known canonical names — case-insensitive exact match
-  var KNOWN=['Bench Press','Incline Bench Press','Decline Bench Press','Squat','Front Squat','Goblet Squat',
-    'Deadlift','Romanian Deadlift','Sumo Deadlift','Pull-Up','Chin-Up','Overhead Press','Push Press',
-    'Bent Over Row','Pendlay Row','T-Bar Row','Leg Press','Hack Squat','Lat Pulldown',
-    'Cable Row','Seated Cable Row','Dumbbell Curl','Barbell Curl','Hammer Curl','Preacher Curl',
-    'Tricep Pushdown','Skull Crushers','Close Grip Bench Press','Tricep Dips','Leg Extension','Leg Curl',
-    'Nordic Curl','Hip Thrust','Glute Bridge','Lunges','Bulgarian Split Squat','Step Ups',
-    'Calf Raises','Standing Calf Raise','Seated Calf Raise','Face Pull','Rear Delt Fly','Reverse Fly',
-    'Lateral Raise','Front Raise','Arnold Press','Chest Fly','Cable Fly','Pec Deck','Dips','Ring Dips',
-    'Plank','Side Plank','Russian Twist','V-Ups','Ab Wheel','Hanging Leg Raise','Crunches','Shrugs','Upright Row'];
-  for(var i=0;i<KNOWN.length;i++){if(KNOWN[i].toLowerCase()===sl)return KNOWN[i];}
-  // Check loaded library
+  for(var i=0;i<_KNOWN_EXERCISES.length;i++){if(_KNOWN_EXERCISES[i].toLowerCase()===sl)return _KNOWN_EXERCISES[i];}
   if(Array.isArray(window.library)){for(var i=0;i<window.library.length;i++){var ln=window.library[i].name||'';if(ln.toLowerCase()===sl)return ln;}}
-  // Synonym map for common abbreviations / alternate spellings
   var SYN={'lat pull down':'Lat Pulldown','lat pull-down':'Lat Pulldown','lat pulldowns':'Lat Pulldown','pulldown':'Lat Pulldown','pull down':'Lat Pulldown',
     'bench':'Bench Press','flat bench':'Bench Press','flat bench press':'Bench Press','barbell bench':'Bench Press','barbell bench press':'Bench Press',
     'incline bench':'Incline Bench Press','incline press':'Incline Bench Press','decline bench':'Decline Bench Press','decline press':'Decline Bench Press',
@@ -971,6 +968,55 @@ function canonExName(str){
   if(SYN[sl])return SYN[sl];
   return s;
 }
+// --- Exercise autocomplete dropdown (shared across custom workout, ad-hoc, program builder) ---
+function _exAcGetList(){
+  var seen={},all=_KNOWN_EXERCISES.slice();
+  if(Array.isArray(window.library))window.library.forEach(function(e){if(e.name)all.push(e.name);});
+  return all.filter(function(n){var k=n.toLowerCase();if(seen[k])return false;seen[k]=true;return true;});
+}
+function _exAcShow(inputEl){
+  var val=inputEl.value;
+  if(!val||!val.trim()){_exAcHide();return;}
+  var vl=val.trim().toLowerCase();
+  var matches=_exAcGetList().filter(function(n){return n.toLowerCase().indexOf(vl)!==-1;}).slice(0,8);
+  if(!matches.length){_exAcHide();return;}
+  var drop=document.getElementById('_ex-ac-drop');
+  if(!drop){
+    drop=document.createElement('div');drop.id='_ex-ac-drop';
+    drop.style.cssText='position:fixed;z-index:9999;background:#12161f;border:1px solid rgba(100,160,255,0.28);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.8);overflow:hidden;display:none;';
+    drop.addEventListener('pointerdown',function(e){e.preventDefault();});
+    document.body.appendChild(drop);
+  }
+  var rect=inputEl.getBoundingClientRect();
+  drop.style.left=rect.left+'px';drop.style.top=(rect.bottom+4)+'px';drop.style.width=rect.width+'px';drop.style.display='block';
+  drop.innerHTML=matches.map(function(m){
+    var idx=m.toLowerCase().indexOf(vl);
+    var pre=m.slice(0,idx),mid=m.slice(idx,idx+vl.length),post=m.slice(idx+vl.length);
+    return '<div class="_exac-opt" data-val="'+m.replace(/"/g,'&quot;')+'" style="padding:11px 14px;font-size:13px;font-weight:600;color:#e8edf5;cursor:pointer;border-bottom:1px solid rgba(100,160,255,0.07);font-family:Syne,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+      +pre+'<span style="color:#7ec8ff;">'+mid+'</span>'+post+'</div>';
+  }).join('');
+  drop.querySelectorAll('._exac-opt').forEach(function(opt){
+    opt.addEventListener('click',function(){
+      inputEl.value=this.dataset.val;
+      inputEl.dispatchEvent(new Event('input',{bubbles:true}));
+      inputEl.dispatchEvent(new Event('change',{bubbles:true}));
+      _exAcHide();
+      // Auto-advance to next input (reps/prescription)
+      var next=null;
+      var row=inputEl.closest('[id^="cex-"],[id^="adhoc-"],[id^="custom-ex-row-"],[id^="adhoc-row-"]');
+      if(row){
+        var n=row.id.split('-').pop();
+        next=document.getElementById('cex-reps-'+n)||document.getElementById('wr-adhoc-'+n);
+      }
+      if(!next){var fields=inputEl.closest('.edit-ex-fields');if(fields)next=fields.querySelectorAll('input')[1];}
+      if(next)setTimeout(function(){next.focus();if(next.select)next.select();},60);
+    });
+  });
+}
+function _exAcHide(){var d=document.getElementById('_ex-ac-drop');if(d)d.style.display='none';}
+function _exAcInput(el){_exAcShow(el);}
+function _exAcBlur(){setTimeout(_exAcHide,160);}
+window.addEventListener('scroll',_exAcHide,true);
 
 let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],runPrograms=[],pendingLogId=null,pendingRenewId=null;
 let _rp=null,_rpRunEditing=null;
@@ -2139,7 +2185,7 @@ function renderEditExerciseList(){
       <div class="ex-drag-handle" title="Drag to reorder">⠿</div>
       <div style="flex:1;">
         <div class="edit-ex-fields">
-          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value" placeholder="Exercise name">
+          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();" placeholder="Exercise name" autocomplete="off">
           <input value="${(ex.prescription||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
           <input value="${(ex.load||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
         </div>
@@ -2428,7 +2474,7 @@ function addAdHocExercise(supGroup, supLabel){
   const ssBadge=isSS?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,99,235,0.22);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:#7ec8ff;letter-spacing:1px;margin-bottom:10px;">SS ${supLabel}</div>`:'';
   row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>`
     +ssBadge
-    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" list="exercise-autocomplete-list">`
+    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`<div class="workout-inputs">`
     +`<div><input id="wr-adhoc-${n}" placeholder="Sets × Reps"><div class="wi-label">Sets × Reps</div></div>`
     +`<div><input id="wt-adhoc-${n}" placeholder="Weight / Load"><div class="wi-label">Weight / Load</div></div>`
@@ -4203,7 +4249,7 @@ function startClientPortal(id) {
       row.innerHTML =
         '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>' +
         ssBadge +
-        '<input id="cex-name-'+n+'" placeholder="Exercise name..." list="exercise-autocomplete-list" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="window._updateCustomExCount();">' +
+        '<input id="cex-name-'+n+'" placeholder="Exercise name..." autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="_exAcInput(this);window._updateCustomExCount();" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
           '<div><input id="cex-reps-'+n+'" type="text" placeholder="e.g. 3×10" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">SETS × REPS</div></div>' +
           '<div><input id="cex-wt-'+n+'" type="text" placeholder="Weight / Load" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">WEIGHT / LOAD</div></div>' +
