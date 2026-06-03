@@ -5400,13 +5400,13 @@ function exerciseToMuscles(name) {
   // Chest fly / pec dec — isolation, no tricep involvement
   if(/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
     return[{muscle:'chest',weight:1.0}];
-  // Chest press — triceps secondary
+  // Chest press — triceps secondary, shoulders (front delt) tertiary
   if(/bench|push.?up/.test(n))
-    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5},{muscle:'shoulders',weight:0.4}];
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))
-    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5},{muscle:'shoulders',weight:0.4}];
   if(/cable.*press|press.*cable/.test(n)&&!/overhead|shoulder|tricep/.test(n))
-    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5}];
+    return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5},{muscle:'shoulders',weight:0.4}];
   // Face pull — shoulders (rear delt) primary, traps secondary
   if(/face pull/.test(n))
     return[{muscle:'shoulders',weight:1.0},{muscle:'traps',weight:0.5}];
@@ -5497,7 +5497,7 @@ function _mhColor(weeklyAvg,weeklyTarget){
 // Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders.
 // Smaller stabilisers (glute_med, adductors) only need ~3 sets/week to be in optimal range.
 var _MH_TARGETS={
-  chest:12,back:12,shoulders:12,quads:12,
+  chest:12,back:12,shoulders:10,quads:12,
   hamstrings:12,glutes:12,glute_med:4,adductors:4,
   biceps:14,triceps:14,calves:6,abs:8,traps:6,lower_back:5,forearms:4,
 };
