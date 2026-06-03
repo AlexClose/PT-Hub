@@ -4084,7 +4084,7 @@ function startClientPortal(id) {
     }
 
     // -------- CUSTOM WORKOUT SHEET --------
-    function renderCustomWorkoutSheet() {
+    window.renderCustomWorkoutSheet = function() {
       var sheet = document.getElementById('workout-sheet');
       if (!sheet) { sheet = document.createElement('div'); sheet.id = 'workout-sheet'; document.body.appendChild(sheet); }
       sheet.style.display = ''; sheet.style.transform = ''; sheet.style.transition = '';
@@ -4136,7 +4136,7 @@ function startClientPortal(id) {
       inner.innerHTML = navHtml;
       window._addCustomExRow();
       window._updateCustomExCount();
-    }
+    };
     window._addCustomExRow = function(supGroup, supLabel) {
       var n = window._customExN++;
       var list = document.getElementById('custom-ex-list'); if (!list) return;
