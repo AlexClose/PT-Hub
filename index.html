@@ -5427,17 +5427,17 @@ function exerciseToMuscles(name) {
   // Back — pullover
   if(/pullover/.test(n))
     return[{muscle:'back',weight:1.0}];
-  // Back rows/pulls — biceps secondary
+  // Back rows/pulls — biceps secondary, forearms tertiary (grip work)
   if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'forearms',weight:0.25}];
   if(/\brow\b/.test(n)&&!/upright/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
-  // Conventional deadlift — back primary, glutes + hamstrings secondary
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'forearms',weight:0.25}];
+  // Conventional deadlift — back primary, glutes + hamstrings secondary, forearms tertiary
   if(/\bdeadlift\b/.test(n)&&!/romanian|rdl|stiff/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5}];
-  // RDL — hamstrings primary, glutes + lower back secondary
+    return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5},{muscle:'forearms',weight:0.25}];
+  // RDL — hamstrings primary, glutes + lower back secondary, forearms tertiary
   if(/romanian deadlift|rdl|stiff.?leg/.test(n))
-    return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'lower_back',weight:0.5}];
+    return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'lower_back',weight:0.5},{muscle:'forearms',weight:0.25}];
   // Hyperextension / back extension — lower back primary, glutes secondary
   if(/back extension|hyperextension|lower back|erector/.test(n))
     return[{muscle:'lower_back',weight:1.0},{muscle:'glutes',weight:0.5}];
@@ -5499,7 +5499,7 @@ function _mhColor(weeklyAvg,weeklyTarget){
 var _MH_TARGETS={
   chest:12,back:12,shoulders:10,quads:12,
   hamstrings:12,glutes:12,glute_med:4,adductors:4,
-  biceps:14,triceps:14,calves:6,abs:8,traps:6,lower_back:5,forearms:4,
+  biceps:14,triceps:14,calves:6,abs:8,traps:6,lower_back:5,forearms:8,
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
