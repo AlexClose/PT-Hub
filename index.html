@@ -2257,7 +2257,10 @@ function updateLogWorkout(clientId){
     document.getElementById('logExercises').innerHTML=
       `<div style="font-size:12px;color:rgba(180,200,230,0.35);padding:10px 0 16px;text-align:center;border-bottom:1px solid rgba(100,160,255,0.07);margin-bottom:12px;letter-spacing:0.3px;">Custom workout — add any exercises below</div>`
       +`<div id="adhoc-exercises"></div>`
-      +`<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;margin-top:4px;margin-bottom:4px;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`;
+      +`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:4px;">`
+      +`<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`
+      +`<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
+      +`</div>`;
     addAdHocExercise();
     saveDraftCoach();
     return;
@@ -2303,7 +2306,10 @@ function updateLogWorkout(clientId){
     return html;
     })()
   + `<div id="adhoc-exercises"></div>`
-  + `<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;margin-top:4px;margin-bottom:4px;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`;
+  + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:4px;">`
+  + `<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`
+  + `<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
+  + `</div>`;
   saveDraftCoach();
 }
 
@@ -2350,7 +2356,7 @@ function autoFillLog(){
   toast('Filled from last session ✓');
 }
 
-function addAdHocExercise(){
+function addAdHocExercise(supGroup, supLabel){
   const container=document.getElementById('adhoc-exercises');
   if(!container)return;
   // Build autocomplete datalist from library on first use
@@ -2362,18 +2368,35 @@ function addAdHocExercise(){
   }
   const n=window._adhocCount||0;
   window._adhocCount=n+1;
+  const isSS=!!supGroup;
   const row=document.createElement('div');
   row.id='adhoc-row-'+n;
-  row.style.cssText='background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;position:relative;';
+  if(supGroup)row.dataset.supGroup=supGroup;
+  const borderL=isSS?'border-left:3px solid #2563eb;':'';
+  const borderC=isSS?'rgba(37,99,235,0.35)':'rgba(100,160,255,0.18)';
+  const mb=isSS&&supLabel==='A'?'3px':'12px';
+  row.style.cssText='background:var(--surface2);border:1px solid '+borderC+';'+borderL+'border-radius:var(--radius-sm);padding:14px;margin-bottom:'+mb+';position:relative;';
+  const ssBadge=isSS?`<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,99,235,0.22);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:#7ec8ff;letter-spacing:1px;margin-bottom:10px;">SS ${supLabel}</div>`:'';
   row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>`
+    +ssBadge
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" list="exercise-autocomplete-list">`
     +`<div class="workout-inputs">`
     +`<div><input id="wr-adhoc-${n}" placeholder="Sets × Reps"><div class="wi-label">Sets × Reps</div></div>`
     +`<div><input id="wt-adhoc-${n}" placeholder="Weight / Load"><div class="wi-label">Weight / Load</div></div>`
     +`</div>`;
   container.appendChild(row);
-  // Focus the name input
-  setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
+  if(!isSS||supLabel==='B') setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
+}
+function addAdHocSuperset(){
+  const container=document.getElementById('adhoc-exercises'); if(!container)return;
+  if(!window._adhocSSN)window._adhocSSN=0;
+  const grp='ahs-'+(window._adhocSSN++);
+  addAdHocExercise(grp,'A');
+  const con=document.createElement('div');
+  con.style.cssText='display:flex;align-items:center;gap:8px;margin:0 0 3px 14px;';
+  con.innerHTML='<div style="width:2px;height:14px;background:rgba(37,99,235,0.5);flex-shrink:0;border-radius:1px;"></div><div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(126,200,255,0.3);">SUPERSET</div>';
+  container.appendChild(con);
+  addAdHocExercise(grp,'B');
 }
 
 function showExHistory(clientId, exName, displayName, ei){
@@ -3472,10 +3495,10 @@ function startClientPortal(id) {
     document.body.style.minHeight = '100vh';
     document.body.style.overflowX = 'hidden';
     var tabItem = function(id, tab, icon, label, active) {
-      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 10px;cursor:pointer;flex:1;">'+
-        '<div id="ptab-pill-'+id+'" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 14px;border-radius:14px;background:'+(active?'rgba(37,99,235,0.2)':'transparent')+';transition:background .18s;">'+
+      return '<div id="ptab-'+id+'" onclick="window._showPortalTab(\''+tab+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px 8px;cursor:pointer;flex:1;min-width:0;">'+
+        '<div id="ptab-pill-'+id+'" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 10px;border-radius:12px;background:'+(active?'rgba(37,99,235,0.2)':'transparent')+';transition:background .18s;">'+
           '<span id="ptab-ico-'+id+'" style="color:'+(active?'#7ec8ff':'rgba(160,185,220,0.6)')+';line-height:1;transition:color .18s;">'+icon+'</span>'+
-          '<span id="ptab-lbl-'+id+'" style="font-size:11px;font-weight:'+(active?'700':'500')+';letter-spacing:0.2px;color:'+(active?'#7ec8ff':'rgba(160,185,220,0.6)')+';transition:color .18s;white-space:nowrap;">'+label+'</span>'+
+          '<span id="ptab-lbl-'+id+'" style="font-size:10px;font-weight:'+(active?'700':'500')+';letter-spacing:0.2px;color:'+(active?'#7ec8ff':'rgba(160,185,220,0.6)')+';transition:color .18s;white-space:nowrap;">'+label+'</span>'+
         '</div>'+
       '</div>';
     };
@@ -3507,7 +3530,7 @@ function startClientPortal(id) {
         '<div class="skeleton" style="height:60px;border-radius:12px;"></div>' +
       '</div>' +
       '<div id="portal-tab-bar" style="position:fixed;bottom:0;left:0;right:0;z-index:20;background:#0b0e16;border-top:2px solid rgba(100,160,255,0.35);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 -6px 30px rgba(0,0,0,0.85);">' +
-        '<div style="display:grid;grid-template-columns:repeat(4,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,4px);">' +
+        '<div style="display:grid;grid-template-columns:repeat(5,1fr);max-width:480px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom,4px);">' +
           tabItem('home','home',icoHome,'Home',true) +
           tabItem('train','train',icoTrain,'Train',false) +
           tabItem('prs','prs',icoPRs,'PRs',false) +
@@ -4092,6 +4115,7 @@ function startClientPortal(id) {
         document.body.appendChild(dl);
       }
       window._customExN = 0;
+      window._customSSN = 0;
       var inner = document.getElementById('workout-sheet-inner');
       var navHtml =
         '<div style="position:sticky;top:0;z-index:10;background:rgba(10,13,18,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);">' +
@@ -4103,21 +4127,33 @@ function startClientPortal(id) {
         '</div>' +
         '<div style="padding:20px;max-width:480px;margin:0 auto;">' +
           '<div id="custom-ex-list"></div>' +
-          '<button onclick="window._addCustomExRow()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;margin-top:4px;margin-bottom:16px;transition:all .2s;" onmouseover="this.style.borderColor=\'rgba(100,160,255,0.5)\';this.style.color=\'#7ec8ff\';" onmouseout="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.color=\'rgba(126,200,255,0.5)\';">+ Add Exercise</button>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:16px;">' +
+            '<button onclick="window._addCustomExRow()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor=\'rgba(100,160,255,0.5)\';this.style.color=\'#7ec8ff\';" onmouseout="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.color=\'rgba(126,200,255,0.5)\';">+ Add Exercise</button>' +
+            '<button onclick="window._addCustomSupersetPair()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all .2s;" onmouseover="this.style.background=\'rgba(37,99,235,0.15)\';this.style.borderColor=\'rgba(37,99,235,0.6)\';this.style.color=\'#7ec8ff\';" onmouseout="this.style.background=\'rgba(37,99,235,0.07)\';this.style.borderColor=\'rgba(37,99,235,0.35)\';this.style.color=\'rgba(126,200,255,0.5)\';">⊕ Superset</button>' +
+          '</div>' +
           '<button onclick="window._logCustomPortalSession()" style="width:100%;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 24px rgba(37,99,235,0.45);transition:all .2s;" onmouseover="this.style.boxShadow=\'0 8px 32px rgba(37,99,235,0.55)\';" onmouseout="this.style.boxShadow=\'0 4px 24px rgba(37,99,235,0.45)\';">LOG WORKOUT</button>' +
         '</div>';
       inner.innerHTML = navHtml;
       window._addCustomExRow();
       window._updateCustomExCount();
     }
-    window._addCustomExRow = function() {
+    window._addCustomExRow = function(supGroup, supLabel) {
       var n = window._customExN++;
       var list = document.getElementById('custom-ex-list'); if (!list) return;
+      var isSS = !!supGroup;
       var row = document.createElement('div');
       row.id = 'custom-ex-row-' + n;
-      row.style.cssText = 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;';
+      if (supGroup) row.dataset.supGroup = supGroup;
+      var borderColor = isSS ? 'rgba(37,99,235,0.4)' : 'rgba(100,160,255,0.12)';
+      var leftBorder = isSS ? '3px solid #2563eb' : '1px solid rgba(100,160,255,0.12)';
+      var mb = (isSS && supLabel === 'A') ? '3px' : '12px';
+      row.style.cssText = 'background:rgba(15,19,23,0.6);border:1px solid '+borderColor+';border-left:'+leftBorder+';border-radius:12px;padding:16px;margin-bottom:'+mb+';position:relative;';
+      var ssBadge = isSS
+        ? '<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,99,235,0.22);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:#7ec8ff;letter-spacing:1px;margin-bottom:10px;">SS '+supLabel+'</div>'
+        : '';
       row.innerHTML =
         '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>' +
+        ssBadge +
         '<input id="cex-name-'+n+'" placeholder="Exercise name..." list="exercise-autocomplete-list" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="window._updateCustomExCount();">' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
           '<div><input id="cex-reps-'+n+'" type="text" placeholder="e.g. 3×10" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">SETS × REPS</div></div>' +
@@ -4125,7 +4161,19 @@ function startClientPortal(id) {
         '</div>';
       list.appendChild(row);
       window._updateCustomExCount();
-      setTimeout(function(){ var inp = document.getElementById('cex-name-'+n); if(inp) inp.focus(); }, 80);
+      if (!isSS || supLabel === 'B') setTimeout(function(){ var inp = document.getElementById('cex-name-'+n); if(inp) inp.focus(); }, 80);
+    };
+    window._addCustomSupersetPair = function() {
+      var grp = 'ss-' + (window._customSSN++);
+      window._addCustomExRow(grp, 'A');
+      var list = document.getElementById('custom-ex-list');
+      if (list) {
+        var con = document.createElement('div');
+        con.style.cssText = 'display:flex;align-items:center;gap:8px;margin:0 0 3px 16px;';
+        con.innerHTML = '<div style="width:2px;height:14px;background:rgba(37,99,235,0.5);flex-shrink:0;border-radius:1px;"></div><div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(126,200,255,0.3);">SUPERSET</div>';
+        list.appendChild(con);
+      }
+      window._addCustomExRow(grp, 'B');
     };
     window._updateCustomExCount = function() {
       var lbl = document.getElementById('custom-ex-count'); if (!lbl) return;
