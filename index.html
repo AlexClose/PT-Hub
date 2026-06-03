@@ -922,6 +922,55 @@ const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4
 
 // Extracts highest numeric value from weight strings like "55,65,75" or "135"
 function maxWeight(str){if(!str)return 0;return Math.max(0,...String(str).split(/[,\/\s]+/).map(v=>parseFloat(v)||0));}
+function canonExName(str){
+  if(!str)return str;
+  var s=str.trim().replace(/\s+/g,' ');
+  var sl=s.toLowerCase();
+  // Known canonical names — case-insensitive exact match
+  var KNOWN=['Bench Press','Incline Bench Press','Decline Bench Press','Squat','Front Squat','Goblet Squat',
+    'Deadlift','Romanian Deadlift','Sumo Deadlift','Pull-Up','Chin-Up','Overhead Press','Push Press',
+    'Bent Over Row','Pendlay Row','T-Bar Row','Leg Press','Hack Squat','Lat Pulldown',
+    'Cable Row','Seated Cable Row','Dumbbell Curl','Barbell Curl','Hammer Curl','Preacher Curl',
+    'Tricep Pushdown','Skull Crushers','Close Grip Bench Press','Tricep Dips','Leg Extension','Leg Curl',
+    'Nordic Curl','Hip Thrust','Glute Bridge','Lunges','Bulgarian Split Squat','Step Ups',
+    'Calf Raises','Standing Calf Raise','Seated Calf Raise','Face Pull','Rear Delt Fly','Reverse Fly',
+    'Lateral Raise','Front Raise','Arnold Press','Chest Fly','Cable Fly','Pec Deck','Dips','Ring Dips',
+    'Plank','Side Plank','Russian Twist','V-Ups','Ab Wheel','Hanging Leg Raise','Crunches','Shrugs','Upright Row'];
+  for(var i=0;i<KNOWN.length;i++){if(KNOWN[i].toLowerCase()===sl)return KNOWN[i];}
+  // Check loaded library
+  if(Array.isArray(window.library)){for(var i=0;i<window.library.length;i++){var ln=window.library[i].name||'';if(ln.toLowerCase()===sl)return ln;}}
+  // Synonym map for common abbreviations / alternate spellings
+  var SYN={'lat pull down':'Lat Pulldown','lat pull-down':'Lat Pulldown','lat pulldowns':'Lat Pulldown','pulldown':'Lat Pulldown','pull down':'Lat Pulldown',
+    'bench':'Bench Press','flat bench':'Bench Press','flat bench press':'Bench Press','barbell bench':'Bench Press','barbell bench press':'Bench Press',
+    'incline bench':'Incline Bench Press','incline press':'Incline Bench Press','decline bench':'Decline Bench Press','decline press':'Decline Bench Press',
+    'ohp':'Overhead Press','military press':'Overhead Press','shoulder press':'Overhead Press',
+    'rdl':'Romanian Deadlift','stiff leg deadlift':'Romanian Deadlift','stiff-leg deadlift':'Romanian Deadlift',
+    'dl':'Deadlift','conventional deadlift':'Deadlift',
+    'pull up':'Pull-Up','pullup':'Pull-Up','pullups':'Pull-Up','pull ups':'Pull-Up',
+    'chin up':'Chin-Up','chinup':'Chin-Up','chinups':'Chin-Up','chin ups':'Chin-Up',
+    'bent over row':'Bent Over Row','barbell row':'Bent Over Row','bb row':'Bent Over Row','bar row':'Bent Over Row',
+    'cable rows':'Cable Row','seated row':'Seated Cable Row','seated cable rows':'Seated Cable Row',
+    't bar row':'T-Bar Row','tbar row':'T-Bar Row','t-bar rows':'T-Bar Row',
+    'leg ext':'Leg Extension','leg extensions':'Leg Extension','leg curls':'Leg Curl','lying leg curl':'Leg Curl','seated leg curl':'Leg Curl',
+    'hip thrusts':'Hip Thrust','glute bridges':'Glute Bridge',
+    'lunge':'Lunges','walking lunge':'Lunges','walking lunges':'Lunges','bss':'Bulgarian Split Squat','split squat':'Bulgarian Split Squat',
+    'step up':'Step Ups','hack squats':'Hack Squat',
+    'calf raise':'Calf Raises','calves':'Calf Raises','standing calf':'Standing Calf Raise','standing calves':'Standing Calf Raise',
+    'lateral raises':'Lateral Raise','lat raise':'Lateral Raise','lat raises':'Lateral Raise','side raise':'Lateral Raise','side raises':'Lateral Raise','side lateral raise':'Lateral Raise','side lateral raises':'Lateral Raise',
+    'front raises':'Front Raise','arnold':'Arnold Press',
+    'tricep pushdowns':'Tricep Pushdown','tricep pulldown':'Tricep Pushdown','tricep pulldowns':'Tricep Pushdown','cable pushdown':'Tricep Pushdown','cable pushdowns':'Tricep Pushdown','rope pushdown':'Tricep Pushdown',
+    'skullcrusher':'Skull Crushers','skull crusher':'Skull Crushers',
+    'barbell curls':'Barbell Curl','ez bar curl':'Barbell Curl','dumbbell curls':'Dumbbell Curl','db curl':'Dumbbell Curl','db curls':'Dumbbell Curl','hammer curls':'Hammer Curl','preacher curls':'Preacher Curl',
+    'face pulls':'Face Pull','rear delt flys':'Rear Delt Fly','rear delt flyes':'Rear Delt Fly','reverse flys':'Reverse Fly','reverse flyes':'Reverse Fly',
+    'shrug':'Shrugs','barbell shrug':'Shrugs','barbell shrugs':'Shrugs','upright rows':'Upright Row',
+    'chest flye':'Chest Fly','chest flyes':'Chest Fly','pec fly':'Chest Fly','pec flye':'Chest Fly','pec flyes':'Chest Fly','cable flye':'Cable Fly','cable flyes':'Cable Fly','machine fly':'Pec Deck','machine flye':'Pec Deck',
+    'ab wheel rollout':'Ab Wheel','ab rollout':'Ab Wheel','leg raise':'Hanging Leg Raise','leg raises':'Hanging Leg Raise','crunch':'Crunches',
+    'v up':'V-Ups','v-up':'V-Ups','russian twists':'Russian Twist',
+    'sumo':'Sumo Deadlift','sumo deadlifts':'Sumo Deadlift','front squats':'Front Squat','goblet':'Goblet Squat','box squat':'Squat',
+    'dip':'Dips','ring dip':'Ring Dips','nordic curl':'Nordic Curl','pendlay rows':'Pendlay Row','push press':'Push Press'};
+  if(SYN[sl])return SYN[sl];
+  return s;
+}
 
 let clients=[],equipment=[],library=[],sharedPackages=[],templates=[],runPrograms=[],pendingLogId=null,pendingRenewId=null;
 let _rp=null,_rpRunEditing=null;
@@ -2511,7 +2560,7 @@ async function confirmLogSession(){
     const wrEl=document.getElementById('wr-adhoc-'+n);
     const wtEl=document.getElementById('wt-adhoc-'+n);
     if(!nameEl||!nameEl.closest('body'))continue; // row was deleted
-    const exName=(nameEl?.value||'').trim();
+    const exName=canonExName((nameEl?.value||'').trim());
     const wr=(wrEl?.value||'').trim();
     const wt=(wtEl?.value||'').trim();
     if(exName&&(wr||wt)){
@@ -4193,7 +4242,7 @@ function startClientPortal(id) {
         var name = (document.getElementById('cex-name-'+id)||{}).value||'';
         var reps = (document.getElementById('cex-reps-'+id)||{}).value||'';
         var wt   = (document.getElementById('cex-wt-'+id)||{}).value||'';
-        name = name.trim(); reps = reps.trim(); wt = wt.trim();
+        name = canonExName(name.trim()); reps = reps.trim(); wt = wt.trim();
         if (name) exercises.push({name:name, reps:reps, weight:wt});
       });
       if (exercises.length === 0) { alert('Add at least one exercise before logging.'); return; }
@@ -6688,7 +6737,11 @@ async function loadMuscleHeatmap(clientId,containerId,period){
     }
     var diagramHtml=renderMuscleDiagram(scores,weeksInPeriod);
     if(_unrecognized.size){
-      diagramHtml+='<div style="margin-top:10px;padding:8px 10px;background:rgba(255,180,0,0.08);border:1px solid rgba(255,180,0,0.25);border-radius:8px;font-size:11px;color:rgba(255,200,80,0.9);"><span style="font-weight:700;">⚠ Unmapped exercises (tell Alex):</span> '+[..._unrecognized].sort().join(', ')+'</div>';
+      diagramHtml+='<div style="margin-top:12px;padding:10px 12px;background:rgba(255,160,0,0.07);border:1px solid rgba(255,160,0,0.22);border-radius:10px;font-size:11px;color:rgba(255,200,80,0.85);line-height:1.5;">'
+        +'<div style="font-weight:700;margin-bottom:4px;">⚠ Not tracked on heatmap or PRs</div>'
+        +'<div style="color:rgba(255,200,80,0.6);margin-bottom:6px;">These exercises weren\'t recognized — they also won\'t appear in your personal records. Check the spelling or use the autocomplete when logging.</div>'
+        +'<div style="font-weight:600;color:rgba(255,200,80,0.8);">'+[..._unrecognized].sort().join(', ')+'</div>'
+        +'</div>';
     }
     el.innerHTML=diagramHtml;
   }catch(e){
