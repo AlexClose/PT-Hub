@@ -5427,14 +5427,14 @@ function exerciseToMuscles(name) {
   // Back — pullover
   if(/pullover/.test(n))
     return[{muscle:'back',weight:1.0}];
-  // Back rows/pulls — biceps secondary, forearms tertiary (grip work)
+  // Back rows/pulls — biceps secondary, traps + forearms tertiary (scapular retraction + grip)
   if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'forearms',weight:0.25}];
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
   if(/\brow\b/.test(n)&&!/upright/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'forearms',weight:0.25}];
-  // Conventional deadlift — back primary, glutes + hamstrings secondary, forearms tertiary
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
+  // Conventional deadlift — back primary, glutes + hamstrings secondary, traps + forearms tertiary
   if(/\bdeadlift\b/.test(n)&&!/romanian|rdl|stiff/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5},{muscle:'forearms',weight:0.25}];
+    return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
   // RDL — hamstrings primary, glutes + lower back secondary, forearms tertiary
   if(/romanian deadlift|rdl|stiff.?leg/.test(n))
     return[{muscle:'hamstrings',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'lower_back',weight:0.5},{muscle:'forearms',weight:0.25}];
