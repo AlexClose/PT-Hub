@@ -3483,6 +3483,7 @@ function startClientPortal(id) {
     var icoTrain='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
     var icoPRs='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>';
     var icoStats='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
+    var icoMuscles='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="M7 8.5C5.5 9.5 5 11 5 12l1 4h2l1 5h6l1-5h2l1-4c0-1-.5-2.5-2-3.5"/><path d="M9 8.5C9 8.5 10 9 12 9s3-.5 3-.5"/><path d="M5 16l-1 2M19 16l1 2"/></svg>';
     document.body.innerHTML =
       '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.1);padding:14px 20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);">' +
         '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
@@ -3511,6 +3512,7 @@ function startClientPortal(id) {
           tabItem('train','train',icoTrain,'Train',false) +
           tabItem('prs','prs',icoPRs,'PRs',false) +
           tabItem('stats','stats',icoStats,'Body',false) +
+          tabItem('muscles','muscles',icoMuscles,'Muscles',false) +
         '</div>' +
       '</div>';
     setTimeout(function() { renderCalendarStrip(); }, 0);
@@ -3718,7 +3720,7 @@ function startClientPortal(id) {
 
     window._showPortalTab = function(tab) {
       window._portalActiveTab = tab;
-      ['home','train','prs','stats'].forEach(function(t) {
+      ['home','train','prs','stats','muscles'].forEach(function(t) {
         var active = (t === tab);
         var pill = document.getElementById('ptab-pill-' + t);
         var ico  = document.getElementById('ptab-ico-'  + t);
@@ -3731,6 +3733,7 @@ function startClientPortal(id) {
       else if (tab === 'train') renderPortalTrain();
       else if (tab === 'prs') renderPortalPRs();
       else if (tab === 'stats') renderPortalStats();
+      else if (tab === 'muscles') renderPortalMuscles();
     };
 
     window._showPortalDay = function(index) {
@@ -4263,58 +4266,18 @@ function startClientPortal(id) {
     function renderPortalStats() {
       var portalBody = document.getElementById('portal-body');
       portalBody.innerHTML =
-        '<div style="background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-bottom:20px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
-            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>' +
-          '</div>' +
-          '<div id="portal-body-stats"><div class="skeleton" style="height:100px;border-radius:10px;"></div></div>' +
-        '</div>' +
-        '<div>' +
-          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:12px;">Recent Sessions</div>' +
-          '<div id="recent-sessions-list"><p style="color:rgba(180,200,230,0.3);font-size:13px;">Loading...</p></div>' +
-        '</div>';
+        '<div id="portal-body-stats"><div class="skeleton" style="height:120px;border-radius:14px;"></div></div>';
       portalBody.classList.add('view-enter');
       setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
-
-      fetch(SUPABASE_URL + '/rest/v1/sessions?client_id=eq.' + window._portalClientId + '&order=created_at.desc&limit=200', {
-        headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
-      }).then(function(res){ return res.json(); }).then(function(sessions) {
-        var el = document.getElementById('recent-sessions-list');
-        if (!el) return;
-        sessions = sessions || [];
-        window._portalRecentSessions = sessions;
-        if (sessions.length === 0) { el.innerHTML = '<p style="color:rgba(180,200,230,0.3);font-size:13px;">No sessions yet — log your first workout!</p>'; return; }
-        var sessionRow = function(s) {
-          var wkHtml = (s.workout && s.workout.length > 0)
-            ? '<div style="font-size:11px;color:rgba(100,160,255,0.45);margin-top:3px;">' + s.workout.length + ' exercise' + (s.workout.length!==1?'s':'') + ' logged</div>'
-            : '';
-          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(100,160,255,0.07);">' +
-            '<div><div style="font-size:14px;font-weight:600;color:#e8edf5;">' + (s.note||'Workout') + '</div>' +
-            '<div style="font-size:12px;color:rgba(180,200,230,0.35);margin-top:2px;">' + s.date + '</div>' + wkHtml + '</div>' +
-            '<div style="font-size:10px;font-weight:700;color:#43d9a2;background:rgba(67,217,162,0.08);border:1px solid rgba(67,217,162,0.2);border-radius:20px;padding:3px 10px;flex-shrink:0;">Done ✓</div>' +
-          '</div>';
-        };
-        var visible = sessions.slice(0, 5), hidden = sessions.slice(5);
-        var html2 = '';
-        for (var i = 0; i < visible.length; i++) html2 += sessionRow(visible[i]);
-        if (hidden.length > 0) {
-          var hiddenHtml = '';
-          for (var j = 0; j < hidden.length; j++) hiddenHtml += sessionRow(hidden[j]);
-          html2 += '<div id="portal-sess-hidden" style="display:none;">' + hiddenHtml + '</div>';
-          html2 += '<div id="portal-sess-btn" onclick="window._toggleSessions(' + sessions.length + ')" style="font-size:12px;color:#7ec8ff;cursor:pointer;padding:10px 0;font-weight:600;">View all ' + sessions.length + ' sessions</div>';
-        }
-        el.innerHTML = html2;
-      }).catch(function(){ var el=document.getElementById('recent-sessions-list'); if(el) el.innerHTML=''; });
-
       window._loadPortalBodyStats();
+    }
 
-      // Muscle heatmap card
-      var mhCard = document.createElement('div');
-      mhCard.style.cssText = 'background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-top:20px;';
-      mhCard.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+    function renderPortalMuscles() {
+      var portalBody = document.getElementById('portal-body');
+      portalBody.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>' +
+            '<div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Activity</div>' +
             '<button onclick="window.showMhInfo()" style="background:rgba(100,160,255,0.15);border:1px solid rgba(100,160,255,0.35);border-radius:8px;color:#7ec8ff;font-size:11px;font-weight:700;cursor:pointer;padding:4px 10px;letter-spacing:0.3px;font-family:\'Instrument Sans\',sans-serif;">ⓘ How it works</button>' +
           '</div>' +
           '<select id="portal-mh-period" onchange="loadMuscleHeatmap(window._portalClientId,\'portal-mh-chart\',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:\'Instrument Sans\',sans-serif;cursor:pointer;outline:none;">' +
@@ -4325,9 +4288,9 @@ function startClientPortal(id) {
             '<option value="week" selected>This Week</option>' +
           '</select>' +
         '</div>' +
-        '<div id="portal-mh-chart"><div class="skeleton" style="height:160px;border-radius:10px;"></div></div>';
-      var portalBodyEl = document.getElementById('portal-body');
-      if (portalBodyEl) portalBodyEl.appendChild(mhCard);
+        '<div id="portal-mh-chart"><div class="skeleton" style="height:260px;border-radius:14px;"></div></div>';
+      portalBody.classList.add('view-enter');
+      setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
       setTimeout(function(){ loadMuscleHeatmap(window._portalClientId,'portal-mh-chart','week'); }, 200);
     }
 
