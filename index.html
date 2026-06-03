@@ -2040,7 +2040,7 @@ function renderStructuredProgram(c){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <button class="ex-edit-btn" onclick="event.stopPropagation();openEditProgramDay('${c.id}',${di})">✎ Edit</button>
-          <span style="color:rgba(180,200,230,0.3);font-size:11px">▼</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
       </div>
       <div class="prog-day-body">
@@ -2063,7 +2063,14 @@ function renderStructuredProgram(c){
         <div style="font-size:12px;color:rgba(180,200,230,0.3);">No start date set</div>
         <button onclick="resetProgramCycle('${c.id}')" style="background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#7ec8ff;cursor:pointer;font-family:'Syne',sans-serif;">▶ Start Now</button>
       </div>`;
-  return startBanner + days;
+  const customCard=`<div style="border:1px dashed rgba(100,160,255,0.2);border-radius:12px;padding:14px 16px;margin-top:4px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .2s;" onclick="openLogSession('${c.id}',-1)" onmouseover="this.style.background='rgba(37,99,235,0.06)';this.style.borderColor='rgba(100,160,255,0.38)';" onmouseout="this.style.background='';this.style.borderColor='rgba(100,160,255,0.2)';">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:rgba(180,200,230,0.55);font-family:'Syne',sans-serif;">↳ Custom Workout</div>
+      <div style="font-size:11px;color:rgba(180,200,230,0.28);margin-top:2px;">Log something off program</div>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(100,160,255,0.3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>`;
+  return startBanner + days + customCard;
 }
 
 // ── EDIT PROGRAM DAY ──
@@ -2223,7 +2230,7 @@ function openLogSession(id, preselectedDay){
       <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Today's Workout</div>
       <div style="position:relative;">
         <select id="logDaySelect" onchange="updateLogWorkout('${id}')" style="width:100%;padding:14px 40px 14px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;font-family:'Syne',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}<option value="-1" style="color:rgba(180,200,230,0.5);">↳ Custom Workout</option></select>
-        <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:rgba(180,200,230,0.4);font-size:11px;pointer-events:none;line-height:1;">▾</div>
+        <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       </div>
     </div>
     <div id="logExercises"></div>`;
