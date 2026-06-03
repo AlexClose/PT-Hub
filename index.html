@@ -343,13 +343,12 @@ display:flex;align-items:center;justify-content:space-between;
 .muscle-count{font-size:10px;color:var(--muted);font-weight:400;margin-left:6px;}
 
 /* ── EDIT PROGRAM ── */
-.edit-ex-row{
-background:var(--surface2);border:1px solid var(--border2);
-border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;
-}
+.edit-ex-row{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:6px;}
 .edit-ex-fields{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-bottom:8px;}
 .edit-ex-fields input{font-size:12px;padding:7px 10px;}
 .edit-ex-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
+.ex-drag-handle:active{cursor:grabbing;}
 
 /* ── LOADING ── */
 .loading{text-align:center;padding:48px 20px;color:var(--muted);}
@@ -821,7 +820,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
-    <p class="muted" style="margin-bottom:16px;font-size:12px">Tap ↑↓ to reorder · Edit any field · Add or remove exercises</p>
+    <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
     <div id="editExerciseList"></div>
     <button class="btn btn-secondary btn-full btn-sm" onclick="addExerciseToDay()" style="margin-top:6px">+ Add Exercise</button>
     <div style="display:flex;gap:8px;margin-top:16px">
@@ -2077,21 +2076,76 @@ function openEditProgramDay(clientId,dayIndex){
   renderEditExerciseList();openModal('editProgramModal');
 }
 function renderEditExerciseList(){
-  document.getElementById('editExerciseList').innerHTML=editingExercises.map((ex,i)=>`
-    <div class="edit-ex-row">
-      <div class="edit-ex-fields">
-        <input value="${ex.name||''}" onchange="editingExercises[${i}].name=this.value" placeholder="Exercise name">
-        <input value="${ex.prescription||''}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
-        <input value="${ex.load||''}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
-      </div>
-      <div class="edit-ex-actions">
-        ${i>0?`<button class="lib-btn" onclick="moveEx(${i},-1)">↑ Up</button>`:''}
-        ${i<editingExercises.length-1?`<button class="lib-btn" onclick="moveEx(${i},1)">↓ Down</button>`:''}
-        <button class="lib-btn danger" onclick="removeEx(${i})">Remove</button>
+  var list=document.getElementById('editExerciseList');
+  if(list)list._dragSetup=false;
+  list.innerHTML=editingExercises.map((ex,i)=>`
+    <div class="edit-ex-row" data-idx="${i}">
+      <div class="ex-drag-handle" title="Drag to reorder">⠿</div>
+      <div style="flex:1;">
+        <div class="edit-ex-fields">
+          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value" placeholder="Exercise name">
+          <input value="${(ex.prescription||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
+          <input value="${(ex.load||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
+        </div>
+        <div class="edit-ex-actions">
+          <button class="lib-btn danger" onclick="removeEx(${i})">Remove</button>
+        </div>
       </div>
     </div>`).join('');
+  setupExDrag();
 }
-function moveEx(i,dir){const j=i+dir;if(j<0||j>=editingExercises.length)return;[editingExercises[i],editingExercises[j]]=[editingExercises[j],editingExercises[i]];renderEditExerciseList();}
+function setupExDrag(){
+  var list=document.getElementById('editExerciseList');
+  if(!list||list._dragSetup)return;
+  list._dragSetup=true;
+  list.addEventListener('pointerdown',function(e){
+    if(!e.target.closest('.ex-drag-handle'))return;
+    e.preventDefault();
+    var row=e.target.closest('.edit-ex-row');
+    if(!row)return;
+    var allRows=Array.from(list.querySelectorAll('.edit-ex-row'));
+    var fromIdx=allRows.indexOf(row);
+    var rect=row.getBoundingClientRect();
+    var startY=e.clientY,origTop=rect.top;
+    var origCss=row.getAttribute('style')||'';
+    var ph=document.createElement('div');
+    ph.style.cssText='height:'+row.offsetHeight+'px;margin-bottom:8px;border:2px dashed rgba(37,99,235,0.4);border-radius:8px;background:rgba(37,99,235,0.05);box-sizing:border-box;';
+    list.insertBefore(ph,row);
+    row.style.position='fixed';
+    row.style.top=origTop+'px';
+    row.style.left=rect.left+'px';
+    row.style.width=rect.width+'px';
+    row.style.zIndex='9999';
+    row.style.boxShadow='0 10px 40px rgba(0,0,0,0.7)';
+    row.style.margin='0';
+    document.body.appendChild(row);
+    row.setPointerCapture(e.pointerId);
+    var onMove=function(ev){
+      row.style.top=(origTop+(ev.clientY-startY))+'px';
+      var rows=Array.from(list.querySelectorAll('.edit-ex-row'));
+      var ins=null;
+      for(var i=0;i<rows.length;i++){if(ev.clientY<rows[i].getBoundingClientRect().top+rows[i].offsetHeight/2){ins=rows[i];break;}}
+      if(ins)list.insertBefore(ph,ins);else list.appendChild(ph);
+    };
+    var onUp=function(){
+      row.removeEventListener('pointermove',onMove);
+      row.removeEventListener('pointerup',onUp);
+      row.removeEventListener('pointercancel',onUp);
+      var phIdx=Array.from(list.children).indexOf(ph);
+      row.setAttribute('style',origCss);
+      list.insertBefore(row,ph);
+      list.removeChild(ph);
+      if(phIdx!==fromIdx&&phIdx>=0){
+        var item=editingExercises.splice(fromIdx,1)[0];
+        editingExercises.splice(phIdx,0,item);
+        renderEditExerciseList();
+      }
+    };
+    row.addEventListener('pointermove',onMove);
+    row.addEventListener('pointerup',onUp);
+    row.addEventListener('pointercancel',onUp);
+  });
+}
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
 function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:''});renderEditExerciseList();}
 async function saveProgramDay(){
@@ -3979,26 +4033,60 @@ function startClientPortal(id) {
           portalBody.innerHTML = '<div style="text-align:center;padding:48px 20px;"><div style="font-size:48px;margin-bottom:16px;">&#127942;</div><div style="font-family:Syne,sans-serif;font-weight:700;font-size:18px;color:rgba(232,237,245,0.7);">No PRs yet</div><div style="font-size:13px;color:rgba(180,200,230,0.4);margin-top:8px;">Log workouts to track your personal records.</div></div>';
           return;
         }
-        var exMap = {};
+        var now = new Date();
+        var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        var monthName = now.toLocaleString('default', {month: 'long'});
+        function isThisMonth(dateStr) {
+          if (!dateStr) return false;
+          var d = new Date(dateStr);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        }
+        // Build all-time max and previous-best (before this month)
+        var allTime = {}, prevBest = {};
         logs.forEach(function(l) {
           var w = maxWeight(l.weight);
-          if (!exMap[l.exercise_name]) exMap[l.exercise_name] = {max:0, date:'', reps:''};
-          if (w > exMap[l.exercise_name].max) exMap[l.exercise_name] = {max:w, date:l.session_date, reps:l.reps};
+          if (!w) return;
+          if (!allTime[l.exercise_name] || w > allTime[l.exercise_name].max) {
+            allTime[l.exercise_name] = {max: w, date: l.session_date, reps: l.reps};
+          }
+          if (!isThisMonth(l.session_date)) {
+            if (!prevBest[l.exercise_name] || w > prevBest[l.exercise_name]) {
+              prevBest[l.exercise_name] = w;
+            }
+          }
         });
-        var exercises = Object.keys(exMap).filter(function(k){ return exMap[k].max > 0; });
-        exercises.sort(function(a,b){ return exMap[b].max - exMap[a].max; });
-        var html = '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.8);margin-bottom:16px;">Personal Records</div>';
-        for (var i = 0; i < exercises.length; i++) {
-          var ex = exercises[i], pr = exMap[ex];
-          html +=
-            '<div style="background:rgba(15,19,23,0.5);border:1px solid rgba(192,132,252,0.12);border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
-              '<div>' +
-                '<div style="font-size:14px;font-weight:600;color:#e8edf5;margin-bottom:3px;">' + ex.replace(/^SS\w+:\s*/i,'') + '</div>' +
-                (pr.date ? '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' + pr.date + (pr.reps ? ' · ' + pr.reps + ' reps' : '') + '</div>' : '') +
+        var exercises = Object.keys(allTime).filter(function(k){ return allTime[k].max > 0; });
+        exercises.sort(function(a,b){ return allTime[b].max - allTime[a].max; });
+        var newThisMonth = exercises.filter(function(ex){ return isThisMonth(allTime[ex].date); });
+        function prCard(ex, highlight) {
+          var pr = allTime[ex];
+          var prev = prevBest[ex];
+          var borderCol = highlight ? 'rgba(192,132,252,0.35)' : 'rgba(192,132,252,0.1)';
+          var bg = highlight ? 'rgba(192,132,252,0.07)' : 'rgba(15,19,23,0.5)';
+          return '<div style="background:' + bg + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
+                '<div style="font-size:14px;font-weight:600;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.replace(/^SS\w+:\s*/i,'') + '</div>' +
+                (highlight ? '<div style="background:rgba(192,132,252,0.2);border:1px solid rgba(192,132,252,0.4);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#c084fc;white-space:nowrap;">NEW PR</div>' : '') +
               '</div>' +
-              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#c084fc;">' + pr.max + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
-            '</div>';
+              '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' +
+                (pr.date || '') + (pr.reps ? ' · ' + pr.reps + ' reps' : '') +
+                (highlight && prev ? '<span style="margin-left:8px;color:rgba(180,200,230,0.25);">prev: ' + prev + ' lbs</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:' + (highlight ? '#c084fc' : '#9b7fc7') + ';margin-left:12px;white-space:nowrap;">' + pr.max + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
+          '</div>';
         }
+        var html = '';
+        if (newThisMonth.length > 0) {
+          html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.8);margin-bottom:12px;">🏆 New in ' + monthName + '</div>';
+          newThisMonth.forEach(function(ex){ html += prCard(ex, true); });
+          html += '<div style="height:1px;background:rgba(100,160,255,0.1);margin:20px 0 16px;"></div>';
+          html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.3);margin-bottom:12px;">All Records</div>';
+        } else {
+          html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(192,132,252,0.8);margin-bottom:16px;">Personal Records</div>';
+        }
+        exercises.forEach(function(ex){ html += prCard(ex, false); });
         portalBody.innerHTML = html;
         portalBody.classList.add('view-enter');
         setTimeout(function(){portalBody.classList.remove('view-enter');}, 300);
