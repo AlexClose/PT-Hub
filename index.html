@@ -1813,7 +1813,10 @@ function renderClientModal(c){
 
       <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>
+            <button onclick="window.showMhInfo()" style="background:rgba(100,160,255,0.1);border:1px solid rgba(100,160,255,0.2);border-radius:50%;width:18px;height:18px;color:#7ec8ff;font-size:10px;font-weight:700;cursor:pointer;padding:0;line-height:18px;text-align:center;">ⓘ</button>
+          </div>
           <select id="mhPeriod-${c.id}" onchange="loadMuscleHeatmap('${c.id}','mhChart-${c.id}',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:'Instrument Sans',sans-serif;cursor:pointer;outline:none;">
             <option value="all">All Time</option>
             <option value="30d">Last 30 Days</option>
@@ -3981,7 +3984,10 @@ function startClientPortal(id) {
       mhCard.style.cssText = 'background:rgba(10,14,20,0.6);border:1px solid rgba(100,160,255,0.1);border-radius:16px;padding:16px;margin-top:20px;';
       mhCard.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
-          '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>' +
+            '<button onclick="window.showMhInfo()" style="background:rgba(100,160,255,0.1);border:1px solid rgba(100,160,255,0.2);border-radius:50%;width:18px;height:18px;color:#7ec8ff;font-size:10px;font-weight:700;cursor:pointer;padding:0;line-height:18px;text-align:center;">ⓘ</button>' +
+          '</div>' +
           '<select id="portal-mh-period" onchange="loadMuscleHeatmap(window._portalClientId,\'portal-mh-chart\',this.value)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(180,200,230,0.7);font-size:11px;padding:4px 8px;font-family:\'Instrument Sans\',sans-serif;cursor:pointer;outline:none;">' +
             '<option value="all">All Time</option>' +
             '<option value="30d">Last 30 Days</option>' +
@@ -5493,13 +5499,63 @@ function _mhColor(weeklyAvg,weeklyTarget){
   if(r<1.50)return'#ef4444';
   return'#b91c1c';
 }
-// Weekly set targets per muscle (RP Strength MAV research)
-// Weekly set targets calibrated for PT clients (~3x/week training), not competitive bodybuilders.
-// Smaller stabilisers (glute_med, adductors) only need ~3 sets/week to be in optimal range.
+// Weekly set targets per muscle — based on RP Strength MAV guidelines, adjusted for
+// PT clients training 2-4x/week (not competitive bodybuilders).
 var _MH_TARGETS={
-  chest:12,back:12,shoulders:10,quads:12,
+  chest:12,back:14,shoulders:12,quads:12,
   hamstrings:12,glutes:12,glute_med:4,adductors:4,
-  biceps:14,triceps:14,calves:6,abs:8,traps:6,lower_back:5,forearms:8,
+  biceps:14,triceps:12,calves:10,abs:12,traps:8,lower_back:6,forearms:8,
+};
+window.showMhInfo = function() {
+  var ov = document.getElementById('mh-info-ov');
+  if (ov) { ov.style.display = 'flex'; return; }
+  ov = document.createElement('div');
+  ov.id = 'mh-info-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end;justify-content:center;';
+  ov.onclick = function(e){ if(e.target===ov) ov.style.display='none'; };
+  var colorRows = [
+    ['#fef9c3','Minimal','< 25% of target'],
+    ['#fde68a','Below optimal','25–49% of target'],
+    ['#fbbf24','Building','50–74% of target'],
+    ['#f97316','Effective','75–99% of target'],
+    ['#ef4444','Optimal','≥ 100% of target'],
+    ['#b91c1c','High volume','≥ 150% — watch recovery'],
+  ].map(function(r){
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">'+
+      '<div style="width:16px;height:16px;border-radius:4px;background:'+r[0]+';flex-shrink:0;"></div>'+
+      '<span style="color:#e8eaf6;font-size:13px;font-weight:600;">'+r[1]+'</span>'+
+      '<span style="color:rgba(180,200,230,0.55);font-size:12px;">— '+r[2]+'</span>'+
+    '</div>';
+  }).join('');
+  var targetRows = [
+    ['Chest',12],['Back',14],['Shoulders',12],['Quads',12],['Hamstrings',12],
+    ['Glutes',12],['Biceps',14],['Triceps',12],['Abs',12],['Calves',10],
+    ['Traps',8],['Lower Back',6],['Forearms',8],
+  ].map(function(r){
+    return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.07);">'+
+      '<span style="color:rgba(200,215,240,0.85);font-size:13px;">'+r[0]+'</span>'+
+      '<span style="color:#7ec8ff;font-weight:700;font-size:13px;">'+r[1]+' sets / week</span>'+
+    '</div>';
+  }).join('');
+  var sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#0d1220;border:1px solid rgba(100,160,255,0.18);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;';
+  sheet.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">'+
+      '<div style="font-size:16px;font-weight:700;color:#e8eaf6;font-family:Syne,sans-serif;">How the heatmap works</div>'+
+      '<button onclick="document.getElementById(\'mh-info-ov\').style.display=\'none\'" style="background:rgba(255,255,255,0.08);border:none;border-radius:8px;color:rgba(180,200,230,0.7);padding:6px 12px;cursor:pointer;font-size:14px;">✕</button>'+
+    '</div>'+
+    '<p style="color:rgba(180,200,230,0.65);font-size:13px;line-height:1.65;margin:0 0 20px;">'+
+      'Each muscle is colored based on how many direct sets it received this period vs. its weekly target. '+
+      'Targets are adapted from RP Strength\'s Maximum Adaptive Volume (MAV) research — the range where most people make consistent progress. '+
+      'Compound exercises credit multiple groups (e.g. rows count toward back, biceps, traps, and forearms).'+
+    '</p>'+
+    '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);margin-bottom:12px;">Color Scale</div>'+
+    colorRows+
+    '<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);margin:22px 0 10px;">Weekly Set Targets</div>'+
+    '<p style="color:rgba(180,200,230,0.45);font-size:11px;margin:0 0 10px;">Grey = not trained this period. Numbers represent the low end of MAV for a 2–4x/week training schedule.</p>'+
+    targetRows;
+  ov.appendChild(sheet);
+  document.body.appendChild(ov);
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
