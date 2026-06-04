@@ -1352,6 +1352,121 @@ function closeModal(id){
 }
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
+// ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
+var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
+var _exDb=null,_exDbIdx=null,_exDbLoading=null,_exDemoTimer=null;
+var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
+function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
+function _normExName(s){return (s||'').toLowerCase().replace(/^ss\d+:\s*/i,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
+function _exTokens(s){var n=_normExName(s);return n?n.split(' '):[];}
+function _musColor(m){var g=_EXDB_MUS[(m||'').toLowerCase()];return g?(MUSCLE_COLORS[g]||'#7ec8ff'):'#7ec8ff';}
+function _buildExIdx(){_exDbIdx={};if(!_exDb)return;_exDb.forEach(function(e){var k=_normExName(e.name);if(k&&!_exDbIdx[k])_exDbIdx[k]=e;});}
+function _loadExDb(){
+  if(_exDb)return Promise.resolve(_exDb);
+  if(_exDbLoading)return _exDbLoading;
+  try{var c=JSON.parse(localStorage.getItem('bm_exdb')||'null');if(c&&c.t&&(Date.now()-c.t)<6048e5&&Array.isArray(c.d)&&c.d.length){_exDb=c.d;_buildExIdx();return Promise.resolve(_exDb);}}catch(e){}
+  _exDbLoading=fetch(_EXDB_BASE+'dist/exercises.json').then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(d&&d.length){_exDb=d;_buildExIdx();try{localStorage.setItem('bm_exdb',JSON.stringify({t:Date.now(),d:d}));}catch(e){}}
+    return _exDb;
+  }).catch(function(){_exDbLoading=null;return null;});
+  return _exDbLoading;
+}
+function _exDbMatch(name){
+  if(!_exDb||!_exDbIdx)return null;
+  var n=_normExName(name);if(!n)return null;
+  if(_exDbIdx[n])return _exDbIdx[n];
+  if(typeof canonExName==='function'){var cn=_normExName(canonExName(name));if(cn&&_exDbIdx[cn])return _exDbIdx[cn];}
+  var toks=_exTokens(name);if(!toks.length)return null;
+  var best=null,bestScore=0;
+  for(var i=0;i<_exDb.length;i++){
+    var et=_exTokens(_exDb[i].name);if(!et.length)continue;
+    var inter=0;for(var j=0;j<toks.length;j++){if(et.indexOf(toks[j])>=0)inter++;}
+    var score=inter/(toks.length+et.length-inter);
+    if(score>bestScore){bestScore=score;best=_exDb[i];}
+  }
+  return bestScore>=0.5?best:null;
+}
+function _exHistHtml(pts){
+  if(!pts||!pts.length)return '';
+  var maxW=Math.max.apply(null,pts.map(function(p){return p.weight||0;}));
+  var recent=pts.slice(-8);
+  var out='<div style="margin-bottom:8px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:4px 0 10px;">Your History</div>';
+  out+='<div style="display:flex;align-items:flex-end;gap:6px;height:72px;margin-bottom:6px;">';
+  recent.forEach(function(p){var h=maxW>0?Math.max(8,Math.round((p.weight/maxW)*60)):8;var isMax=p.weight>0&&p.weight===maxW;
+    out+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:8px;color:rgba(126,200,255,'+(isMax?'0.9':'0.4')+');font-weight:700;line-height:1;">'+(p.weight||'')+'</div><div style="width:100%;height:'+h+'px;background:'+(isMax?'linear-gradient(180deg,#f59e0b,#d97706)':'linear-gradient(180deg,rgba(79,163,232,0.8),rgba(29,78,216,0.5))')+';border-radius:3px 3px 0 0;"></div></div>';});
+  out+='</div><div style="display:flex;gap:6px;margin-bottom:14px;">'+recent.map(function(p){return '<div style="flex:1;font-size:8px;text-align:center;color:rgba(180,200,230,0.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+p.date+'</div>';}).join('')+'</div>';
+  out+='<div style="border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;">'+pts.slice().reverse().slice(0,5).map(function(p){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.06);"><div style="font-size:13px;color:rgba(180,200,230,0.45);">'+p.date+'</div><div style="font-size:13px;font-weight:700;color:#7ec8ff;">'+p.reps+(p.weight?' &nbsp;·&nbsp; '+p.weight:'')+'</div></div>';}).join('')+'</div></div>';
+  return out;
+}
+function _closeExDetail(){if(_exDemoTimer){clearInterval(_exDemoTimer);_exDemoTimer=null;}var el=document.getElementById('ex-detail-sheet');if(el)el.remove();}
+function openExerciseDetail(rawName,displayName,opts){
+  opts=opts||{};displayName=displayName||rawName;
+  _closeExDetail();
+  var sh=document.createElement('div');
+  sh.id='ex-detail-sheet';
+  sh.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;background:rgba(0,0,0,0.65);';
+  sh.addEventListener('click',function(e){if(e.target===sh)_closeExDetail();});
+  sh.innerHTML='<div style="width:100%;max-width:520px;margin:0 auto;background:#0f1317;border-radius:20px 20px 0 0;padding:20px;max-height:88vh;overflow-y:auto;">'+
+    '<div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 16px;"></div>'+
+    '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:19px;margin-bottom:14px;color:#fff;line-height:1.25;">'+ (displayName||'') +'</div>'+
+    '<div id="ex-detail-body"><div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);font-size:13px;">Loading demo…</div></div>'+
+    '<button onclick="_closeExDetail()" style="width:100%;margin-top:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(200,215,235,0.7);cursor:pointer;">Close</button>'+
+  '</div>';
+  document.body.appendChild(sh);
+  _loadExDb().then(function(){
+    var body=document.getElementById('ex-detail-body');if(!body)return;
+    var m=_exDbMatch(rawName);
+    var html='';
+    if(m&&m.images&&m.images.length){
+      html+='<div style="position:relative;width:100%;background:#fff;border-radius:14px;overflow:hidden;margin-bottom:14px;">'+
+        '<img id="ex-demo-img" src="'+_EXDB_BASE+'exercises/'+m.images[0]+'" alt="" style="width:100%;height:auto;display:block;" onerror="var p=this.parentNode;if(p)p.style.display=\'none\'">'+
+        (m.images.length>1?'<div style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;letter-spacing:1px;padding:4px 8px;border-radius:20px;">▶ ANIMATED</div>':'')+
+      '</div>';
+    }
+    var chips=[];
+    if(m){
+      if(m.equipment)chips.push(['🏋 '+_cap(m.equipment),'rgba(126,200,255,0.9)']);
+      if(m.level)chips.push([_cap(m.level),'rgba(180,200,230,0.7)']);
+      if(m.mechanic)chips.push([_cap(m.mechanic),'rgba(180,200,230,0.7)']);
+    }
+    if(chips.length)html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">'+chips.map(function(c){return '<span style="font-size:11px;font-weight:600;color:'+c[1]+';background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:20px;padding:5px 11px;">'+c[0]+'</span>';}).join('')+'</div>';
+    var prim=(m&&m.primaryMuscles)||[],sec=(m&&m.secondaryMuscles)||[];
+    if(!m){try{var em=(typeof exerciseToMuscles==='function')?exerciseToMuscles(rawName):[];prim=em.map(function(x){return x.muscle;});}catch(e){}}
+    if(prim.length||sec.length){
+      html+='<div style="margin-bottom:16px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">Target Muscles</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
+      prim.forEach(function(mu){var c=_musColor(mu);html+='<span style="font-size:11px;font-weight:700;color:#fff;background:'+c+';border-radius:20px;padding:5px 12px;">'+_cap(mu)+'</span>';});
+      sec.forEach(function(mu){var c=_musColor(mu);html+='<span style="font-size:11px;font-weight:600;color:'+c+';background:transparent;border:1px solid '+c+';border-radius:20px;padding:4px 11px;">'+_cap(mu)+'</span>';});
+      html+='</div></div>';
+    }
+    html+=_exHistHtml(opts.historyPts||[]);
+    if(m&&m.instructions&&m.instructions.length){
+      html+='<div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:16px 0 8px;">How to perform</div>'+
+        '<ol style="margin:0;padding-left:18px;color:rgba(210,222,238,0.85);font-size:13px;line-height:1.65;">'+m.instructions.map(function(s){return '<li style="margin-bottom:7px;">'+s+'</li>';}).join('')+'</ol></div>';
+    }
+    if(!m)html+='<div style="text-align:center;padding:18px;color:rgba(180,200,230,0.4);font-size:12px;background:rgba(255,255,255,0.03);border-radius:12px;">No demo found for this exercise yet.</div>';
+    body.innerHTML=html;
+    if(m&&m.images&&m.images.length>1){
+      var fr=0;
+      if(_exDemoTimer)clearInterval(_exDemoTimer);
+      _exDemoTimer=setInterval(function(){var el=document.getElementById('ex-demo-img');if(!el){clearInterval(_exDemoTimer);_exDemoTimer=null;return;}fr=fr^1;el.src=_EXDB_BASE+'exercises/'+m.images[fr%m.images.length];},900);
+    }
+  });
+}
+window._portalExPts=function(exName){
+  var pts=[],hk=(exName||'').toLowerCase().replace(/\s+/g,'_');
+  if(window._portalRecentSessions){var seen={};
+    window._portalRecentSessions.slice().reverse().forEach(function(s){
+      if(s.workout)s.workout.forEach(function(e){
+        var k=(e.name||'').toLowerCase().replace(/\s+/g,'_');
+        if(k===hk&&(e.weight||e.reps)){var dk=s.date||(s.created_at||'').slice(0,10);if(!seen[dk]){seen[dk]=true;var d=new Date(s.created_at||s.date);pts.push({weight:maxWeight(e.weight),reps:e.reps||'',date:d.toLocaleDateString('en-US',{month:'short',day:'numeric'})});}}
+      });
+    });
+  }
+  return pts;
+};
+window._openExDetailPortal=function(exName,displayName){openExerciseDetail(exName,displayName,{historyPts:window._portalExPts(exName)});};
+
 // ── DASHBOARD ──
 function getTodayClients(){
   const dayPatterns=[
@@ -2720,6 +2835,7 @@ async function deleteClient(id){
 
 // ── LIBRARY ──
 function renderLibrary(){
+  try{_loadExDb();}catch(e){}
   const q=(document.getElementById('libSearch')?.value||'').toLowerCase();
   const filtered=library.filter(e=>e.name.toLowerCase().includes(q)||(e.muscle_group||'').toLowerCase().includes(q));
   const groups={};
@@ -2739,14 +2855,14 @@ function renderLibrary(){
         <span style="color:var(--muted);font-size:12px">▼</span>
       </div>
       <div class="muscle-body">
-        ${exes.map(e=>`<div class="lib-exercise">
+        ${exes.map(e=>`<div class="lib-exercise" onclick="openExerciseDetail('${_jsq(e.name)}','${_jsq(e.name)}')" style="cursor:pointer">
           <div>
-            <div class="lib-ex-name">${e.name}</div>
+            <div class="lib-ex-name">${e.name} <span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>
             ${e.equipment?`<div class="lib-ex-equip">${e.equipment}</div>`:''}
           </div>
           <div class="lib-ex-actions">
-            <button class="lib-btn" onclick="openEditLibEx('${e.id}')">Edit</button>
-            <button class="lib-btn danger" onclick="deleteLibEx('${e.id}')">×</button>
+            <button class="lib-btn" onclick="event.stopPropagation();openEditLibEx('${e.id}')">Edit</button>
+            <button class="lib-btn danger" onclick="event.stopPropagation();deleteLibEx('${e.id}')">×</button>
           </div>
         </div>`).join('')}
       </div>
@@ -3569,6 +3685,7 @@ function startClientPortal(id) {
       }
 
       window._portalClientId = client.id;
+      try{_loadExDb();}catch(e){}
       window._portalClientName = client.first || 'there';
       window._portalHistory = client.exercise_history || {};
       window._portalPackageSize = client.package_size || 0;
@@ -5013,10 +5130,10 @@ function startClientPortal(id) {
 
       html +=
         '<div id="ex-row-' + i + '"' + (isSuperset ? ' data-ss="1"' : '') + ' style="' + (isSuperset ? 'padding:16px;position:relative;transition:background 0.25s;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;transition:border-color 0.25s,background 0.25s;') + '">' +
-          '<div style="font-weight:700;font-size:16px;color:#fff;margin-bottom:4px;">' + name + '</div>' +
+          '<div onclick="window._openExDetailPortal(\'' + _jsq(ex.name) + '\',\'' + _jsq(name) + '\')" style="font-weight:700;font-size:16px;color:#fff;margin-bottom:4px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;">' + name + '<span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>' +
           '<div style="font-size:12px;color:rgba(126,200,255,0.8);margin-bottom:10px;font-weight:500;">' + (ex.prescription || '') + (ex.load ? ' &nbsp;·&nbsp; ' + ex.load : '') + '</div>' +
           (lastData ?
-            '<div onclick="window._showExHistoryClient(\'' + (ex.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\',\'' + name.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')" style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.25);border-radius:8px;padding:7px 12px;margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">📊 ' +
+            '<div onclick="window._openExDetailPortal(\'' + (ex.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\',\'' + name.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')" style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.25);border-radius:8px;padding:7px 12px;margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">📊 ' +
               lastData.reps + ' &nbsp;·&nbsp; ' + lastData.weight +
               (lastData.pb ? ' &nbsp;<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;font-weight:800;letter-spacing:0.5px;padding:3px 7px;border-radius:4px;border:1px solid rgba(245,158,11,0.3);">PB</span>' : '') +
               ' <span style="font-size:10px;opacity:0.5;">▸ trend</span>' +
