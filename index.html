@@ -535,7 +535,10 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
         <div class="page-label">Exercise & Equipment</div>
         <h2>Library</h2>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-secondary btn-sm" onclick="copyLibDemoStatus()" title="Copy a demo-coverage report to share">⧉ Demos</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
+      </div>
     </div>
     <div class="search-wrap"><input type="text" placeholder="Search exercises..." id="libSearch" oninput="renderLibrary()"></div>
     <div id="libraryList"></div>
@@ -1451,6 +1454,24 @@ function _hydrateExThumbs(){
   }
 }
 function _thumbsRefresh(){_loadExDb().then(_hydrateExThumbs);}
+// Admin helper: copy a ✅/❌ demo-coverage report of the whole exercise library.
+function copyLibDemoStatus(){
+  if(!Array.isArray(window.library)||!library.length){toast('No exercises in library yet');return;}
+  toast('Building demo report…');
+  _loadExDb().then(function(d){
+    if(!d){toast('Could not load demo data — try again');return;}
+    var rows=library.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+    var have=0;
+    var lines=rows.map(function(e){
+      var m=_exDbMatch(e.name);if(m)have++;
+      return (m?'✅ ':'❌ ')+e.name+(m?'  → '+m.name:'');
+    });
+    var txt='PT-Hub demo coverage — '+have+'/'+rows.length+' have demos\n\n'+lines.join('\n');
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){toast('Copied '+rows.length+' exercises ✓');},function(){window.prompt('Copy this list:',txt);});
+    }else{window.prompt('Copy this list:',txt);}
+  });
+}
 function openExerciseDetail(rawName,displayName,opts){
   opts=opts||{};displayName=displayName||rawName;
   _closeExDetail();
