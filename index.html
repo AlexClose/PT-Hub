@@ -5843,7 +5843,8 @@ function exerciseToMuscles(name) {
   if(/\bcurls?\b/.test(n)&&!/leg curl|hamstring|ham curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
   // Chest fly / pec dec — isolation, no tricep involvement
-  if(/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
+  // Exclude reverse/rear fly (rear delt) which also contains "fly"
+  if(!n.includes('reverse')&&!n.includes('rear')&&/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
     return[{muscle:'chest',weight:1.0}];
   // Chest press — triceps secondary, shoulders (front delt) tertiary
   if(/bench|push.?up/.test(n))
