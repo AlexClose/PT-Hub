@@ -1423,15 +1423,28 @@ function openExerciseDetail(rawName,displayName,opts){
   _closeExDetail();
   var sh=document.createElement('div');
   sh.id='ex-detail-sheet';
-  sh.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;background:rgba(0,0,0,0.65);';
+  sh.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.65);';
   sh.addEventListener('click',function(e){if(e.target===sh)_closeExDetail();});
-  sh.innerHTML='<div style="width:100%;max-width:520px;margin:0 auto;background:#0f1317;border-radius:20px 20px 0 0;padding:20px;max-height:88vh;overflow-y:auto;">'+
-    '<div style="width:36px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:0 auto 16px;"></div>'+
-    '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:19px;margin-bottom:14px;color:#fff;line-height:1.25;">'+ (displayName||'') +'</div>'+
-    '<div id="ex-detail-body"><div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);font-size:13px;">Loading demo…</div></div>'+
-    '<button onclick="_closeExDetail()" style="width:100%;margin-top:16px;background:rgba(255,255,255,0.06);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(200,215,235,0.7);cursor:pointer;">Close</button>'+
+  sh.innerHTML='<div id="ex-detail-panel" style="width:100%;max-width:520px;background:#0f1317;border-radius:20px 20px 0 0;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;will-change:transform;">'+
+    '<div id="ex-detail-grab" style="flex:0 0 auto;padding:12px 16px 8px;position:relative;touch-action:none;cursor:grab;">'+
+      '<div style="width:40px;height:5px;background:rgba(255,255,255,0.22);border-radius:3px;margin:0 auto;"></div>'+
+      '<button onclick="_closeExDetail()" aria-label="Close" style="position:absolute;top:6px;right:10px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:19px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>'+
+    '</div>'+
+    '<div id="ex-detail-scroll" style="flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:2px 20px 22px;">'+
+      '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:19px;margin-bottom:14px;color:#fff;line-height:1.25;padding-right:36px;">'+ (displayName||'') +'</div>'+
+      '<div id="ex-detail-body"><div style="text-align:center;padding:40px 0;color:rgba(180,200,230,0.4);font-size:13px;">Loading demo…</div></div>'+
+      '<button onclick="_closeExDetail()" style="width:100%;margin-top:18px;background:rgba(255,255,255,0.06);border:1px solid rgba(100,160,255,0.15);border-radius:10px;padding:13px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(200,215,235,0.7);cursor:pointer;">Close</button>'+
+    '</div>'+
   '</div>';
   document.body.appendChild(sh);
+  (function(){
+    var panel=document.getElementById('ex-detail-panel'),grab=document.getElementById('ex-detail-grab');
+    if(!panel||!grab)return;
+    var startY=0,dy=0,drag=false;
+    grab.addEventListener('touchstart',function(e){drag=true;dy=0;startY=e.touches[0].clientY;panel.style.transition='none';},{passive:true});
+    grab.addEventListener('touchmove',function(e){if(!drag)return;dy=e.touches[0].clientY-startY;if(dy<0)dy=0;panel.style.transform='translateY('+dy+'px)';},{passive:true});
+    grab.addEventListener('touchend',function(){if(!drag)return;drag=false;panel.style.transition='transform .25s ease';if(dy>90){panel.style.transform='translateY(110%)';setTimeout(_closeExDetail,210);}else{panel.style.transform='translateY(0)';}dy=0;});
+  })();
   _loadExDb().then(function(){
     var body=document.getElementById('ex-detail-body');if(!body)return;
     var m=_exDbMatch(rawName);
