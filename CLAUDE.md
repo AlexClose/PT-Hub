@@ -1,7 +1,7 @@
 # PT-Hub Coaching App — Context & Status
 
 ## Project Overview
-Single-file SPA at `/home/user/PT-Hub/index.html` (~6700 lines) for a personal training coaching platform. Two portals:
+Single-file SPA at `/home/user/PT-Hub/index.html` (~6800 lines) for a personal training coaching platform. Two portals:
 - **Coaching Portal** (`#coach-*`): Coach manages clients, logs sessions, views dashboards
 - **Client Portal** (`#client-*`): Clients log workouts, view training programs
 
@@ -24,56 +24,10 @@ git push -u origin main
 
 ---
 
-## 🚨 TOP PRIORITY — Heatmap Color Investigation
-
-**Issue:** Alex's muscle heatmap shows **chest as "Optimal" red** after logging one workout with 3 chest exercises × 3 sets = 9 sets. At target=12, that's 75% → should show orange. "Optimal" red requires ≥100% = 12 sets minimum.
-
-**What was logged (Jun 3, 2026 custom workout):**
-- Lat Pulldown 3×12 @ 120
-- Machine chest press 3×12 @ 130 → chest 1.0, triceps 0.5, shoulders 0.4
-- Incline Bench Press 3×12 @ 60 → chest 1.0, triceps 0.5, shoulders 0.4
-- Chest Fly 3×12 @ 160 → chest 1.0
-- Chest supported row 3×12 @ 45 → **back** 1.0 (NOT chest — "chest" = the support pad)
-- Reverse Fly 3×12 @ 70 → shoulders 1.0
-- Seated Cable Row 3×12 @ 120 → back 1.0
-- Front Raise 3×12 @ 25 → shoulders 1.0
-- Crunches 3×25 → abs 1.0
-
-**Expected scores (target / color):**
-- Chest: 9/12 = 75% → orange (75-100%)
-- Back: 9/14 = 64% → amber (50-75%)
-- Shoulders: 8.4/12 = 70% → amber (50-75%)
-- Abs: 3/12 = 25% → light yellow
-
-**Possible causes:**
-1. Duplicate `exercise_logs` entries (session written twice — user may have submitted before button disabled)
-2. Additional chest exercise_logs from another session earlier that week (Mon Jun 1 – Thu Jun 4)
-3. Date filter bug: `session_date` is stored as `"Jun 3, 2026"` (US locale text). The filter does `new Date("Jun 3, 2026") >= since` — on some browsers/timezones this parses as UTC midnight which shifts the date, potentially including logs from the wrong week or failing to exclude old ones
-
-**SQL to diagnose — run in Supabase Dashboard → SQL Editor:**
-```sql
--- First find Alex's client_id:
-SELECT id, first, last FROM clients WHERE first ILIKE 'alex' OR email ILIKE '%alex%';
-
--- Then check what's actually in exercise_logs this week:
-SELECT exercise_name, session_date, reps, weight, day_name, created_at
-FROM exercise_logs
-WHERE client_id = 'PASTE_ALEX_ID_HERE'
-ORDER BY session_date DESC, created_at DESC
-LIMIT 50;
-```
-
-**Once root cause found:**
-- If duplicate rows → delete the duplicates via Supabase dashboard
-- If date filter bug → fix the `new Date(l.session_date)` parsing in `loadMuscleHeatmap` to use ISO format or a more robust parser
-- If additional unreported sessions → nothing wrong, just more data than expected
-
----
-
 ## Current Commit State
 
-**Current HEAD**: `1075bd5` — most recent push (Jun 4, 2026 session)
-**File**: `index.html`, ~6700 lines
+**Current HEAD**: `1f0ab2a` — Reverse Fly heatmap fix (Jun 4, 2026)
+**File**: `index.html`, ~6800 lines
 
 ### What is WORKING:
 - Auto-login (reads `bm_session` from localStorage via `startApp()`)
@@ -83,6 +37,7 @@ LIMIT 50;
 - Today's Workout card in Overview tab (lift days show full exercise list with last weights; run days show run details; green "✓ Logged" badge if already done)
 - Body stats section in Progress tab
 - Muscle heatmap in Progress tab (coach) and dedicated Muscles tab (client portal)
+- **Heatmap breakdown panel** (collapsible "▶ Show breakdown" below diagram) — lists per-muscle set contributions with exercise-by-exercise detail; permanent feature on all profiles
 - `exerciseToMuscles()` maps exercises to muscle groups via regex — comprehensive, handles most variants
 - `canonExName()` normalizes free-typed exercise names to canonical spellings at save time
 - Custom typeahead autocomplete dropdown on all exercise name inputs (contains-match, blue highlight)
@@ -162,11 +117,11 @@ LIMIT 50;
 | `window.renderCustomWorkoutSheet` | ~4090 | Client portal custom workout sheet (global, called from onclick) |
 | `window._addCustomExRow(supGroup,supLabel,ssWrap)` | ~4235 | Custom workout exercise row |
 | `window._addCustomSupersetPair()` | ~4260 | Custom workout superset pair (wrapper card) |
-| `window._logCustomPortalSession()` | ~4280 | Saves client portal custom workout to DB |
+| `window._logCustomPortalSession()` | ~4284 | Saves client portal custom workout to DB |
 | `exerciseToMuscles(name)` | ~5828 | Maps exercise name → [{muscle, weight}] via regex |
 | `_mhColor(weeklyAvg, weeklyTarget)` | ~5931 | Color scale: pale yellow → amber → orange → red → dark red |
 | `_MH_TARGETS` | ~5943 | Weekly set targets: chest:12, back:14, shoulders:12, biceps:14, triceps:12, etc. |
-| `loadMuscleHeatmap(clientId,containerId,period)` | ~6718 | Fetches exercise_logs, scores muscles, renders diagram + untracked warning |
+| `loadMuscleHeatmap(clientId,containerId,period)` | ~6718 | Fetches exercise_logs, scores muscles, renders diagram + breakdown + untracked warning |
 
 ---
 
@@ -196,11 +151,25 @@ biceps:14, triceps:12, calves:10, abs:12, traps:8, lower_back:6, forearms:8
 - `"8,8,6"` (comma-separated) → 3 sets
 - `"12"` (just a number) → 1 set
 
+### Breakdown panel (permanent feature)
+Below the diagram, a collapsible "▶ Show breakdown" panel lists every muscle group with:
+- Total weighted sets for the period
+- Each contributing exercise with its set count
+This lets coaches and clients verify that all exercises are mapping to the right muscles.
+Use this to catch `exerciseToMuscles()` mis-mappings (e.g., the Reverse Fly → chest bug found Jun 4).
+
 ### Untracked exercise warning
-Any exercise that `exerciseToMuscles()` can't map appears in a yellow warning box below the diagram: "Not tracked on heatmap or PRs — check spelling or use autocomplete." This is the signal to add new exercises to `exerciseToMuscles()`.
+Any exercise that `exerciseToMuscles()` can't map appears in a yellow warning box below the diagram.
+This also means it won't appear in PRs — the signal to add new exercises to `exerciseToMuscles()`.
+
+### Known `exerciseToMuscles()` gotchas
+- **`\bfly\b` pattern must exclude "reverse" and "rear"** — "Reverse Fly" contains "fly" and would falsely map to chest. Guard is: `!n.includes('reverse')&&!n.includes('rear')&&/...\bfly\b/.test(n)`.
+- Chest-supported rows (e.g., "Chest Supported Row") — "chest" in name does NOT mean chest muscle. The regex avoids this because it requires "chest" + "press" or "fly" keywords together, not standalone.
+- Order matters: more specific patterns (reverse fly, rear delt) must come BEFORE broad patterns (fly, press).
 
 ### `exerciseToMuscles()` coverage (regex-based, broad)
 All bench/push-up variants → chest; all curl variants → biceps; pull-up/pulldown/row → back; squat/leg press/lunge → quads; hip thrust/glute bridge → glutes; deadlift → back+glutes+hams; RDL → hams+glutes; shoulder press/lateral raise/face pull → shoulders; tricep pushdowns/skull crushers/dips → triceps; etc.
+**Reverse fly / rear delt fly / band pull-apart** → shoulders (NOT chest).
 
 ### `canonExName()` normalization (applied at save time)
 Canonical list of ~40 known exercises + loaded library → case-insensitive match. Falls back to synonym table (~80 mappings: rdl→Romanian Deadlift, ohp→Overhead Press, bss→Bulgarian Split Squat, etc.). Applied in `_logCustomPortalSession` and `confirmLogSession` ad-hoc section.
@@ -236,7 +205,7 @@ Home | Train | PRs | Body | Muscles
 - **Train**: program days + Custom Workout card at bottom; LOG button opens workout sheet
 - **PRs**: all-time PRs + "🏆 New in [Month]" section showing PRs hit this month
 - **Body**: body stats (weight, body fat, muscle mass) — NO heatmap, NO recent sessions
-- **Muscles**: dedicated heatmap with period selector + "ⓘ How it works" button
+- **Muscles**: dedicated heatmap with period selector + "ⓘ How it works" button + breakdown panel
 
 Tab bar uses `grid-template-columns: repeat(5, 1fr)` — all 5 tabs in one row.
 
@@ -295,17 +264,14 @@ Tabs: **Overview / Program / Progress**
 
 ## Pending / Known Issues
 
-### 🚨 PRIORITY 1 — Heatmap over-coloring
-See "TOP PRIORITY" section at top. Chest showing Optimal red when math predicts 75% orange. Diagnose via Supabase SQL before any other work.
-
-### Other pending
 - **Joe's program**: SQL fix for apostrophes was provided; confirm "1 row affected" in Supabase
 - **Chris's api_tokens**: Run `api/_migration.sql` once before `/api/v1/export` will work
 - **Jeff's schedule**: `schedule` field may not say "Tue, Thu, Fri" yet
+- **`exerciseToMuscles()` ongoing calibration**: As more users test and the breakdown panel surfaces mis-mappings, add new exercise patterns. Use the yellow "untracked" warning + breakdown panel as the feedback loop.
 
 ---
 
-## Features Completed This Session (Jun 4, 2026)
+## Features Completed (Jun 4, 2026 — two sessions)
 
 - ✅ Dedicated **Muscles tab** (5th tab) in client portal — heatmap moved out of Body tab
 - ✅ **Body tab** cleaned up — body stats only, no heatmap, no recent sessions
@@ -317,6 +283,8 @@ See "TOP PRIORITY" section at top. Chest showing Optimal red when math predicts 
 - ✅ **`_KNOWN_EXERCISES`** global + autocomplete dropdown on all exercise name inputs
 - ✅ Autocomplete: contains-match, blue highlight, auto-advance to reps, iOS position fix
 - ✅ **Heatmap untracked warning** — user-facing, links unmapped → missing PRs
+- ✅ **Heatmap breakdown panel** — permanent "▶ Show breakdown" toggle; shows per-muscle exercise contributions for every profile; used to diagnose and fix mis-mappings
+- ✅ **Fix: Reverse Fly mapped to chest** — `\bfly\b` was matching "Reverse Fly"; added `!n.includes('reverse')&&!n.includes('rear')` guard before the chest fly pattern
 - ✅ **Today's Workout card** in Overview tab
 - ✅ **PRs this month** section in client portal PRs tab
 - ✅ **Drag-to-reorder** exercises in program builder (pointer events)
@@ -327,12 +295,11 @@ See "TOP PRIORITY" section at top. Chest showing Optimal red when math predicts 
 
 ## Next Logical Steps (in priority order)
 
-1. **Diagnose heatmap over-coloring** (see TOP PRIORITY section)
-2. **Add more exercises to `exerciseToMuscles()`** as testers surface untracked exercises via the yellow warning
-3. **Smarter Today hero on coach dashboard** — show run week status ("Week 3 · 1/2 runs done")
-4. **Business tab** — revenue tracking / invoice generation
-5. **Notifications** — reminders for low-session clients
-6. **Session log flow** — pre-select today's program day based on schedule (partial: `openLogSession(id, dayIdx)` already supports it; Today's Workout card uses it)
+1. **Continue calibrating `exerciseToMuscles()`** — use the breakdown panel + untracked warning as more exercises are logged by testers. Fix any mis-mappings that surface.
+2. **Smarter Today hero on coach dashboard** — show run week status ("Week 3 · 1/2 runs done")
+3. **Business tab** — revenue tracking / invoice generation
+4. **Notifications** — reminders for low-session clients
+5. **Session log flow** — pre-select today's program day based on schedule (partial: `openLogSession(id, dayIdx)` already supports it; Today's Workout card uses it)
 
 ---
 
