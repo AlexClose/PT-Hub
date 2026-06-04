@@ -1354,14 +1354,32 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 
 // ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
 var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
-var _exDb=null,_exDbIdx=null,_exDbLoading=null,_exDemoTimer=null;
+var _exDb=null,_exDbIdx=null,_exById=null,_exDbLoading=null,_exDemoTimer=null;
+// Curated map: canonical exercise name (normalized) -> exact free-exercise-db id.
+// canonExName() collapses ~all typed names to these, so this is the reliable demo source.
+var _EX_ALIAS={
+'bench press':'Barbell_Bench_Press_-_Medium_Grip','incline bench press':'Barbell_Incline_Bench_Press_-_Medium_Grip','decline bench press':'Decline_Barbell_Bench_Press',
+'squat':'Barbell_Full_Squat','front squat':'Front_Barbell_Squat','goblet squat':'Goblet_Squat',
+'deadlift':'Barbell_Deadlift','romanian deadlift':'Romanian_Deadlift','sumo deadlift':'Sumo_Deadlift',
+'pull up':'Pullups','chin up':'Chin-Up','overhead press':'Barbell_Shoulder_Press','push press':'Push_Press',
+'bent over row':'Bent_Over_Barbell_Row','pendlay row':'Bent_Over_Barbell_Row','t bar row':'T-Bar_Row_with_Handle',
+'leg press':'Leg_Press','hack squat':'Hack_Squat','lat pulldown':'Wide-Grip_Lat_Pulldown',
+'cable row':'Seated_Cable_Rows','seated cable row':'Seated_Cable_Rows',
+'dumbbell curl':'Dumbbell_Bicep_Curl','barbell curl':'Barbell_Curl','hammer curl':'Alternate_Hammer_Curl','preacher curl':'Preacher_Curl',
+'tricep pushdown':'Triceps_Pushdown','skull crushers':'Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head','close grip bench press':'Close-Grip_Barbell_Bench_Press','tricep dips':'Bench_Dips',
+'leg extension':'Leg_Extensions','leg curl':'Lying_Leg_Curls','nordic curl':'Natural_Glute_Ham_Raise',
+'hip thrust':'Barbell_Hip_Thrust','glute bridge':'Barbell_Glute_Bridge','lunges':'Barbell_Lunge','bulgarian split squat':'Split_Squat_with_Dumbbells','step ups':'Dumbbell_Step_Ups',
+'calf raises':'Rocking_Standing_Calf_Raise','standing calf raise':'Rocking_Standing_Calf_Raise','seated calf raise':'Seated_Calf_Raise',
+'face pull':'Face_Pull','rear delt fly':'Seated_Bent-Over_Rear_Delt_Raise','reverse fly':'Reverse_Flyes','lateral raise':'Side_Lateral_Raise','front raise':'Front_Dumbbell_Raise','arnold press':'Arnold_Dumbbell_Press',
+'chest fly':'Dumbbell_Flyes','cable fly':'Cable_Crossover','pec deck':'Butterfly','dips':'Dips_-_Chest_Version','ring dips':'Ring_Dips',
+'plank':'Plank','side plank':'Side_Bridge','russian twist':'Russian_Twist','v ups':'Jackknife_Sit-Up','ab wheel':'Ab_Roller','hanging leg raise':'Hanging_Leg_Raise','crunches':'Crunches','shrugs':'Barbell_Shrug','upright row':'Upright_Barbell_Row'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
 function _normExName(s){return (s||'').toLowerCase().replace(/^ss\d+:\s*/i,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
 function _exTokens(s){var n=_normExName(s);return n?n.split(' '):[];}
 function _musColor(m){var g=_EXDB_MUS[(m||'').toLowerCase()];return g?(MUSCLE_COLORS[g]||'#7ec8ff'):'#7ec8ff';}
-function _buildExIdx(){_exDbIdx={};if(!_exDb)return;_exDb.forEach(function(e){var k=_normExName(e.name);if(k&&!_exDbIdx[k])_exDbIdx[k]=e;});}
+function _buildExIdx(){_exDbIdx={};_exById={};if(!_exDb)return;_exDb.forEach(function(e){_exById[e.id]=e;var k=_normExName(e.name);if(k&&!_exDbIdx[k])_exDbIdx[k]=e;});}
 function _loadExDb(){
   if(_exDb)return Promise.resolve(_exDb);
   if(_exDbLoading)return _exDbLoading;
@@ -1374,18 +1392,18 @@ function _loadExDb(){
 }
 function _exDbMatch(name){
   if(!_exDb||!_exDbIdx)return null;
-  var n=_normExName(name);if(!n)return null;
-  if(_exDbIdx[n])return _exDbIdx[n];
-  if(typeof canonExName==='function'){var cn=_normExName(canonExName(name));if(cn&&_exDbIdx[cn])return _exDbIdx[cn];}
-  var toks=_exTokens(name);if(!toks.length)return null;
-  var best=null,bestScore=0;
-  for(var i=0;i<_exDb.length;i++){
-    var et=_exTokens(_exDb[i].name);if(!et.length)continue;
-    var inter=0;for(var j=0;j<toks.length;j++){if(et.indexOf(toks[j])>=0)inter++;}
-    var score=inter/(toks.length+et.length-inter);
-    if(score>bestScore){bestScore=score;best=_exDb[i];}
+  // 1) curated alias on the canonical name (reliable, hand-verified)
+  if(typeof canonExName==='function'){
+    var ck=_normExName(canonExName(name));
+    if(ck&&_EX_ALIAS[ck]&&_exById&&_exById[_EX_ALIAS[ck]])return _exById[_EX_ALIAS[ck]];
   }
-  return bestScore>=0.5?best:null;
+  var n=_normExName(name);if(!n)return null;
+  // 2) alias on the raw typed name
+  if(_EX_ALIAS[n]&&_exById&&_exById[_EX_ALIAS[n]])return _exById[_EX_ALIAS[n]];
+  // 3) exact dataset-name match
+  if(_exDbIdx[n])return _exDbIdx[n];
+  // No fuzzy guessing — a wrong demo is worse than none.
+  return null;
 }
 function _exHistHtml(pts){
   if(!pts||!pts.length)return '';
@@ -2439,6 +2457,7 @@ function restoreDraftCoach(){
 // ── LOG SESSION ──
 function openLogSession(id, preselectedDay){
   const c=clients.find(x=>x.id===id);if(!c)return;
+  try{_loadExDb();}catch(e){}
   pendingLogId=id;
   // Always reset button in case a previous save errored and left it disabled
   const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
@@ -2515,7 +2534,7 @@ function updateLogWorkout(clientId){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
       html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
-        <div class="workout-ex-name">${displayName}</div>
+        <div class="workout-ex-name" onclick="openExerciseDetail('${_jsq(ex.name)}','${_jsq(displayName)}')" style="cursor:pointer;">${displayName} <span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
         ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
         <div class="workout-inputs">
