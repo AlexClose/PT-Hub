@@ -1372,7 +1372,16 @@ var _EX_ALIAS={
 'calf raises':'Rocking_Standing_Calf_Raise','standing calf raise':'Rocking_Standing_Calf_Raise','seated calf raise':'Seated_Calf_Raise',
 'face pull':'Face_Pull','rear delt fly':'Seated_Bent-Over_Rear_Delt_Raise','reverse fly':'Reverse_Flyes','lateral raise':'Side_Lateral_Raise','front raise':'Front_Dumbbell_Raise','arnold press':'Arnold_Dumbbell_Press',
 'chest fly':'Dumbbell_Flyes','cable fly':'Cable_Crossover','pec deck':'Butterfly','dips':'Dips_-_Chest_Version','ring dips':'Ring_Dips',
-'plank':'Plank','side plank':'Side_Bridge','russian twist':'Russian_Twist','v ups':'Jackknife_Sit-Up','ab wheel':'Ab_Roller','hanging leg raise':'Hanging_Leg_Raise','crunches':'Crunches','shrugs':'Barbell_Shrug','upright row':'Upright_Barbell_Row'};
+'plank':'Plank','side plank':'Side_Bridge','russian twist':'Russian_Twist','v ups':'Jackknife_Sit-Up','ab wheel':'Ab_Roller','hanging leg raise':'Hanging_Leg_Raise','crunches':'Crunches','shrugs':'Barbell_Shrug','upright row':'Upright_Barbell_Row',
+'dumbbell bench press':'Dumbbell_Bench_Press','incline dumbbell press':'Incline_Dumbbell_Press','incline dumbbell bench press':'Incline_Dumbbell_Press','chest press':'Leverage_Chest_Press','machine chest press':'Leverage_Chest_Press',
+'push up':'Pushups','push ups':'Pushups','pushups':'Pushups','pushup':'Pushups','dumbbell fly':'Dumbbell_Flyes','dumbbell flyes':'Dumbbell_Flyes','incline fly':'Incline_Dumbbell_Flyes','incline dumbbell fly':'Incline_Dumbbell_Flyes','cable crossover':'Cable_Crossover',
+'glute kickback':'Glute_Kickback','cable kickback':'One-Legged_Cable_Kickback','back extension':'Hyperextensions_Back_Extensions','hyperextension':'Hyperextensions_Back_Extensions','good morning':'Good_Morning','good mornings':'Good_Morning',
+'walking lunge':'Barbell_Walking_Lunge','walking lunges':'Barbell_Walking_Lunge','inverted row':'Inverted_Row','dumbbell row':'One-Arm_Dumbbell_Row','one arm dumbbell row':'One-Arm_Dumbbell_Row','one arm row':'One-Arm_Dumbbell_Row',
+'concentration curl':'Concentration_Curls','concentration curls':'Concentration_Curls','spider curl':'Spider_Curl','incline dumbbell curl':'Incline_Dumbbell_Curl','incline curl':'Incline_Dumbbell_Curl',
+'overhead tricep extension':'Standing_Overhead_Barbell_Triceps_Extension','overhead triceps extension':'Standing_Overhead_Barbell_Triceps_Extension','tricep extension':'Standing_Overhead_Barbell_Triceps_Extension','tricep kickback':'Tricep_Dumbbell_Kickback','tricep kickbacks':'Tricep_Dumbbell_Kickback','rope pushdown':'Triceps_Pushdown_-_Rope_Attachment',
+'reverse pec deck':'Reverse_Machine_Flyes','rear delt machine':'Reverse_Machine_Flyes','dumbbell shoulder press':'Dumbbell_Shoulder_Press','seated dumbbell press':'Dumbbell_Shoulder_Press','cable lateral raise':'Cable_Seated_Lateral_Raise',
+'sit up':'Sit-Up','sit ups':'Sit-Up','situp':'Sit-Up','situps':'Sit-Up','mountain climber':'Mountain_Climbers','mountain climbers':'Mountain_Climbers','farmers walk':'Farmers_Walk','farmer walk':'Farmers_Walk','farmers carry':'Farmers_Walk',
+'box jump':'Front_Box_Jump','box jumps':'Front_Box_Jump','kettlebell swing':'One-Arm_Kettlebell_Swings','kb swing':'One-Arm_Kettlebell_Swings','pullover':'Straight-Arm_Dumbbell_Pullover','dumbbell pullover':'Straight-Arm_Dumbbell_Pullover'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
@@ -1418,6 +1427,30 @@ function _exHistHtml(pts){
   return out;
 }
 function _closeExDetail(){if(_exDemoTimer){clearInterval(_exDemoTimer);_exDemoTimer=null;}var el=document.getElementById('ex-detail-sheet');if(el)el.remove();}
+function _attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function _openThumb(el){if(!el)return;var n=el.getAttribute('data-exname'),disp=el.getAttribute('data-exdisp')||n;if(el.getAttribute('data-exhist')==='portal'&&window._openExDetailPortal){window._openExDetailPortal(n,disp);return;}openExerciseDetail(n,disp);}
+// Compact exercise thumbnail (the discoverable affordance). Starts as a placeholder; image is filled by _hydrateExThumbs once the dataset loads.
+function _exThumbHTML(rawName,displayName,size,histCtx){
+  size=size||42;
+  return '<span class="ex-thumb" data-exname="'+_attr(rawName)+'" data-exdisp="'+_attr(displayName||rawName)+'"'+(histCtx?' data-exhist="'+_attr(histCtx)+'"':'')+' onclick="event.stopPropagation();_openThumb(this)" style="flex:0 0 auto;width:'+size+'px;height:'+size+'px;border-radius:10px;background-color:#161b27;background-size:cover;background-position:center;border:1px solid rgba(100,160,255,0.18);cursor:pointer;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;position:relative;vertical-align:middle;">'+
+    '<span class="ex-thumb-ph" style="font-size:'+Math.round(size*0.5)+'px;line-height:1;opacity:0.4;">🏋️</span>'+
+  '</span>';
+}
+function _hydrateExThumbs(){
+  if(!_exDb)return;
+  var els=document.querySelectorAll('.ex-thumb[data-exname]:not([data-hyd])');
+  for(var i=0;i<els.length;i++){
+    var el=els[i];el.setAttribute('data-hyd','1');
+    var m=_exDbMatch(el.getAttribute('data-exname'));
+    if(m&&m.images&&m.images.length){
+      el.style.backgroundImage="url('"+_EXDB_BASE+'exercises/'+m.images[0]+"')";
+      el.style.backgroundColor='#fff';
+      var ph=el.querySelector('.ex-thumb-ph');if(ph)ph.style.display='none';
+      el.setAttribute('data-hasdemo','1');
+    }
+  }
+}
+function _thumbsRefresh(){_loadExDb().then(_hydrateExThumbs);}
 function openExerciseDetail(rawName,displayName,opts){
   opts=opts||{};displayName=displayName||rawName;
   _closeExDetail();
@@ -2547,7 +2580,7 @@ function updateLogWorkout(clientId){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
       html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
-        <div class="workout-ex-name" onclick="openExerciseDetail('${_jsq(ex.name)}','${_jsq(displayName)}')" style="cursor:pointer;">${displayName} <span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44)}<div class="workout-ex-name" onclick="openExerciseDetail('${_jsq(ex.name)}','${_jsq(displayName)}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
         ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
         <div class="workout-inputs">
@@ -2564,6 +2597,7 @@ function updateLogWorkout(clientId){
   + `<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`
   + `<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
   + `</div>`;
+  try{_thumbsRefresh();}catch(e){}
   saveDraftCoach();
 }
 
@@ -2888,9 +2922,12 @@ function renderLibrary(){
       </div>
       <div class="muscle-body">
         ${exes.map(e=>`<div class="lib-exercise" onclick="openExerciseDetail('${_jsq(e.name)}','${_jsq(e.name)}')" style="cursor:pointer">
-          <div>
-            <div class="lib-ex-name">${e.name} <span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>
-            ${e.equipment?`<div class="lib-ex-equip">${e.equipment}</div>`:''}
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+            ${_exThumbHTML(e.name,e.name,46)}
+            <div style="min-width:0;">
+              <div class="lib-ex-name">${e.name}</div>
+              ${e.equipment?`<div class="lib-ex-equip">${e.equipment}</div>`:''}
+            </div>
           </div>
           <div class="lib-ex-actions">
             <button class="lib-btn" onclick="event.stopPropagation();openEditLibEx('${e.id}')">Edit</button>
@@ -2899,6 +2936,7 @@ function renderLibrary(){
         </div>`).join('')}
       </div>
     </div>`).join('');
+  try{_thumbsRefresh();}catch(e){}
 }
 function openAddExercise(){
   document.getElementById('libExId').value='';document.getElementById('libExName').value='';
@@ -5162,7 +5200,7 @@ function startClientPortal(id) {
 
       html +=
         '<div id="ex-row-' + i + '"' + (isSuperset ? ' data-ss="1"' : '') + ' style="' + (isSuperset ? 'padding:16px;position:relative;transition:background 0.25s;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;transition:border-color 0.25s,background 0.25s;') + '">' +
-          '<div onclick="window._openExDetailPortal(\'' + _jsq(ex.name) + '\',\'' + _jsq(name) + '\')" style="font-weight:700;font-size:16px;color:#fff;margin-bottom:4px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;">' + name + '<span style="font-size:11px;color:rgba(126,200,255,0.55);font-weight:600;">ⓘ</span></div>' +
+          '<div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">' + _exThumbHTML(ex.name,name,44,'portal') + '<div onclick="window._openExDetailPortal(\'' + _jsq(ex.name) + '\',\'' + _jsq(name) + '\')" style="font-weight:700;font-size:16px;color:#fff;cursor:pointer;flex:1;">' + name + '</div></div>' +
           '<div style="font-size:12px;color:rgba(126,200,255,0.8);margin-bottom:10px;font-weight:500;">' + (ex.prescription || '') + (ex.load ? ' &nbsp;·&nbsp; ' + ex.load : '') + '</div>' +
           (lastData ?
             '<div onclick="window._openExDetailPortal(\'' + (ex.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\',\'' + name.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')" style="font-size:12px;color:#7ec8ff;background:rgba(79,163,232,0.12);border:1px solid rgba(79,163,232,0.25);border-radius:8px;padding:7px 12px;margin-bottom:12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">📊 ' +
@@ -5190,6 +5228,7 @@ function startClientPortal(id) {
       '</div>';
 
     portalBody.innerHTML = html;
+    try{_thumbsRefresh();}catch(e){}
     setTimeout(window._restoreDraft, 50);
 
     window._showPortalDay = function(index) {
