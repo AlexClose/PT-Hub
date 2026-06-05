@@ -1,7 +1,7 @@
 # PT-Hub Coaching App — Context & Status
 
 ## Project Overview
-Single-file SPA at `/home/user/PT-Hub/index.html` (~6800 lines) for a personal training coaching platform. Two portals:
+Single-file SPA at `/home/user/PT-Hub/index.html` (~7640 lines) for a personal training coaching platform. Two portals:
 - **Coaching Portal** (`#coach-*`): Coach manages clients, logs sessions, views dashboards
 - **Client Portal** (`#client-*`): Clients log workouts, view training programs
 
@@ -26,24 +26,24 @@ git push -u origin main
 
 ## Current Commit State
 
-**Current HEAD**: `1f0ab2a` — Reverse Fly heatmap fix (Jun 4, 2026)
-**File**: `index.html`, ~6800 lines
+**Current HEAD**: `df7e4db` — Muscle-balance bars (current session)
+**File**: `index.html`, ~7640 lines
 
 ### What is WORKING:
 - Auto-login (reads `bm_session` from localStorage via `startApp()`)
 - Manual sign-in (`signIn()` function)
 - All core coaching portal features
 - Client modal with **3 swipeable tabs**: Overview / Program / Progress
-- Today's Workout card in Overview tab (lift days show full exercise list with last weights; run days show run details; green "✓ Logged" badge if already done)
+- Today's Workout card in Overview tab
 - Body stats section in Progress tab
-- Muscle heatmap in Progress tab (coach) and dedicated Muscles tab (client portal)
-- **Heatmap breakdown panel** (collapsible "▶ Show breakdown" below diagram) — lists per-muscle set contributions with exercise-by-exercise detail; permanent feature on all profiles
-- `exerciseToMuscles()` maps exercises to muscle groups via regex — comprehensive, handles most variants
-- `canonExName()` normalizes free-typed exercise names to canonical spellings at save time
-- Custom typeahead autocomplete dropdown on all exercise name inputs (contains-match, blue highlight)
-- Custom workouts (coach + client portal) with superset support
+- **Exercise Demo & Library System** (BIG — see dedicated section below): tap any exercise anywhere → bottom sheet with animated demo, target-muscle chips, instructions, and history. Backed by the public `free-exercise-db` dataset (873 exercises) loaded at runtime. ~210-entry curated alias map + forgiving matcher.
+- Custom exercise details: link a demo / paste image+video URL / muscle multi-select / description (per-library overrides; needs the 5 new `exercise_library` columns).
+- Comprehensive exercise autocomplete (curated 182 + 873 dataset + library), token-based forgiving matching.
+- Library auto-grows from used exercises (deduped by resolved demo identity).
+- Program builder & workout-of-day builder: one-at-a-time **+ Add Exercise / ⊕ Superset**, live thumbnails, orange superset wrappers.
+- Muscle heatmap + **muscle-balance bars** (weekly volume vs target) in Progress (coach) and Muscles tab (client)
+- **Heatmap breakdown panel** (collapsible) + untracked-exercise warning
 - PRs this month section in client portal PRs tab
-- Drag-to-reorder exercises in program builder
 - Client portal: 5 tabs — Home / Train / PRs / Body / Muscles
 
 ---
@@ -90,38 +90,88 @@ git push -u origin main
 ### Run programs table
 - `id`, `name`, `weeks` (JSONB array of arrays of run objects)
 
+### Exercise library table (`exercise_library`)
+- `id`, `name`, `muscle_group` (single, used for library grouping), `equipment`
+- **Custom-detail columns (added this session — run the SQL below if not present):**
+  - `demo_id` — links to a `free-exercise-db` id to reuse its demo
+  - `image_url`, `video_url` — custom media (video_url: YouTube auto-embeds, else link button)
+  - `description` — coaching cues/notes
+  - `muscles` — comma-separated muscle groups (chips in detail sheet)
+- SQL: `ALTER TABLE exercise_library ADD COLUMN IF NOT EXISTS demo_id text, ADD COLUMN IF NOT EXISTS image_url text, ADD COLUMN IF NOT EXISTS video_url text, ADD COLUMN IF NOT EXISTS description text, ADD COLUMN IF NOT EXISTS muscles text;` (already run)
+- Grows automatically: exercises typed when building programs / logging workouts are added via `_ensureLibraryHas()`, **deduped by resolved demo identity** (so word-order/abbrev variants don't create duplicates).
+
 ---
 
 ## Code Locations (Key Functions)
 
-| Function | Approx Line | Purpose |
-|----------|-------------|---------|
-| `maxWeight(str)` | ~924 | Parse comma/slash/space-separated weight string |
-| `_KNOWN_EXERCISES` | ~925 | Global array of canonical exercise names (shared by canonExName + autocomplete) |
-| `canonExName(str)` | ~926 | Normalize free-typed exercise name → canonical form at save time |
-| `_exAcShow/Hide/Input/Blur` | ~975 | Custom typeahead autocomplete dropdown for exercise name inputs |
-| `startApp()` | ~1050 | Auto-login entry point |
-| `signIn()` | ~1072 | Manual sign-in |
-| `renderClientModal(c)` | ~1700 | Coach client detail modal (3-tab) |
-| `setClientModalTab(cid,tab)` | ~2024 | Switches Overview/Program/Progress tab |
-| `renderStructuredProgram(c)` | ~1940 | Program days + Custom Workout card at bottom |
-| `openLogSession(id, dayIdx)` | ~2070 | Log workout form; dayIdx=-1 for custom workout |
-| `addAdHocExercise(supGroup,supLabel,ssWrap)` | ~2454 | Coach ad-hoc exercise row (supports supersets) |
-| `addAdHocSuperset()` | ~2485 | Coach ad-hoc superset pair (wrapper card design) |
-| `confirmLogSession()` | ~2550 | Saves session, decrements package, writes exercise_logs |
-| `renderEditExerciseList()` | ~2180 | Program builder exercise list with drag handles |
-| `setupExDrag()` | ~2210 | Pointer-event drag-to-reorder for program builder |
-| `renderPortalPRs()` | ~4200 | Client portal PRs tab (includes "PRs This Month" section) |
-| `renderPortalStats()` | ~4300 | Client portal Body tab — body stats ONLY (no heatmap) |
-| `renderPortalMuscles()` | ~4330 | Client portal Muscles tab — dedicated heatmap view |
-| `window.renderCustomWorkoutSheet` | ~4090 | Client portal custom workout sheet (global, called from onclick) |
-| `window._addCustomExRow(supGroup,supLabel,ssWrap)` | ~4235 | Custom workout exercise row |
-| `window._addCustomSupersetPair()` | ~4260 | Custom workout superset pair (wrapper card) |
-| `window._logCustomPortalSession()` | ~4284 | Saves client portal custom workout to DB |
-| `exerciseToMuscles(name)` | ~5828 | Maps exercise name → [{muscle, weight}] via regex |
-| `_mhColor(weeklyAvg, weeklyTarget)` | ~5931 | Color scale: pale yellow → amber → orange → red → dark red |
-| `_MH_TARGETS` | ~5943 | Weekly set targets: chest:12, back:14, shoulders:12, biceps:14, triceps:12, etc. |
-| `loadMuscleHeatmap(clientId,containerId,period)` | ~6718 | Fetches exercise_logs, scores muscles, renders diagram + breakdown + untracked warning |
+**Line numbers shift constantly — always grep. Approximate as of HEAD `df7e4db`:**
+
+| Function | ~Line | Purpose |
+|----------|-------|---------|
+| `maxWeight(str)` | ~925 | Parse comma/slash/space weight string |
+| `_KNOWN_EXERCISES` / `canonExName(str)` | ~927 | Canonical names + save-time normalization |
+| **Exercise demo engine** | | |
+| `_EX_ALIAS` (≈210 entries) | ~1360 | normalized exercise name → free-exercise-db id |
+| `_EX_ABBR` / `_EX_PLURAL` | ~1358 | db→dumbbell, bb→barbell; curls→curl, etc. |
+| `_loadExDb()` / `_exDbMatch(name)` | ~1478 | load dataset (CDN, cached) / resolve name→demo |
+| `_exTokArr` / `_exSortKey` | ~1405 | token normalize (abbrev+plural+order) |
+| `_exThumbHTML` / `_hydrateExThumbs` | ~1530 | exercise thumbnail + live hydration |
+| `_libEntryFor(name)` / `_exIdentity` | ~3220 | library override lookup (demo_id/custom media) |
+| `openExerciseDetail(raw,disp,opts)` | ~1614 | the demo/detail bottom sheet |
+| `_EX_SUGGEST` (182) / `_exAcGetList` / `_exAcShow` | ~975 | autocomplete catalog + token matching |
+| `_EX_CATALOG` / `importCommonExercises` | ~1565 | dormant bulk-import (no button) |
+| **Builders** | | |
+| `renderEditExerciseList()` / `_editExRowHtml` | ~2561 | program builder rows (grouped supersets) |
+| `addExerciseToDay` / `addSupersetToDay` / `addToSuperset` | ~2600 | one-at-a-time add + supersets |
+| `_encodeEx` / `_parseExForEdit` | ~2595 | SS-prefix ⇄ `.ss` group marker |
+| `openExercisePicker` + `_picker*` | ~2608 | multi-select search picker (DORMANT — not wired) |
+| `addAdHocExercise` / `addAdHocSuperset` | ~2953 | coach log ad-hoc rows (thumbnails, orange SS) |
+| `_syncRowThumb(inputEl)` | ~2553 | live thumbnail on logging rows |
+| `confirmLogSession()` | ~3081 | saves session; calls `_ensureLibraryHas` |
+| `_ensureLibraryHas(names)` / `_demoMuscleGroup` | ~2745 | auto-add to library (identity-deduped) |
+| `openEditLibEx` / `saveLibraryExercise` | ~3260 | exercise editor (demo link/media/muscles/desc) |
+| `window._addCustomExRow` / `_addCustomSupersetPair` | ~4760 | client portal custom workout rows |
+| **Muscle analytics** | | |
+| `exerciseToMuscles(name)` | ~6365 | name → [{muscle, weight}] regex |
+| `_mhColor` / `_MH_TARGETS` | ~6469 | color scale / weekly targets |
+| `_muscleBalanceHtml(scores,weeks)` | ~6487 | weekly-volume-vs-target bars |
+| `loadMuscleHeatmap(clientId,containerId,period)` | ~7280 | fetch logs, score, render diagram+balance+breakdown |
+
+---
+
+## Exercise Demo & Library System (major feature — current session)
+
+### Data source
+- **`free-exercise-db`** (873 exercises, public domain) loaded at runtime from jsDelivr CDN: `https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/dist/exercises.json`. Cached in `localStorage` (`bm_exdb`, 7-day TTL) + `_exDb`/`_exById`/`_exDbIdx` in memory. Each entry: `name, level, mechanic, equipment, primaryMuscles[], secondaryMuscles[], instructions[], images[], id`. Images at `…@main/exercises/<images[i]>`.
+- **NOTE:** the CDN host is blocked from the Claude Code remote env (can't fetch in-tool), but it loads fine in the user's browser. To inspect the dataset locally, `curl` raw.githubusercontent with `dangerouslyDisableSandbox:true` works.
+
+### Matching (`_exDbMatch`) — the core, order matters
+1. Curated alias on raw normalized name (`_EX_ALIAS`, ~210 hand-verified entries)
+2. Brand-machine normalization (Arsenal/Prime/Hammer Strength/Hoist/… → "machine …")
+3. Curated alias on `canonExName()` output
+4. Exact dataset-name match
+5. Order-independent **token** match (abbrev `db→dumbbell`, plurals `curls→curl`) against alias keys then unambiguous dataset names
+6. **Subset fallback**: longest known movement fully contained in the name (e.g. "Close Grip Lat Pulldown"→Lat Pulldown). **Requires ≥2-word match** — single-word movements are too broad ("Pendulum Squat" must NOT match "Squat"). Wrong-demo is worse than no-demo: unmatched → blank.
+
+### Discoverability
+- Every exercise shows a **thumbnail** (`_exThumbHTML` + `_hydrateExThumbs`) in the library, program builder, log rows, and workout cards. Real start-frame image if matched, dumbbell placeholder otherwise. Tapping it opens `openExerciseDetail`.
+- Detail sheet: sticky header with × + swipe-down-to-close; animated demo (alternates start/end frames), equipment/level chips, target-muscle chips, instructions, history chart, and a coach-only **"＋ Add demo & details" / "✎ Edit details"** button (hidden in portal via `!window._portalClientId`).
+
+### Custom details (per-library-entry overrides)
+- Editor (`openEditLibEx`/`saveLibraryExercise`): **link an existing demo** (`demo_id`, fastest), or paste image/video URL, multi-select muscle groups (`.mchip`), description.
+- `openExerciseDetail` & thumbnails apply override priority: linked `demo_id` → custom `image_url` → dataset match.
+
+### Library growth & dedup
+- `_ensureLibraryHas(names)` (called from `saveProgramDay` + `confirmLogSession`) adds any not-already-present exercise, **keyed by `_exIdentity` = resolved demo id (or normalized name)** so naming variants collapse to one row. Novel/unmatched → added bare (muscle_group `Other`).
+- Client-portal custom-workout logging does NOT yet feed the coach library (separate context) — known gap.
+
+### Autocomplete (rewritten)
+- `_exAcGetList()` = `_EX_SUGGEST` (182 curated clean names) + `_KNOWN_EXERCISES` + library + **full 873 dataset** (deduped). Loads dataset on first keystroke.
+- `_exAcShow` matching is **token-prefix** (order-independent, plural/abbrev-aware), cached via `_exAcTokCache`, top 10.
+
+### Builders (program + workout-of-day are aligned)
+- **+ Add Exercise** = one blank row (inline autocomplete). **⊕ Superset** = orange wrapper group + "+ Add to superset". Supersets stored as `SS{n}: name`; editor parses to `.ss` group markers (`_parseExForEdit`) and re-encodes on save (`_encodeEx`).
+- The multi-select `openExercisePicker` exists but is **dormant** (user preferred one-at-a-time).
 
 ---
 
@@ -158,6 +208,9 @@ Below the diagram, a collapsible "▶ Show breakdown" panel lists every muscle g
 This lets coaches and clients verify that all exercises are mapping to the right muscles.
 Use this to catch `exerciseToMuscles()` mis-mappings (e.g., the Reverse Fly → chest bug found Jun 4).
 
+### Muscle-balance bars (`_muscleBalanceHtml`, current session)
+Rendered right below the diagram (coach Progress + client Muscles): one ranked bar per `_MH_TARGETS` muscle showing weekly sets vs target (`X/Y sets/wk · NN%`), heatmap color scale, target marker at 66.6% of bar (= 100% of target), sorted most→least trained so over/under-worked muscles are obvious. Reuses the heatmap's `scores`/`weeksInPeriod` — no extra fetch.
+
 ### Untracked exercise warning
 Any exercise that `exerciseToMuscles()` can't map appears in a yellow warning box below the diagram.
 This also means it won't appear in PRs — the signal to add new exercises to `exerciseToMuscles()`.
@@ -181,7 +234,8 @@ Canonical list of ~40 known exercises + loaded library → case-insensitive matc
 ### Client Portal (`window.renderCustomWorkoutSheet`)
 - Opened by "Custom Workout" card at bottom of Train tab
 - Two buttons: **+ Add Exercise** and **⊕ Superset**
-- Superset creates a wrapper card with blue border + "SUPERSET" header bar; A and B rows inside
+- Superset wrapper card uses **orange** `⊕ SUPERSET` styling (aligned with program builder; was blue)
+- Exercise rows now show a **live thumbnail** next to the name (`_syncRowThumb`)
 - Exercise name inputs use custom typeahead autocomplete (not native datalist)
 - Placeholder text shows format: `"3×10 · or 8,8,6"` and `"135 · or 135,145,155"`
 - On save: `canonExName()` normalizes names, then saves to `sessions` + `exercise_logs` + patches `exercise_history`
@@ -219,7 +273,8 @@ Singleton `#_ex-ac-drop` div, `position:fixed`, `z-index:9999`. Active on:
 - Program builder: exercise name inputs in `.edit-ex-fields`
 
 Behavior:
-- Shows on 1+ character typed, contains-match (not starts-with), max 8 results
+- Shows on 1+ character typed; **token-prefix match** (order-independent, plural/abbrev-aware via `_exTokArr`), max 10 results, ranked (startsWith first, then shorter)
+- Candidate pool = `_EX_SUGGEST` (182) + `_KNOWN_EXERCISES` + library + **full 873 dataset**; dataset loads on first keystroke; tokenized candidates cached in `_exAcTokCache`
 - Matched text highlighted in blue
 - Tap → fills input + auto-advances focus to reps/prescription field
 - Position updated via `requestAnimationFrame` + `window.visualViewport` offsets (fixes iOS keyboard position drift)
@@ -258,7 +313,10 @@ Tabs: **Overview / Program / Progress**
 - **`renderCustomWorkoutSheet` must be `window.renderCustomWorkoutSheet`** (not a local function) — inline onclick handlers are global scope only
 - **Tab background**: inactive tabs must use `background:'transparent'` not `background:''`
 - **SQL in Supabase**: apostrophes must be escaped as `''`
-- **Supabase blocked** from Vercel cloud execution — cannot curl Supabase directly from Claude Code remote environment
+- **Supabase blocked** from Claude Code remote env — can't curl Supabase directly. The **demo CDN (jsDelivr) is also blocked in-tool** but loads in the user's browser; use `curl raw.githubusercontent … dangerouslyDisableSandbox:true` to inspect the dataset.
+- **Syne font / silent CSS failures**: invalid `rgba(#hex)` and curly-quote `font-family` rules fail silently and fall back. Fixing the smart quotes made Syne actually load (wider) → collapsed the Edit-modal name field (`grid-template-columns:1fr auto auto` + intrinsic-width inputs). Watch tight `auto`-column input grids — give inputs `width:100%`.
+- **`_jsq(s)`** escapes `\ ' "` for exercise names inside inline `onclick` attributes (used by demo taps).
+- **`let`/`const` top-level globals are NOT on `window`** (only `var`). `library`, `clients`, etc. must be referenced directly, not `window.library`.
 
 ---
 
@@ -271,36 +329,30 @@ Tabs: **Overview / Program / Progress**
 
 ---
 
-## Features Completed (Jun 4, 2026 — two sessions)
+## Features Completed (current session — exercise/library/builder overhaul)
 
-- ✅ Dedicated **Muscles tab** (5th tab) in client portal — heatmap moved out of Body tab
-- ✅ **Body tab** cleaned up — body stats only, no heatmap, no recent sessions
-- ✅ Tab bar fixed: `repeat(4,1fr)` → `repeat(5,1fr)` + reduced padding
-- ✅ **Custom workout** in client portal (+ superset support)
-- ✅ **Custom workout** in coach portal (+ superset support)
-- ✅ **Superset wrapper card** design — blue border, SUPERSET header bar, A/B rows inside
-- ✅ **`canonExName()`** normalization at save time
-- ✅ **`_KNOWN_EXERCISES`** global + autocomplete dropdown on all exercise name inputs
-- ✅ Autocomplete: contains-match, blue highlight, auto-advance to reps, iOS position fix
-- ✅ **Heatmap untracked warning** — user-facing, links unmapped → missing PRs
-- ✅ **Heatmap breakdown panel** — permanent "▶ Show breakdown" toggle; shows per-muscle exercise contributions for every profile; used to diagnose and fix mis-mappings
-- ✅ **Fix: Reverse Fly mapped to chest** — `\bfly\b` was matching "Reverse Fly"; added `!n.includes('reverse')&&!n.includes('rear')` guard before the chest fly pattern
-- ✅ **Today's Workout card** in Overview tab
-- ✅ **PRs this month** section in client portal PRs tab
-- ✅ **Drag-to-reorder** exercises in program builder (pointer events)
-- ✅ Input placeholder text explains both formats: `3×10 · or 8,8,6` / `135 · or 135,145,155`
-- ✅ `renderCustomWorkoutSheet` exposed as `window.` (fixed onclick not firing)
+- ✅ **Exercise demo system** — `free-exercise-db` (873) runtime-loaded; tap any exercise → bottom sheet (animated demo, muscles, instructions, history); thumbnails everywhere
+- ✅ **Forgiving matcher** (`_exDbMatch`): curated `_EX_ALIAS` (~210), brand-machine normalization, token (order/abbrev/plural), ≥2-word subset fallback; "blank beats wrong"
+- ✅ **Smart-quote fix** made Syne font actually load → fixed Edit-modal name-field collapse (`1fr auto auto` → name on own row)
+- ✅ **Comprehensive autocomplete** — 182 curated + 873 dataset + library, token-prefix matching, cached
+- ✅ **Library auto-grows** from used exercises, **deduped by demo identity** (no DB/word-order dupes)
+- ✅ **Custom exercise details** — link demo / image+video URL / muscle multi-select / description (5 new `exercise_library` columns; YouTube embeds)
+- ✅ **One-at-a-time builders** restored (program + workout-of-day) with **⊕ Superset** groups, live thumbnails, **orange** superset wrappers everywhere
+- ✅ **Multi-select search-picker** built then made dormant (user preferred one-at-a-time)
+- ✅ **Muscle-balance bars** (weekly volume vs target) below heatmap
+- ✅ **Bigger coach nav tabs** (always-labeled), **Today's Workout card** redesign, removed debug logs
 
 ---
 
 ## Next Logical Steps (in priority order)
 
-1. **Continue calibrating `exerciseToMuscles()`** — use the breakdown panel + untracked warning as more exercises are logged by testers. Fix any mis-mappings that surface.
-2. **Smarter Today hero on coach dashboard** — show run week status ("Week 3 · 1/2 runs done")
-3. **Business tab** — revenue tracking / invoice generation
-4. **Notifications** — reminders for low-session clients
-5. **Session log flow** — pre-select today's program day based on schedule (partial: `openLogSession(id, dayIdx)` already supports it; Today's Workout card uses it)
+1. **User testing feedback** on the workout-of-day builder (user building one "later today")
+2. **Client-portal custom workout → coach library sync** (currently a gap — portal logging doesn't feed `exercise_library`)
+3. **Continue `exerciseToMuscles()` calibration** via breakdown panel + untracked warning
+4. **Strength-over-time charts** (per-exercise est. 1RM trends) — the detail sheet already has a mini history chart to build on
+5. **Business tab** (revenue/invoices), **notifications** (low-session reminders)
+6. Longer-term SaaS direction: real per-user auth + RLS + multi-coach tenancy + white-label branding + Stripe tiers (see earlier roadmap discussion)
 
 ---
 
-**Last Updated:** Jun 4, 2026
+**Last Updated:** Current session (HEAD `df7e4db`)
