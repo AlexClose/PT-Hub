@@ -1501,7 +1501,7 @@ function _exDbMatch(name){
   if(ut.length&&_EX_ALIAS_TOKLIST){
     var us={};ut.forEach(function(w){us[w]=1;});
     for(var i=0;i<_EX_ALIAS_TOKLIST.length;i++){
-      var e=_EX_ALIAS_TOKLIST[i];if(e.t.length>ut.length)continue;
+      var e=_EX_ALIAS_TOKLIST[i];if(e.t.length<2||e.t.length>ut.length)continue; // single-word movements are too broad (Pendulum Squat != Squat)
       var all=true;for(var j=0;j<e.t.length;j++){if(!us[e.t[j]]){all=false;break;}}
       if(all&&_exById[e.id])return _exById[e.id];
     }
