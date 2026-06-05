@@ -2577,6 +2577,16 @@ function renderEditExerciseList(){
   setupExDrag();
   try{_thumbsRefresh();}catch(e){}
 }
+// Update the exercise thumbnail sitting next to a name input as the user types/selects (logging rows).
+function _syncRowThumb(inputEl){
+  var wrap=inputEl.parentNode;var el=wrap?wrap.querySelector('.ex-thumb'):null;if(!el)return;
+  var v=inputEl.value||'';
+  el.setAttribute('data-exname',v);el.setAttribute('data-exdisp',v);
+  el.removeAttribute('data-hyd');el.removeAttribute('data-hasdemo');
+  el.style.backgroundImage='';el.style.backgroundColor='#161b27';
+  var ph=el.querySelector('.ex-thumb-ph');if(ph)ph.style.display='';
+  _hydrateExThumbs();
+}
 function _nextSsGroup(){var mx=0;editingExercises.forEach(function(e){if(e.ss&&e.ss>mx)mx=e.ss;});return mx+1;}
 function addSupersetToDay(){var g=_nextSsGroup();editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
 function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
@@ -2961,14 +2971,17 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   row.id='adhoc-row-'+n;
   if(supGroup)row.dataset.supGroup=supGroup;
   if(inWrap){
-    row.style.cssText='padding:14px;position:relative;'+(supLabel==='A'?'border-bottom:1px solid rgba(37,99,235,0.18);':'');
+    row.style.cssText='padding:14px;position:relative;'+(supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
   }else{
     row.style.cssText='background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;position:relative;';
   }
   const labelTag=inWrap?`<div style="font-size:10px;font-weight:700;color:rgba(126,200,255,0.45);letter-spacing:1.2px;margin-bottom:8px;">${supLabel}</div>`:'';
-  row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>`
+  row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
     +labelTag
-    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
+    +`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:22px;">`
+    +_exThumbHTML('','',40)
+    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
+    +`</div>`
     +`<div class="workout-inputs">`
     +`<div><input id="wr-adhoc-${n}" placeholder="3×10  ·  or 8,8,6"><div class="wi-label">Sets × Reps</div></div>`
     +`<div><input id="wt-adhoc-${n}" placeholder="135  ·  or 135,145,155"><div class="wi-label">Weight / Load</div></div>`
@@ -2982,8 +2995,8 @@ function addAdHocSuperset(){
   const grp='ahs-'+(window._adhocSSN++);
   const wrap=document.createElement('div');
   wrap.dataset.ssWrap=grp;
-  wrap.style.cssText='background:rgba(10,18,36,0.55);border:2px solid rgba(37,99,235,0.4);border-radius:12px;overflow:hidden;margin-bottom:12px;';
-  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(37,99,235,0.1);border-bottom:1px solid rgba(37,99,235,0.2);"><div style="flex:1;height:1px;background:rgba(37,99,235,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#7ec8ff;letter-spacing:2px;white-space:nowrap;">SUPERSET</span><div style="flex:1;height:1px;background:rgba(37,99,235,0.3);border-radius:1px;"></div></div>';
+  wrap.style.cssText='background:rgba(255,140,71,0.03);border:2px solid rgba(255,140,71,0.35);border-radius:12px;overflow:hidden;margin-bottom:12px;';
+  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,140,71,0.08);border-bottom:1px solid rgba(255,140,71,0.18);"><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#ffb380;letter-spacing:2px;white-space:nowrap;">⊕ SUPERSET</span><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div></div>';
   container.appendChild(wrap);
   addAdHocExercise(grp,'A',wrap);
   addAdHocExercise(grp,'B',wrap);
@@ -4766,15 +4779,18 @@ function startClientPortal(id) {
       row.id = 'custom-ex-row-' + n;
       if (supGroup) row.dataset.supGroup = supGroup;
       if (inWrap) {
-        row.style.cssText = 'padding:14px 16px;position:relative;' + (supLabel==='A'?'border-bottom:1px solid rgba(37,99,235,0.18);':'');
+        row.style.cssText = 'padding:14px 16px;position:relative;' + (supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
       } else {
         row.style.cssText = 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;';
       }
-      var labelTag = inWrap ? '<div style="font-size:10px;font-weight:700;color:rgba(126,200,255,0.45);letter-spacing:1.2px;margin-bottom:8px;">'+supLabel+'</div>' : '';
+      var labelTag = inWrap ? '<div style="font-size:10px;font-weight:700;color:rgba(255,179,128,0.7);letter-spacing:1.2px;margin-bottom:8px;">'+supLabel+'</div>' : '';
       row.innerHTML =
-        '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;">×</button>' +
+        '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;z-index:1;">×</button>' +
         labelTag +
-        '<input id="cex-name-'+n+'" placeholder="Exercise name..." autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;margin-bottom:10px;" oninput="_exAcInput(this);window._updateCustomExCount();" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:22px;">' +
+        _exThumbHTML('','',40) +
+        '<input id="cex-name-'+n+'" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);window._updateCustomExCount();" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();">' +
+        '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
           '<div><input id="cex-reps-'+n+'" type="text" placeholder="3×10  ·  or 8,8,6" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:13px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">SETS × REPS</div></div>' +
           '<div><input id="cex-wt-'+n+'" type="text" placeholder="135  ·  or 135,145,155" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:13px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">WEIGHT / LOAD</div></div>' +
@@ -4788,8 +4804,8 @@ function startClientPortal(id) {
       var list = document.getElementById('custom-ex-list'); if (!list) return;
       var wrap = document.createElement('div');
       wrap.dataset.ssWrap = grp;
-      wrap.style.cssText = 'background:rgba(10,18,36,0.55);border:2px solid rgba(37,99,235,0.4);border-radius:14px;overflow:hidden;margin-bottom:12px;';
-      wrap.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 14px 6px;background:rgba(37,99,235,0.1);border-bottom:1px solid rgba(37,99,235,0.2);"><div style="flex:1;height:1px;background:rgba(37,99,235,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#7ec8ff;letter-spacing:2px;white-space:nowrap;">SUPERSET</span><div style="flex:1;height:1px;background:rgba(37,99,235,0.3);border-radius:1px;"></div></div>';
+      wrap.style.cssText = 'background:rgba(255,140,71,0.03);border:2px solid rgba(255,140,71,0.35);border-radius:14px;overflow:hidden;margin-bottom:12px;';
+      wrap.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:7px 14px 6px;background:rgba(255,140,71,0.08);border-bottom:1px solid rgba(255,140,71,0.18);"><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#ffb380;letter-spacing:2px;white-space:nowrap;">⊕ SUPERSET</span><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div></div>';
       list.appendChild(wrap);
       window._addCustomExRow(grp, 'A', wrap);
       window._addCustomExRow(grp, 'B', wrap);
