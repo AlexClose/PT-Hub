@@ -535,11 +535,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
         <div class="page-label">Exercise & Equipment</div>
         <h2>Library</h2>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-        <button class="btn btn-secondary btn-sm" onclick="copyLibDemoStatus()" title="Copy a demo-coverage report to share">⧉ Demos</button>
-        <button class="btn btn-secondary btn-sm" onclick="importCommonExercises()" title="Add common gym exercises to your library">⬇ Common</button>
-        <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
-      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
     </div>
     <div class="search-wrap"><input type="text" placeholder="Search exercises..." id="libSearch" oninput="renderLibrary()"></div>
     <div id="libraryList"></div>
