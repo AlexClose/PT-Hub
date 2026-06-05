@@ -2989,6 +2989,7 @@ async function confirmLogSession(){
       exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:exName,reps:wr||'',weight:wt||'',day_name:adhocDayName});
     }
   }
+  try{_ensureLibraryHas(workout.map(function(w){return w.name;}));}catch(e){}
   try{
     await db.addSession({client_id:c.id,date:dateStr,note,workout});
     for(const log of exLogs){try{await db.addExLog(log);}catch(e){}}
