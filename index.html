@@ -535,8 +535,9 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
         <div class="page-label">Exercise & Equipment</div>
         <h2>Library</h2>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
         <button class="btn btn-secondary btn-sm" onclick="copyLibDemoStatus()" title="Copy a demo-coverage report to share">⧉ Demos</button>
+        <button class="btn btn-secondary btn-sm" onclick="importCommonExercises()" title="Add common gym exercises to your library">⬇ Common</button>
         <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
       </div>
     </div>
@@ -1399,7 +1400,8 @@ var _EX_ALIAS={
 'landmine press':'Landmine_Linear_Jammer','medicine ball slam':'One-Arm_Medicine_Ball_Slam','medicine ball slams':'One-Arm_Medicine_Ball_Slam','med ball slam':'One-Arm_Medicine_Ball_Slam',
 'neutral grip barbell row':'Bent_Over_Barbell_Row','pullover machine':'Straight-Arm_Dumbbell_Pullover',
 'seated hamstring curl':'Seated_Leg_Curl','seated leg curl':'Seated_Leg_Curl','sl hamstring curl':'Lying_Leg_Curls','single leg hamstring curl':'Lying_Leg_Curls','lying hamstring curl':'Lying_Leg_Curls',
-'single arm cable row':'Seated_One-arm_Cable_Pulley_Rows','one arm cable row':'Seated_One-arm_Cable_Pulley_Rows','smith machine lunges':'Barbell_Lunge','smith machine lunge':'Barbell_Lunge','smith machine rdl':'Smith_Machine_Stiff-Legged_Deadlift','smith machine deadlift':'Smith_Machine_Stiff-Legged_Deadlift'};
+'single arm cable row':'Seated_One-arm_Cable_Pulley_Rows','one arm cable row':'Seated_One-arm_Cable_Pulley_Rows','smith machine lunges':'Barbell_Lunge','smith machine lunge':'Barbell_Lunge','smith machine rdl':'Smith_Machine_Stiff-Legged_Deadlift','smith machine deadlift':'Smith_Machine_Stiff-Legged_Deadlift',
+'reverse curl':'Reverse_Barbell_Curl','wrist curl':'Cable_Wrist_Curl','lying leg curl':'Lying_Leg_Curls','stiff leg deadlift':'Stiff-Legged_Barbell_Deadlift','stiff legged deadlift':'Stiff-Legged_Barbell_Deadlift','thruster':'Kettlebell_Thruster','thrusters':'Kettlebell_Thruster','decline push up':'Decline_Push-Up'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
@@ -1496,6 +1498,38 @@ function copyLibDemoStatus(){
   });
   var txt='PT-Hub demo coverage — '+have+'/'+rows.length+' have demos\n\n'+lines.join('\n');
   _copyText(txt,'Copied '+rows.length+' exercises ✓');
+}
+// Comprehensive catalog of common gym exercises [name, muscle_group, equipment] — every entry resolves to a demo.
+var _EX_CATALOG=[
+['Bench Press','Chest','Barbell'],['Incline Bench Press','Chest','Barbell'],['Decline Bench Press','Chest','Barbell'],['Dumbbell Bench Press','Chest','Dumbbell'],['Incline Dumbbell Press','Chest','Dumbbell'],['Machine Chest Press','Chest','Machine'],['Machine Incline Chest Press','Chest','Machine'],['Chest Fly','Chest','Dumbbell'],['Incline Dumbbell Fly','Chest','Dumbbell'],['Cable Fly','Chest','Cable'],['Cable Crossover','Chest','Cable'],['Pec Deck','Chest','Machine'],['Push Ups','Chest','Bodyweight'],['Dips','Chest','Bodyweight'],['Decline Push Up','Chest','Bodyweight'],['Dumbbell Pullover','Chest','Dumbbell'],
+['Pull Ups','Back','Bodyweight'],['Chin Ups','Back','Bodyweight'],['Lat Pulldown','Back','Cable'],['Wide Grip Lat Pulldown','Back','Cable'],['Straight Arm Pulldown','Back','Cable'],['Bent Over Row','Back','Barbell'],['Pendlay Row','Back','Barbell'],['T-Bar Row','Back','Barbell'],['Seated Cable Row','Back','Cable'],['Single Arm Cable Row','Back','Cable'],['One Arm Dumbbell Row','Back','Dumbbell'],['Inverted Row','Back','Bodyweight'],['Face Pull','Back','Cable'],['Shrugs','Back','Barbell'],['Dumbbell Shrug','Back','Dumbbell'],['Deadlift','Back','Barbell'],['Trap Bar Deadlift','Back','Barbell'],['Good Morning','Back','Barbell'],['Back Extension','Back','Machine'],
+['Overhead Press','Shoulders','Barbell'],['Dumbbell Shoulder Press','Shoulders','Dumbbell'],['Arnold Press','Shoulders','Dumbbell'],['Push Press','Shoulders','Barbell'],['Machine Shoulder Press','Shoulders','Machine'],['Lateral Raise','Shoulders','Dumbbell'],['Cable Lateral Raise','Shoulders','Cable'],['Front Raise','Shoulders','Dumbbell'],['Rear Delt Fly','Shoulders','Dumbbell'],['Reverse Fly','Shoulders','Dumbbell'],['Reverse Pec Deck','Shoulders','Machine'],['Upright Row','Shoulders','Barbell'],
+['Barbell Curl','Arms','Barbell'],['Dumbbell Curl','Arms','Dumbbell'],['Hammer Curl','Arms','Dumbbell'],['Preacher Curl','Arms','Barbell'],['Concentration Curl','Arms','Dumbbell'],['Incline Dumbbell Curl','Arms','Dumbbell'],['Cable Curl','Arms','Cable'],['Spider Curl','Arms','Barbell'],['EZ Bar Curl','Arms','Barbell'],['Reverse Curl','Arms','Barbell'],['Wrist Curl','Arms','Dumbbell'],['Tricep Pushdown','Arms','Cable'],['Rope Pushdown','Arms','Cable'],['Skull Crushers','Arms','Barbell'],['Close Grip Bench Press','Arms','Barbell'],['Overhead Tricep Extension','Arms','Barbell'],['Tricep Kickback','Arms','Dumbbell'],['Tricep Dips','Arms','Bodyweight'],['Bench Dips','Arms','Bodyweight'],
+['Squat','Legs','Barbell'],['Front Squat','Legs','Barbell'],['Goblet Squat','Legs','Dumbbell'],['Hack Squat','Legs','Machine'],['Leg Press','Legs','Machine'],['Bulgarian Split Squat','Legs','Dumbbell'],['Walking Lunge','Legs','Dumbbell'],['Lunges','Legs','Dumbbell'],['Step Ups','Legs','Dumbbell'],['Leg Extension','Legs','Machine'],['Leg Curl','Legs','Machine'],['Lying Leg Curl','Legs','Machine'],['Seated Leg Curl','Legs','Machine'],['Romanian Deadlift','Legs','Barbell'],['Stiff Leg Deadlift','Legs','Barbell'],['Sumo Deadlift','Legs','Barbell'],['Standing Calf Raise','Legs','Machine'],['Seated Calf Raise','Legs','Machine'],['Hip Adduction','Legs','Machine'],['Hip Abduction','Legs','Machine'],['Box Jump','Legs','Bodyweight'],
+['Hip Thrust','Glutes','Barbell'],['Glute Bridge','Glutes','Barbell'],['Glute Kickback','Glutes','Cable'],
+['Plank','Core','Bodyweight'],['Side Plank','Core','Bodyweight'],['Russian Twist','Core','Bodyweight'],['Hanging Leg Raise','Core','Bodyweight'],['Cable Crunch','Core','Cable'],['Crunches','Core','Bodyweight'],['Bicycle Crunches','Core','Bodyweight'],['Sit Ups','Core','Bodyweight'],['Ab Wheel','Core','Other'],['Mountain Climbers','Core','Bodyweight'],['Flutter Kicks','Core','Bodyweight'],['Decline Crunch','Core','Bodyweight'],
+['Clean and Jerk','Full Body','Barbell'],['Power Clean','Full Body','Barbell'],['Snatch','Full Body','Barbell'],['Thruster','Full Body','Barbell'],['Kettlebell Swing','Full Body','Kettlebell'],['Farmers Walk','Full Body','Dumbbell'],['Medicine Ball Slam','Full Body','Medicine Ball']
+];
+// One-tap: add common demo-backed exercises that aren't already in the library (dedupes by name and by demo).
+function importCommonExercises(){
+  if(typeof library==='undefined'||!Array.isArray(library)){toast('Library not loaded yet');return;}
+  if(!_exDb){_loadExDb().then(function(){toast('Demo data loaded — tap again');});return;}
+  var haveNames={},haveIds={};
+  library.forEach(function(e){haveNames[_normExName(e.name)]=1;var m=_exDbMatch(e.name);if(m)haveIds[m.id]=1;});
+  var toAdd=[];
+  _EX_CATALOG.forEach(function(c){
+    var nn=_normExName(c[0]);if(haveNames[nn])return;
+    var m=_exDbMatch(c[0]);if(!m||haveIds[m.id])return;
+    haveNames[nn]=1;haveIds[m.id]=1;
+    toAdd.push({name:c[0],muscle_group:c[1],equipment:c[2]});
+  });
+  if(!toAdd.length){toast('Library already covers these ✓');return;}
+  if(!confirm('Add '+toAdd.length+' common exercises to your library?'))return;
+  toast('Adding '+toAdd.length+' exercises…');
+  db.addLibEx(toAdd).then(function(created){
+    if(Array.isArray(created))created.forEach(function(r){library.push(r);});
+    renderLibrary();toast('Added '+toAdd.length+' exercises ✓');
+  }).catch(function(){toast('Error adding exercises');});
 }
 function openExerciseDetail(rawName,displayName,opts){
   opts=opts||{};displayName=displayName||rawName;
