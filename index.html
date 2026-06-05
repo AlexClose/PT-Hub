@@ -6483,6 +6483,32 @@ var _MH_TARGETS={
   hamstrings:12,glutes:12,glute_med:4,adductors:4,
   biceps:14,triceps:12,calves:10,abs:12,traps:8,lower_back:6,forearms:8,
 };
+// Ranked weekly-volume-vs-target bars — surfaces over/under-worked muscle groups.
+function _muscleBalanceHtml(scores,weeks){
+  weeks=weeks||1;
+  var rows=Object.keys(_MH_TARGETS).map(function(m){
+    var wk=(scores[m]||0)/weeks,tgt=_MH_TARGETS[m]||10;
+    return {m:m,wk:wk,tgt:tgt,ratio:tgt?wk/tgt:0};
+  }).sort(function(a,b){return b.ratio-a.ratio;});
+  var bars=rows.map(function(r){
+    var color=_mhColor(r.wk,r.tgt)||'#3a4658';
+    var pct=Math.round(r.ratio*100),fill=Math.max(2,Math.min(100,Math.round(r.ratio/1.5*100)));
+    return '<div style="margin-bottom:9px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:3px;">'
+        +'<span style="color:#e8edf5;font-weight:600;text-transform:capitalize;">'+r.m.replace(/_/g,' ')+'</span>'
+        +'<span style="font-weight:700;color:'+color+';">'+(Math.round(r.wk*10)/10)+'/'+r.tgt+' <span style="color:rgba(180,200,230,0.35);font-weight:500;">sets/wk · </span>'+pct+'%</span>'
+      +'</div>'
+      +'<div style="position:relative;height:8px;background:rgba(255,255,255,0.06);border-radius:5px;overflow:hidden;">'
+        +'<div style="position:absolute;left:0;top:0;height:100%;width:'+fill+'%;background:'+color+';border-radius:5px;"></div>'
+        +'<div style="position:absolute;left:66.6%;top:-1px;height:10px;width:2px;background:rgba(255,255,255,0.4);"></div>'
+      +'</div></div>';
+  }).join('');
+  return '<div style="margin-top:16px;">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+      +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;">Weekly Volume vs Target</div>'
+      +'<div style="font-size:9px;color:rgba(180,200,230,0.35);">▏ = target</div>'
+    +'</div>'+bars+'</div>';
+}
 window.showMhInfo = function() {
   var ov = document.getElementById('mh-info-ov');
   if (ov) { ov.style.display = 'flex'; return; }
@@ -7328,6 +7354,7 @@ async function loadMuscleHeatmap(clientId,containerId,period){
       }
     }
     var diagramHtml=renderMuscleDiagram(scores,weeksInPeriod);
+    diagramHtml+=_muscleBalanceHtml(scores,weeksInPeriod);
     // Breakdown panel: shows raw set contributions per muscle so over/under-counting is visible
     var _brkId='mh-brk-'+(Math.random().toString(36).slice(2));
     var _brkMuscles=Object.keys(_details).sort(function(a,b){return (scores[b]||0)-(scores[a]||0);});
