@@ -2599,14 +2599,22 @@ function _demoMuscleGroup(m){
   var arr=(m.primaryMuscles&&m.primaryMuscles.length)?m.primaryMuscles:(m.secondaryMuscles||[]);
   return (arr&&arr[0]&&_EXDB_MUS[(''+arr[0]).toLowerCase()])||'';
 }
-// Auto-add any exercise names not already in the library (grows the coach's library as they build).
+// Identity of an exercise = the demo it resolves to (so naming variants collapse), else its normalized name.
+function _exIdentity(name){
+  var n=(name||'').replace(/^SS\w+:\s*/i,'').trim();if(!n)return '';
+  var m=(typeof _exDbMatch==='function')?_exDbMatch(n):null;
+  return m?('id:'+m.id):('nm:'+_normExName(n));
+}
+// Auto-add exercises not already represented in the library (deduped by identity, so
+// "Dumbbell Incline Curl" and "Incline Dumbbell Curl" never create two rows).
 function _ensureLibraryHas(names){
   if(!Array.isArray(library)||!Array.isArray(names))return;
-  var have={};library.forEach(function(e){have[(e.name||'').toLowerCase().trim()]=1;});
+  if(typeof _loadExDb==='function'&&!_exDb){_loadExDb().then(function(){_ensureLibraryHas(names);});return;} // match accurately once dataset is loaded
+  var have={};library.forEach(function(e){var id=_exIdentity(e.name);if(id)have[id]=1;});
   var toAdd=[],seen={};
   names.forEach(function(raw){
     var n=(raw||'').replace(/^SS\w+:\s*/i,'').trim();if(!n)return;
-    var k=n.toLowerCase();if(have[k]||seen[k])return;seen[k]=1;
+    var id=_exIdentity(n);if(!id||have[id]||seen[id])return;seen[id]=1;
     var m=(typeof _exDbMatch==='function')?_exDbMatch(n):null;
     toAdd.push({name:n,muscle_group:_demoMuscleGroup(m)||'Other',equipment:(m&&m.equipment)?_cap(m.equipment):''});
   });
