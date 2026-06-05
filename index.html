@@ -971,16 +971,29 @@ function canonExName(str){
   return s;
 }
 // --- Exercise autocomplete dropdown (shared across custom workout, ad-hoc, program builder) ---
+// Comprehensive built-in suggestion list so coaches/clients don't have to type full names.
+var _EX_SUGGEST=["Bench Press","Incline Bench Press","Decline Bench Press","Dumbbell Bench Press","Incline Dumbbell Press","Decline Dumbbell Press","Machine Chest Press","Incline Machine Chest Press","Smith Machine Bench Press","Chest Fly","Dumbbell Fly","Incline Dumbbell Fly","Cable Fly","Cable Crossover","Low Cable Crossover","High Cable Crossover","Pec Deck","Machine Fly","Push Up","Incline Push Up","Decline Push Up","Dips","Chest Dips","Dumbbell Pullover","Svend Press","Pull Up","Chin Up","Wide Grip Pull Up","Neutral Grip Pull Up","Lat Pulldown","Wide Grip Lat Pulldown","Close Grip Lat Pulldown","Neutral Grip Lat Pulldown","Cable Lat Pulldown","Machine Lat Pulldown","Straight Arm Pulldown","Bent Over Row","Barbell Row","Pendlay Row","T-Bar Row","Chest Supported Row","Chest Supported Dumbbell Row","Seated Cable Row","Wide Grip Seated Cable Row","Single Arm Cable Row","Machine Row","Dumbbell Row","One Arm Dumbbell Row","Inverted Row","Face Pull","Cable Face Pull","Deadlift","Trap Bar Deadlift","Rack Pull","Good Morning","Back Extension","Hyperextension","Shrugs","Dumbbell Shrug","Cable Shrug","Overhead Press","Military Press","Dumbbell Shoulder Press","Seated Dumbbell Shoulder Press","Arnold Press","Push Press","Machine Shoulder Press","Lateral Raise","Dumbbell Lateral Raise","Cable Lateral Raise","Machine Lateral Raise","Front Raise","Dumbbell Front Raise","Cable Front Raise","Plate Front Raise","Rear Delt Fly","Reverse Fly","Cable Rear Delt Fly","Reverse Pec Deck","Upright Row","Cable Upright Row","Barbell Curl","EZ Bar Curl","Dumbbell Curl","Hammer Curl","Cable Curl","Cable Bicep Curl","Machine Curl","Machine Bicep Curl","Preacher Curl","Cable Preacher Curl","Concentration Curl","Incline Dumbbell Curl","Spider Curl","Reverse Curl","Wrist Curl","Drag Curl","Tricep Pushdown","Cable Tricep Pushdown","Rope Pushdown","Tricep Rope Pushdown","V-Bar Pushdown","Overhead Tricep Extension","Cable Overhead Tricep Extension","Dumbbell Overhead Tricep Extension","Skull Crushers","EZ Bar Skull Crusher","Close Grip Bench Press","Tricep Dips","Bench Dips","Tricep Kickback","Diamond Push Up","Squat","Back Squat","Front Squat","Goblet Squat","Hack Squat","Leg Press","Bulgarian Split Squat","Split Squat","Lunge","Walking Lunge","Reverse Lunge","Dumbbell Lunge","Step Up","Leg Extension","Sissy Squat","Smith Machine Squat","Box Squat","Romanian Deadlift","Dumbbell Romanian Deadlift","Stiff Leg Deadlift","Sumo Deadlift","Leg Curl","Lying Leg Curl","Seated Leg Curl","Nordic Curl","Glute Ham Raise","Cable Pull Through","Hip Thrust","Machine Hip Thrust","Glute Bridge","Glute Kickback","Cable Kickback","Hip Abduction","Hip Adduction","Calf Raise","Standing Calf Raise","Seated Calf Raise","Leg Press Calf Raise","Plank","Side Plank","Crunch","Cable Crunch","Machine Crunch","Decline Crunch","Bicycle Crunch","Reverse Crunch","Hanging Leg Raise","Hanging Knee Raise","Leg Raise","Russian Twist","Sit Up","Ab Wheel","Mountain Climbers","Flutter Kicks","Hollow Hold","Dead Bug","Pallof Press","Cable Wood Chop","Clean and Jerk","Power Clean","Hang Clean","Snatch","Thruster","Kettlebell Swing","Kettlebell Clean","Farmers Walk","Sled Push","Medicine Ball Slam","Box Jump","Burpee"];
 function _exAcGetList(){
-  var seen={},all=_KNOWN_EXERCISES.slice();
+  var seen={},all=_EX_SUGGEST.concat(_KNOWN_EXERCISES);
   if(Array.isArray(window.library))window.library.forEach(function(e){if(e.name)all.push(e.name);});
-  return all.filter(function(n){var k=n.toLowerCase();if(seen[k])return false;seen[k]=true;return true;});
+  return all.filter(function(n){var k=(n||'').toLowerCase();if(!n||seen[k])return false;seen[k]=true;return true;});
 }
 function _exAcShow(inputEl){
   var val=inputEl.value;
   if(!val||!val.trim()){_exAcHide();return;}
   var vl=val.trim().toLowerCase();
-  var matches=_exAcGetList().filter(function(n){return n.toLowerCase().indexOf(vl)!==-1;}).slice(0,8);
+  var typed=_exTokArr(val);
+  if(!typed.length){_exAcHide();return;}
+  var _list=_exAcGetList(),_scored=[];
+  for(var _i=0;_i<_list.length;_i++){
+    var _cand=_list[_i],_ct=_exTokArr(_cand),_ok=true;
+    for(var _t=0;_t<typed.length;_t++){var _hit=false;for(var _c=0;_c<_ct.length;_c++){if(_ct[_c].indexOf(typed[_t])===0){_hit=true;break;}}if(!_hit){_ok=false;break;}}
+    if(!_ok)continue;
+    var _lc=_cand.toLowerCase(),_pos=_lc.indexOf(vl);
+    _scored.push({c:_cand,s:(_pos===0?0:(_pos!==-1?1:2))*1000+_cand.length});
+  }
+  _scored.sort(function(a,b){return a.s-b.s;});
+  var matches=_scored.slice(0,10).map(function(x){return x.c;});
   if(!matches.length){_exAcHide();return;}
   var drop=document.getElementById('_ex-ac-drop');
   if(!drop){
@@ -991,10 +1004,10 @@ function _exAcShow(inputEl){
   }
   var rect=inputEl.getBoundingClientRect();
   drop.innerHTML=matches.map(function(m){
-    var idx=m.toLowerCase().indexOf(vl);
-    var pre=m.slice(0,idx),mid=m.slice(idx,idx+vl.length),post=m.slice(idx+vl.length);
-    return '<div class="_exac-opt" data-val="'+m.replace(/"/g,'&quot;')+'" style="padding:11px 14px;font-size:13px;font-weight:600;color:#e8edf5;cursor:pointer;border-bottom:1px solid rgba(100,160,255,0.07);font-family:Syne,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
-      +pre+'<span style="color:#7ec8ff;">'+mid+'</span>'+post+'</div>';
+    var ml=m.toLowerCase(),hl=vl,idx=ml.indexOf(vl);
+    if(idx===-1){hl=typed[0];idx=ml.indexOf(hl);}
+    var inner=idx===-1?m:(m.slice(0,idx)+'<span style="color:#7ec8ff;">'+m.slice(idx,idx+hl.length)+'</span>'+m.slice(idx+hl.length));
+    return '<div class="_exac-opt" data-val="'+m.replace(/"/g,'&quot;')+'" style="padding:11px 14px;font-size:13px;font-weight:600;color:#e8edf5;cursor:pointer;border-bottom:1px solid rgba(100,160,255,0.07);font-family:Syne,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+inner+'</div>';
   }).join('');
   drop.style.display='block';
   // Position after paint so layout is settled; use visualViewport offsets for iOS keyboard
@@ -1400,7 +1413,8 @@ var _EX_ALIAS={
 'neutral grip barbell row':'Bent_Over_Barbell_Row','neutral grip barbell press':'Barbell_Bench_Press_-_Medium_Grip','pullover machine':'Straight-Arm_Dumbbell_Pullover',
 'seated hamstring curl':'Seated_Leg_Curl','seated leg curl':'Seated_Leg_Curl','sl hamstring curl':'Lying_Leg_Curls','single leg hamstring curl':'Lying_Leg_Curls','lying hamstring curl':'Lying_Leg_Curls',
 'single arm cable row':'Seated_One-arm_Cable_Pulley_Rows','one arm cable row':'Seated_One-arm_Cable_Pulley_Rows','smith machine lunges':'Barbell_Lunge','smith machine lunge':'Barbell_Lunge','smith machine rdl':'Smith_Machine_Stiff-Legged_Deadlift','smith machine deadlift':'Smith_Machine_Stiff-Legged_Deadlift',
-'reverse curl':'Reverse_Barbell_Curl','wrist curl':'Cable_Wrist_Curl','lying leg curl':'Lying_Leg_Curls','stiff leg deadlift':'Stiff-Legged_Barbell_Deadlift','stiff legged deadlift':'Stiff-Legged_Barbell_Deadlift','thruster':'Kettlebell_Thruster','thrusters':'Kettlebell_Thruster','decline push up':'Decline_Push-Up'};
+'reverse curl':'Reverse_Barbell_Curl','wrist curl':'Cable_Wrist_Curl','lying leg curl':'Lying_Leg_Curls','stiff leg deadlift':'Stiff-Legged_Barbell_Deadlift','stiff legged deadlift':'Stiff-Legged_Barbell_Deadlift','thruster':'Kettlebell_Thruster','thrusters':'Kettlebell_Thruster','decline push up':'Decline_Push-Up',
+'machine curl':'Machine_Bicep_Curl','machine bicep curl':'Machine_Bicep_Curl','machine preacher curl':'Machine_Preacher_Curls','machine fly':'Butterfly','decline dumbbell press':'Decline_Dumbbell_Bench_Press','v bar pushdown':'Triceps_Pushdown_-_V-Bar_Attachment','cable pull through':'Pull_Through','pull through':'Pull_Through','cable wood chop':'Standing_Cable_Wood_Chop','wood chop':'Standing_Cable_Wood_Chop','machine row':'Leverage_High_Row','chest supported row':'Leverage_Iso_Row','hanging knee raise':'Hanging_Leg_Raise','leg raise':'Hanging_Leg_Raise','leg raises':'Hanging_Leg_Raise','military press':'Barbell_Shoulder_Press','barbell row':'Bent_Over_Barbell_Row','rack pull':'Barbell_Deadlift'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
