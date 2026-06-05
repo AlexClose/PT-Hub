@@ -349,6 +349,8 @@ display:flex;align-items:center;justify-content:space-between;
 .edit-ex-fields input{font-size:12px;padding:7px 10px;width:100%;box-sizing:border-box;}
 .edit-ex-fields input:first-child{grid-column:1 / -1;font-size:13px;}
 .edit-ex-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.mchip{font-size:12px;font-weight:600;color:rgba(180,200,230,0.6);background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:20px;padding:6px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;}
+.mchip.sel{background:#2563eb;border-color:#2563eb;color:#fff;}
 .ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
 .ex-drag-handle:active{cursor:grabbing;}
 
@@ -741,22 +743,32 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-handle"></div>
     <div class="modal-title" id="addExerciseTitle">Add Exercise</div>
     <input type="hidden" id="libExId">
-    <div class="form-group"><label class="form-label">Exercise Name</label><input id="libExName" placeholder="e.g. Barbell Back Squat"></div>
-    <div class="form-group"><label class="form-label">Muscle Group</label>
-      <select id="libExMuscle">
-        <option value="Chest">Chest</option>
-        <option value="Back">Back</option>
-        <option value="Legs">Legs</option>
-        <option value="Shoulders">Shoulders</option>
-        <option value="Arms">Arms</option>
-        <option value="Core">Core</option>
-        <option value="Glutes">Glutes</option>
-        <option value="Cardio">Cardio</option>
-        <option value="Full Body">Full Body</option>
-      </select>
+    <div style="max-height:66vh;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -2px;padding:0 2px;">
+      <div class="form-group"><label class="form-label">Exercise Name</label><input id="libExName" placeholder="e.g. Barbell Back Squat" autocomplete="off"></div>
+      <div class="form-group"><label class="form-label">Muscle Groups</label>
+        <div id="libExMuscleChips" style="display:flex;flex-wrap:wrap;gap:6px;">
+          <button type="button" class="mchip" data-mg="Chest" onclick="this.classList.toggle('sel')">Chest</button>
+          <button type="button" class="mchip" data-mg="Back" onclick="this.classList.toggle('sel')">Back</button>
+          <button type="button" class="mchip" data-mg="Shoulders" onclick="this.classList.toggle('sel')">Shoulders</button>
+          <button type="button" class="mchip" data-mg="Arms" onclick="this.classList.toggle('sel')">Arms</button>
+          <button type="button" class="mchip" data-mg="Legs" onclick="this.classList.toggle('sel')">Legs</button>
+          <button type="button" class="mchip" data-mg="Glutes" onclick="this.classList.toggle('sel')">Glutes</button>
+          <button type="button" class="mchip" data-mg="Core" onclick="this.classList.toggle('sel')">Core</button>
+          <button type="button" class="mchip" data-mg="Cardio" onclick="this.classList.toggle('sel')">Cardio</button>
+          <button type="button" class="mchip" data-mg="Full Body" onclick="this.classList.toggle('sel')">Full Body</button>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Equipment</label><input id="libExEquip" placeholder="e.g. Barbell, Cable"></div>
+      <div style="border-top:1px solid rgba(100,160,255,0.12);margin:6px 0 10px;padding-top:12px;">
+        <div class="form-label" style="margin-bottom:4px;">Demo</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-bottom:10px;line-height:1.5;">Link an existing demo (fastest), or paste your own image/video below.</div>
+        <div class="form-group"><label class="form-label">Use demo of…</label><input id="libExDemoRef" placeholder="Type an exercise, e.g. Leg Press" autocomplete="off" oninput="_exAcInput(this)" onblur="_exAcBlur()" onkeydown="if(event.key==='Escape')_exAcHide()"></div>
+        <div class="form-group"><label class="form-label">Image / GIF URL</label><input id="libExImg" placeholder="https://…"></div>
+        <div class="form-group"><label class="form-label">Video URL (YouTube, etc.)</label><input id="libExVideo" placeholder="https://…"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Description / cues</label><textarea id="libExDesc" placeholder="How to perform, coaching cues…" style="width:100%;box-sizing:border-box;min-height:64px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:#fff;font-size:14px;padding:10px 12px;outline:none;font-family:'Instrument Sans',sans-serif;resize:vertical;"></textarea></div>
     </div>
-    <div class="form-group"><label class="form-label">Equipment Needed</label><input id="libExEquip" placeholder="e.g. Barbell, Cable Machine"></div>
-    <div style="display:flex;gap:8px;margin-top:8px">
+    <div style="display:flex;gap:8px;margin-top:10px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('addExerciseModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveLibraryExercise()">Save</button>
     </div>
@@ -1510,6 +1522,7 @@ function _exHistHtml(pts){
   return out;
 }
 function _closeExDetail(){if(_exDemoTimer){clearInterval(_exDemoTimer);_exDemoTimer=null;}var el=document.getElementById('ex-detail-sheet');if(el)el.remove();}
+function _ytId(url){var m=(''+(url||'')).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([\w-]{6,})/);return m?m[1]:'';}
 function _attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function _openThumb(el){if(!el)return;var n=el.getAttribute('data-exname'),disp=el.getAttribute('data-exdisp')||n;if(el.getAttribute('data-exhist')==='portal'&&window._openExDetailPortal){window._openExDetailPortal(n,disp);return;}openExerciseDetail(n,disp);}
 // Compact exercise thumbnail (the discoverable affordance). Starts as a placeholder; image is filled by _hydrateExThumbs once the dataset loads.
@@ -1524,9 +1537,13 @@ function _hydrateExThumbs(){
   var els=document.querySelectorAll('.ex-thumb[data-exname]:not([data-hyd])');
   for(var i=0;i<els.length;i++){
     var el=els[i];el.setAttribute('data-hyd','1');
-    var m=_exDbMatch(el.getAttribute('data-exname'));
-    if(m&&m.images&&m.images.length){
-      el.style.backgroundImage="url('"+_EXDB_BASE+'exercises/'+m.images[0]+"')";
+    var nm=el.getAttribute('data-exname');
+    var le=(typeof _libEntryFor==='function')?_libEntryFor(nm):null;
+    var imgUrl='';
+    if(le&&le.image_url)imgUrl=le.image_url;
+    else{var dm=(le&&le.demo_id&&_exById[le.demo_id])?_exById[le.demo_id]:_exDbMatch(nm);if(dm&&dm.images&&dm.images.length)imgUrl=_EXDB_BASE+'exercises/'+dm.images[0];}
+    if(imgUrl){
+      el.style.backgroundImage="url('"+imgUrl.replace(/'/g,"\\'")+"')";
       el.style.backgroundColor='#fff';
       var ph=el.querySelector('.ex-thumb-ph');if(ph)ph.style.display='none';
       el.setAttribute('data-hasdemo','1');
@@ -1620,13 +1637,22 @@ function openExerciseDetail(rawName,displayName,opts){
   })();
   _loadExDb().then(function(){
     var body=document.getElementById('ex-detail-body');if(!body)return;
-    var m=_exDbMatch(rawName);
+    var le=(typeof _libEntryFor==='function')?_libEntryFor(rawName):null;
+    var m=(le&&le.demo_id&&_exById[le.demo_id])?_exById[le.demo_id]:_exDbMatch(rawName);
+    var customImg=(le&&le.image_url)?le.image_url:'';
     var html='';
-    if(m&&m.images&&m.images.length){
+    if(customImg){
+      html+='<div style="width:100%;background:#fff;border-radius:14px;overflow:hidden;margin-bottom:14px;"><img src="'+_attr(customImg)+'" alt="" style="width:100%;height:auto;display:block;" onerror="var p=this.parentNode;if(p)p.style.display=\'none\'"></div>';
+    } else if(m&&m.images&&m.images.length){
       html+='<div style="position:relative;width:100%;background:#fff;border-radius:14px;overflow:hidden;margin-bottom:14px;">'+
         '<img id="ex-demo-img" src="'+_EXDB_BASE+'exercises/'+m.images[0]+'" alt="" style="width:100%;height:auto;display:block;" onerror="var p=this.parentNode;if(p)p.style.display=\'none\'">'+
         (m.images.length>1?'<div style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,0.55);color:#fff;font-size:9px;letter-spacing:1px;padding:4px 8px;border-radius:20px;">▶ ANIMATED</div>':'')+
       '</div>';
+    }
+    if(le&&le.video_url){
+      var yt=_ytId(le.video_url);
+      if(yt)html+='<div style="position:relative;width:100%;padding-bottom:56.25%;border-radius:14px;overflow:hidden;margin-bottom:14px;background:#000;"><iframe src="https://www.youtube.com/embed/'+yt+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div>';
+      else html+='<a href="'+_attr(le.video_url)+'" target="_blank" rel="noopener" style="display:block;text-align:center;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.3);border-radius:12px;padding:13px;color:#7ec8ff;font-weight:700;font-size:13px;text-decoration:none;margin-bottom:14px;font-family:Syne,sans-serif;">▶ Watch video</a>';
     }
     var chips=[];
     if(m){
@@ -1636,7 +1662,10 @@ function openExerciseDetail(rawName,displayName,opts){
     }
     if(chips.length)html+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">'+chips.map(function(c){return '<span style="font-size:11px;font-weight:600;color:'+c[1]+';background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.15);border-radius:20px;padding:5px 11px;">'+c[0]+'</span>';}).join('')+'</div>';
     var prim=(m&&m.primaryMuscles)||[],sec=(m&&m.secondaryMuscles)||[];
-    if(!m){try{var em=(typeof exerciseToMuscles==='function')?exerciseToMuscles(rawName):[];prim=em.map(function(x){return x.muscle;});}catch(e){}}
+    if(!m){
+      if(le&&le.muscles)prim=le.muscles.split(',').map(function(s){return s.trim();}).filter(Boolean);
+      else{try{var em=(typeof exerciseToMuscles==='function')?exerciseToMuscles(rawName):[];prim=em.map(function(x){return x.muscle;});}catch(e){}}
+    }
     if(prim.length||sec.length){
       html+='<div style="margin-bottom:16px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">Target Muscles</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
       prim.forEach(function(mu){var c=_musColor(mu);html+='<span style="font-size:11px;font-weight:700;color:#fff;background:'+c+';border-radius:20px;padding:5px 12px;">'+_cap(mu)+'</span>';});
@@ -1648,9 +1677,12 @@ function openExerciseDetail(rawName,displayName,opts){
       html+='<div><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:16px 0 8px;">How to perform</div>'+
         '<ol style="margin:0;padding-left:18px;color:rgba(210,222,238,0.85);font-size:13px;line-height:1.65;">'+m.instructions.map(function(s){return '<li style="margin-bottom:7px;">'+s+'</li>';}).join('')+'</ol></div>';
     }
-    if(!m)html+='<div style="text-align:center;padding:18px;color:rgba(180,200,230,0.4);font-size:12px;background:rgba(255,255,255,0.03);border-radius:12px;">No demo found for this exercise yet.</div>';
+    if(le&&le.description)html+='<div style="margin-top:14px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:6px;">Notes</div><div style="color:rgba(210,222,238,0.85);font-size:13px;line-height:1.6;white-space:pre-wrap;">'+_attr(le.description)+'</div></div>';
+    var hasAny=customImg||(m&&m.images&&m.images.length)||(le&&le.video_url)||(le&&le.description)||prim.length;
+    if(!hasAny)html+='<div style="text-align:center;padding:18px;color:rgba(180,200,230,0.4);font-size:12px;background:rgba(255,255,255,0.03);border-radius:12px;">No demo for this exercise yet.</div>';
+    if(!window._portalClientId)html+='<button onclick="openExerciseEditorFor(\''+_jsq(rawName)+'\')" style="width:100%;margin-top:14px;background:rgba(37,99,235,0.1);border:1px dashed rgba(37,99,235,0.45);border-radius:10px;padding:12px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:#7ec8ff;cursor:pointer;">'+(hasAny?'✎ Edit details':'＋ Add demo & details')+'</button>';
     body.innerHTML=html;
-    if(m&&m.images&&m.images.length>1){
+    if(!customImg&&m&&m.images&&m.images.length>1){
       var fr=0;
       if(_exDemoTimer)clearInterval(_exDemoTimer);
       _exDemoTimer=setInterval(function(){var el=document.getElementById('ex-demo-img');if(!el){clearInterval(_exDemoTimer);_exDemoTimer=null;return;}fr=fr^1;el.src=_EXDB_BASE+'exercises/'+m.images[fr%m.images.length];},900);
@@ -2619,7 +2651,7 @@ function _ensureLibraryHas(names){
     toAdd.push({name:n,muscle_group:_demoMuscleGroup(m)||'Other',equipment:(m&&m.equipment)?_cap(m.equipment):''});
   });
   if(!toAdd.length)return;
-  db.addLibEx(toAdd).then(function(created){if(Array.isArray(created))created.forEach(function(r){library.push(r);});}).catch(function(){});
+  db.addLibEx(toAdd).then(function(created){if(Array.isArray(created))created.forEach(function(r){library.push(r);});_libIdCache=null;}).catch(function(){});
 }
 async function saveProgramDay(){
   try{_ensureLibraryHas(editingExercises.map(function(e){return e.name;}));}catch(e){}
@@ -3120,30 +3152,52 @@ function renderLibrary(){
     </div>`).join('');
   try{_thumbsRefresh();}catch(e){}
 }
+function _libMusclesGet(){return [].slice.call(document.querySelectorAll('#libExMuscleChips .mchip.sel')).map(function(c){return c.getAttribute('data-mg');});}
+function _libMusclesSet(arr){var set={};(arr||[]).forEach(function(m){if(m)set[(''+m).trim()]=1;});document.querySelectorAll('#libExMuscleChips .mchip').forEach(function(c){if(set[c.getAttribute('data-mg')])c.classList.add('sel');else c.classList.remove('sel');});}
+// Library entry lookup by resolved identity (cached), used to apply custom demo/media overrides.
+var _libIdCache=null;
+function _libIdMap(){
+  if(!Array.isArray(library))return {};
+  if(_libIdCache&&_libIdCache.len===library.length)return _libIdCache.map;
+  var map={};library.forEach(function(e){if(!e._idc)e._idc=_exIdentity(e.name);if(e._idc&&!map[e._idc])map[e._idc]=e;});
+  _libIdCache={len:library.length,map:map};return map;
+}
+function _libEntryFor(name){var id=(typeof _exIdentity==='function')?_exIdentity(name):'';return id?(_libIdMap()[id]||null):null;}
+function openExerciseEditorFor(name){_closeExDetail();var le=_libEntryFor(name);if(le){openEditLibEx(le.id);}else{openAddExercise();var ne=document.getElementById('libExName');if(ne)ne.value=name||'';}}
 function openAddExercise(){
-  document.getElementById('libExId').value='';document.getElementById('libExName').value='';
-  document.getElementById('libExMuscle').value='Chest';document.getElementById('libExEquip').value='';
+  if(typeof _loadExDb==='function')_loadExDb();
+  ['libExId','libExName','libExEquip','libExDemoRef','libExImg','libExVideo','libExDesc'].forEach(function(f){var el=document.getElementById(f);if(el)el.value='';});
+  _libMusclesSet([]);
   document.getElementById('addExerciseTitle').textContent='Add Exercise';openModal('addExerciseModal');
 }
 function openEditLibEx(id){
+  if(typeof _loadExDb==='function')_loadExDb();
   const ex=library.find(e=>e.id===id);if(!ex)return;
   document.getElementById('libExId').value=id;document.getElementById('libExName').value=ex.name;
-  document.getElementById('libExMuscle').value=ex.muscle_group;document.getElementById('libExEquip').value=ex.equipment||'';
+  document.getElementById('libExEquip').value=ex.equipment||'';
+  document.getElementById('libExDemoRef').value=(ex.demo_id&&_exById&&_exById[ex.demo_id])?_exById[ex.demo_id].name:'';
+  document.getElementById('libExImg').value=ex.image_url||'';
+  document.getElementById('libExVideo').value=ex.video_url||'';
+  document.getElementById('libExDesc').value=ex.description||'';
+  _libMusclesSet(ex.muscles?ex.muscles.split(','):(ex.muscle_group?[ex.muscle_group]:[]));
   document.getElementById('addExerciseTitle').textContent='Edit Exercise';openModal('addExerciseModal');
 }
 async function saveLibraryExercise(){
   const id=document.getElementById('libExId').value;
   const name=document.getElementById('libExName').value.trim();if(!name)return;
-  const data={name,muscle_group:document.getElementById('libExMuscle').value,equipment:document.getElementById('libExEquip').value.trim()};
+  const muscles=_libMusclesGet();
+  const ref=document.getElementById('libExDemoRef').value.trim();
+  let demo_id='';if(ref){var rm=(typeof _exDbMatch==='function')?_exDbMatch(ref):null;if(rm)demo_id=rm.id;}
+  const data={name,muscle_group:muscles[0]||'Other',muscles:muscles.join(','),equipment:document.getElementById('libExEquip').value.trim(),demo_id:demo_id,image_url:document.getElementById('libExImg').value.trim(),video_url:document.getElementById('libExVideo').value.trim(),description:document.getElementById('libExDesc').value.trim()};
   try{
-    if(id){await db.updateLibEx(id,data);const i=library.findIndex(e=>e.id===id);if(i>=0)library[i]={...library[i],...data};toast('Exercise updated ✓');}
+    if(id){await db.updateLibEx(id,data);const i=library.findIndex(e=>e.id===id);if(i>=0){library[i]={...library[i],...data};library[i]._idc=undefined;}toast('Exercise updated ✓');}
     else{const created=await db.addLibEx(data);if(created&&created[0])library.push(created[0]);toast(`${name} added ✓`);}
-    closeModal('addExerciseModal');renderLibrary();
-  }catch(e){toast('Error saving exercise');}
+    _libIdCache=null;closeModal('addExerciseModal');renderLibrary();try{_thumbsRefresh();}catch(e){}
+  }catch(e){toast('Save failed — run the SQL setup in Supabase first');}
 }
 async function deleteLibEx(id){
   if(!confirm('Remove this exercise?'))return;
-  try{await db.delLibEx(id);library=library.filter(e=>e.id!==id);renderLibrary();toast('Removed');}
+  try{await db.delLibEx(id);library=library.filter(e=>e.id!==id);_libIdCache=null;renderLibrary();toast('Removed');}
   catch(e){toast('Error removing');}
 }
 
