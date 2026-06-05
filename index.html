@@ -836,7 +836,10 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
     <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
     <div id="editExerciseList"></div>
-    <button class="btn btn-secondary btn-full btn-sm" onclick="openExercisePicker()" style="margin-top:6px">+ Add Exercise</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+      <button class="btn btn-secondary btn-sm" onclick="addExerciseToDay()">+ Add Exercise</button>
+      <button class="btn btn-secondary btn-sm" onclick="addSupersetToDay()" style="border-color:rgba(255,140,71,0.45);color:#ffb380">⊕ Superset</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('editProgramModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveProgramDay()">Save Changes</button>
@@ -2536,31 +2539,51 @@ function openEditProgramDay(clientId,dayIndex){
   const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
   editingClientId=clientId;editingDayIndex=dayIndex;
   const day=c.structured_program.days[dayIndex];
-  editingExercises=JSON.parse(JSON.stringify(day.exercises));
+  editingExercises=_parseExForEdit(day.exercises);
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   renderEditExerciseList();openModal('editProgramModal');
 }
+function _editExRowHtml(i){
+  var ex=editingExercises[i];
+  return '<div class="edit-ex-row" data-idx="'+i+'">'+
+    '<div class="ex-drag-handle" title="Drag to reorder">⠿</div>'+
+    _exThumbHTML(ex.name||'',ex.name||'',40)+
+    '<div style="flex:1;min-width:0;">'+
+      '<div class="edit-ex-fields">'+
+        '<input value="'+(ex.name||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].name=this.value;_updateEditThumb('+i+')" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" placeholder="Exercise name" autocomplete="off">'+
+        '<input value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">'+
+        '<input value="'+(ex.load||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].load=this.value" placeholder="Load" style="font-size:12px">'+
+      '</div>'+
+      '<div class="edit-ex-actions"><button class="lib-btn danger" onclick="removeEx('+i+')">Remove</button></div>'+
+    '</div>'+
+  '</div>';
+}
 function renderEditExerciseList(){
-  var list=document.getElementById('editExerciseList');
-  if(list)list._dragSetup=false;
-  list.innerHTML=editingExercises.map((ex,i)=>`
-    <div class="edit-ex-row" data-idx="${i}">
-      <div class="ex-drag-handle" title="Drag to reorder">⠿</div>
-      ${_exThumbHTML(ex.name||'',ex.name||'',40)}
-      <div style="flex:1;min-width:0;">
-        <div class="edit-ex-fields">
-          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value;_updateEditThumb(${i})" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();" placeholder="Exercise name" autocomplete="off">
-          <input value="${(ex.prescription||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
-          <input value="${(ex.load||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
-        </div>
-        <div class="edit-ex-actions">
-          <button class="lib-btn danger" onclick="removeEx(${i})">Remove</button>
-        </div>
-      </div>
-    </div>`).join('');
+  var list=document.getElementById('editExerciseList');if(!list)return;
+  list._dragSetup=false;
+  var html='',i=0;
+  while(i<editingExercises.length){
+    if(editingExercises[i].ss){
+      var g=editingExercises[i].ss,rows='';
+      while(i<editingExercises.length&&editingExercises[i].ss===g){rows+=_editExRowHtml(i);i++;}
+      html+='<div style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:8px;background:rgba(255,140,71,0.03);overflow:hidden;">'+
+        '<div style="padding:7px 12px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);border-bottom:1px solid rgba(255,140,71,0.15);">⊕ Superset</div>'+
+        rows+
+        '<div style="padding:8px 10px;"><button class="lib-btn" onclick="addToSuperset('+g+')" style="width:100%;color:#7ec8ff;">+ Add to superset</button></div>'+
+      '</div>';
+    } else { html+=_editExRowHtml(i);i++; }
+  }
+  list.innerHTML=html;
   setupExDrag();
   try{_thumbsRefresh();}catch(e){}
 }
+function _nextSsGroup(){var mx=0;editingExercises.forEach(function(e){if(e.ss&&e.ss>mx)mx=e.ss;});return mx+1;}
+function addSupersetToDay(){var g=_nextSsGroup();editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
+function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
+// Encode superset groups back into SS-prefixed names (renumbered sequentially) for storage.
+function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var nm=(e.name||'').trim();if(e.ss){if(!map[e.ss])map[e.ss]=next++;return {name:'SS'+map[e.ss]+': '+nm,prescription:e.prescription||'',load:e.load||''};}return {name:nm,prescription:e.prescription||'',load:e.load||''};});}
+// Parse stored exercises (SS-prefixed names) into the editor model with an .ss group marker.
+function _parseExForEdit(arr){return (arr||[]).map(function(ex){var m=(ex.name||'').match(/^SS(\d+):\s*/i);return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:m?parseInt(m[1],10):null};});}
 function _updateEditThumb(i){
   var row=document.querySelector('.edit-ex-row[data-idx="'+i+'"]');if(!row)return;
   var el=row.querySelector('.ex-thumb');if(!el)return;
@@ -2694,7 +2717,7 @@ function setupExDrag(){
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
-function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:''});renderEditExerciseList();}
+function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:'',ss:null});renderEditExerciseList();}
 // Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
 function _demoMuscleGroup(m){
   if(!m)return '';
@@ -2726,13 +2749,13 @@ function _ensureLibraryHas(names){
 async function saveProgramDay(){
   try{_ensureLibraryHas(editingExercises.map(function(e){return e.name;}));}catch(e){}
   if(window._editProgSaveMode==='build'){
-    buildingDays[buildingDayEditing].exercises=editingExercises;
+    buildingDays[buildingDayEditing].exercises=_encodeEx(editingExercises);
     window._editProgSaveMode=null;
     closeModal('editProgramModal');renderBuildDayList();toast('Exercises updated ✓');return;
   }
   const c=clients.find(x=>x.id===editingClientId);if(!c||!c.structured_program)return;
   const prog=JSON.parse(JSON.stringify(c.structured_program));
-  prog.days[editingDayIndex].exercises=editingExercises;
+  prog.days[editingDayIndex].exercises=_encodeEx(editingExercises);
   try{
     await db.updateClient(editingClientId,{structured_program:prog});
     c.structured_program=prog;closeModal('editProgramModal');
@@ -3332,7 +3355,7 @@ function deleteBuildDay(i){buildingDays.splice(i,1);renderBuildDayList();}
 function editBuildDayExercises(dayIdx){
   buildingDayEditing=dayIdx;
   const day=buildingDays[dayIdx];
-  editingExercises=JSON.parse(JSON.stringify(day.exercises||[]));
+  editingExercises=_parseExForEdit(day.exercises||[]);
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   window._editProgSaveMode='build';
   renderEditExerciseList();openModal('editProgramModal');
