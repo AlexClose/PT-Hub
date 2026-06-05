@@ -2511,9 +2511,10 @@ function renderEditExerciseList(){
   list.innerHTML=editingExercises.map((ex,i)=>`
     <div class="edit-ex-row" data-idx="${i}">
       <div class="ex-drag-handle" title="Drag to reorder">⠿</div>
-      <div style="flex:1;">
+      ${_exThumbHTML(ex.name||'',ex.name||'',40)}
+      <div style="flex:1;min-width:0;">
         <div class="edit-ex-fields">
-          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();" placeholder="Exercise name" autocomplete="off">
+          <input value="${(ex.name||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].name=this.value;_updateEditThumb(${i})" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();" placeholder="Exercise name" autocomplete="off">
           <input value="${(ex.prescription||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">
           <input value="${(ex.load||'').replace(/"/g,'&quot;')}" onchange="editingExercises[${i}].load=this.value" placeholder="Load" style="font-size:12px">
         </div>
@@ -2523,6 +2524,17 @@ function renderEditExerciseList(){
       </div>
     </div>`).join('');
   setupExDrag();
+  try{_thumbsRefresh();}catch(e){}
+}
+function _updateEditThumb(i){
+  var row=document.querySelector('.edit-ex-row[data-idx="'+i+'"]');if(!row)return;
+  var el=row.querySelector('.ex-thumb');if(!el)return;
+  var name=(editingExercises[i]&&editingExercises[i].name)||'';
+  el.setAttribute('data-exname',name);el.setAttribute('data-exdisp',name);
+  el.removeAttribute('data-hyd');el.removeAttribute('data-hasdemo');
+  el.style.backgroundImage='';el.style.backgroundColor='#161b27';
+  var ph=el.querySelector('.ex-thumb-ph');if(ph)ph.style.display='';
+  _hydrateExThumbs();
 }
 function setupExDrag(){
   var list=document.getElementById('editExerciseList');
@@ -3137,8 +3149,9 @@ function openBuildProgram(clientId){
 
 function renderBuildDayList(){
   const el=document.getElementById('buildDayList');if(!el)return;
+  const bigAdd=(label)=>`<button onclick="openAddProgramDay()" style="width:100%;background:rgba(37,99,235,0.1);border:2px dashed rgba(37,99,235,0.5);border-radius:14px;padding:18px;font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#7ec8ff;cursor:pointer;letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;" onmouseover="this.style.background='rgba(37,99,235,0.18)';this.style.borderColor='rgba(37,99,235,0.8)';" onmouseout="this.style.background='rgba(37,99,235,0.1)';this.style.borderColor='rgba(37,99,235,0.5)';">＋ ${label}</button>`;
   if(buildingDays.length===0){
-    el.innerHTML='<div style="text-align:center;padding:32px 0;color:rgba(180,200,230,0.3);font-size:13px;">No days yet — tap + Day to add one.</div>';return;
+    el.innerHTML=`<div style="text-align:center;padding:10px 0 16px;color:rgba(180,200,230,0.5);font-size:14px;font-weight:600;">No training days yet</div><div style="text-align:center;color:rgba(180,200,230,0.35);font-size:12px;margin-bottom:14px;">Add a day (e.g. Push, Pull, Legs) to start building</div>`+bigAdd('Add a Day');return;
   }
   el.innerHTML=buildingDays.map((day,i)=>`
     <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
@@ -3153,7 +3166,7 @@ function renderBuildDayList(){
         <button class="lib-btn" onclick="editBuildDayExercises(${i})" style="white-space:nowrap">✎ Exercises</button>
         <button class="lib-btn danger" onclick="deleteBuildDay(${i})">✕</button>
       </div>
-    </div>`).join('');
+    </div>`).join('')+`<div style="margin-top:8px;">`+bigAdd('Add Another Day')+`</div>`;
 }
 
 function moveBuildDay(i,dir){const j=i+dir;if(j<0||j>=buildingDays.length)return;[buildingDays[i],buildingDays[j]]=[buildingDays[j],buildingDays[i]];renderBuildDayList();}
