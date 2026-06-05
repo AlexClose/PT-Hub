@@ -973,20 +973,23 @@ function canonExName(str){
 // --- Exercise autocomplete dropdown (shared across custom workout, ad-hoc, program builder) ---
 // Comprehensive built-in suggestion list so coaches/clients don't have to type full names.
 var _EX_SUGGEST=["Bench Press","Incline Bench Press","Decline Bench Press","Dumbbell Bench Press","Incline Dumbbell Press","Decline Dumbbell Press","Machine Chest Press","Incline Machine Chest Press","Smith Machine Bench Press","Chest Fly","Dumbbell Fly","Incline Dumbbell Fly","Cable Fly","Cable Crossover","Low Cable Crossover","High Cable Crossover","Pec Deck","Machine Fly","Push Up","Incline Push Up","Decline Push Up","Dips","Chest Dips","Dumbbell Pullover","Svend Press","Pull Up","Chin Up","Wide Grip Pull Up","Neutral Grip Pull Up","Lat Pulldown","Wide Grip Lat Pulldown","Close Grip Lat Pulldown","Neutral Grip Lat Pulldown","Cable Lat Pulldown","Machine Lat Pulldown","Straight Arm Pulldown","Bent Over Row","Barbell Row","Pendlay Row","T-Bar Row","Chest Supported Row","Chest Supported Dumbbell Row","Seated Cable Row","Wide Grip Seated Cable Row","Single Arm Cable Row","Machine Row","Dumbbell Row","One Arm Dumbbell Row","Inverted Row","Face Pull","Cable Face Pull","Deadlift","Trap Bar Deadlift","Rack Pull","Good Morning","Back Extension","Hyperextension","Shrugs","Dumbbell Shrug","Cable Shrug","Overhead Press","Military Press","Dumbbell Shoulder Press","Seated Dumbbell Shoulder Press","Arnold Press","Push Press","Machine Shoulder Press","Lateral Raise","Dumbbell Lateral Raise","Cable Lateral Raise","Machine Lateral Raise","Front Raise","Dumbbell Front Raise","Cable Front Raise","Plate Front Raise","Rear Delt Fly","Reverse Fly","Cable Rear Delt Fly","Reverse Pec Deck","Upright Row","Cable Upright Row","Barbell Curl","EZ Bar Curl","Dumbbell Curl","Hammer Curl","Cable Curl","Cable Bicep Curl","Machine Curl","Machine Bicep Curl","Preacher Curl","Cable Preacher Curl","Concentration Curl","Incline Dumbbell Curl","Spider Curl","Reverse Curl","Wrist Curl","Drag Curl","Tricep Pushdown","Cable Tricep Pushdown","Rope Pushdown","Tricep Rope Pushdown","V-Bar Pushdown","Overhead Tricep Extension","Cable Overhead Tricep Extension","Dumbbell Overhead Tricep Extension","Skull Crushers","EZ Bar Skull Crusher","Close Grip Bench Press","Tricep Dips","Bench Dips","Tricep Kickback","Diamond Push Up","Squat","Back Squat","Front Squat","Goblet Squat","Hack Squat","Leg Press","Bulgarian Split Squat","Split Squat","Lunge","Walking Lunge","Reverse Lunge","Dumbbell Lunge","Step Up","Leg Extension","Sissy Squat","Smith Machine Squat","Box Squat","Romanian Deadlift","Dumbbell Romanian Deadlift","Stiff Leg Deadlift","Sumo Deadlift","Leg Curl","Lying Leg Curl","Seated Leg Curl","Nordic Curl","Glute Ham Raise","Cable Pull Through","Hip Thrust","Machine Hip Thrust","Glute Bridge","Glute Kickback","Cable Kickback","Hip Abduction","Hip Adduction","Calf Raise","Standing Calf Raise","Seated Calf Raise","Leg Press Calf Raise","Plank","Side Plank","Crunch","Cable Crunch","Machine Crunch","Decline Crunch","Bicycle Crunch","Reverse Crunch","Hanging Leg Raise","Hanging Knee Raise","Leg Raise","Russian Twist","Sit Up","Ab Wheel","Mountain Climbers","Flutter Kicks","Hollow Hold","Dead Bug","Pallof Press","Cable Wood Chop","Clean and Jerk","Power Clean","Hang Clean","Snatch","Thruster","Kettlebell Swing","Kettlebell Clean","Farmers Walk","Sled Push","Medicine Ball Slam","Box Jump","Burpee"];
+var _exAcTokCache={};
 function _exAcGetList(){
   var seen={},all=_EX_SUGGEST.concat(_KNOWN_EXERCISES);
   if(Array.isArray(window.library))window.library.forEach(function(e){if(e.name)all.push(e.name);});
+  if(Array.isArray(_exDb))_exDb.forEach(function(e){if(e.name)all.push(e.name);}); // full dataset = every exercise findable
   return all.filter(function(n){var k=(n||'').toLowerCase();if(!n||seen[k])return false;seen[k]=true;return true;});
 }
 function _exAcShow(inputEl){
   var val=inputEl.value;
   if(!val||!val.trim()){_exAcHide();return;}
+  if(!_exDb&&typeof _loadExDb==='function')_loadExDb(); // load full dataset so the dropdown is comprehensive
   var vl=val.trim().toLowerCase();
   var typed=_exTokArr(val);
   if(!typed.length){_exAcHide();return;}
   var _list=_exAcGetList(),_scored=[];
   for(var _i=0;_i<_list.length;_i++){
-    var _cand=_list[_i],_ct=_exTokArr(_cand),_ok=true;
+    var _cand=_list[_i],_ct=_exAcTokCache[_cand]||(_exAcTokCache[_cand]=_exTokArr(_cand)),_ok=true;
     for(var _t=0;_t<typed.length;_t++){var _hit=false;for(var _c=0;_c<_ct.length;_c++){if(_ct[_c].indexOf(typed[_t])===0){_hit=true;break;}}if(!_hit){_ok=false;break;}}
     if(!_ok)continue;
     var _lc=_cand.toLowerCase(),_pos=_lc.indexOf(vl);
@@ -2590,7 +2593,28 @@ function setupExDrag(){
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
 function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:''});renderEditExerciseList();}
+// Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
+function _demoMuscleGroup(m){
+  if(!m)return '';
+  var arr=(m.primaryMuscles&&m.primaryMuscles.length)?m.primaryMuscles:(m.secondaryMuscles||[]);
+  return (arr&&arr[0]&&_EXDB_MUS[(''+arr[0]).toLowerCase()])||'';
+}
+// Auto-add any exercise names not already in the library (grows the coach's library as they build).
+function _ensureLibraryHas(names){
+  if(!Array.isArray(library)||!Array.isArray(names))return;
+  var have={};library.forEach(function(e){have[(e.name||'').toLowerCase().trim()]=1;});
+  var toAdd=[],seen={};
+  names.forEach(function(raw){
+    var n=(raw||'').replace(/^SS\w+:\s*/i,'').trim();if(!n)return;
+    var k=n.toLowerCase();if(have[k]||seen[k])return;seen[k]=1;
+    var m=(typeof _exDbMatch==='function')?_exDbMatch(n):null;
+    toAdd.push({name:n,muscle_group:_demoMuscleGroup(m)||'Other',equipment:(m&&m.equipment)?_cap(m.equipment):''});
+  });
+  if(!toAdd.length)return;
+  db.addLibEx(toAdd).then(function(created){if(Array.isArray(created))created.forEach(function(r){library.push(r);});}).catch(function(){});
+}
 async function saveProgramDay(){
+  try{_ensureLibraryHas(editingExercises.map(function(e){return e.name;}));}catch(e){}
   if(window._editProgSaveMode==='build'){
     buildingDays[buildingDayEditing].exercises=editingExercises;
     window._editProgSaveMode=null;
