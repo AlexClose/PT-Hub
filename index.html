@@ -1402,7 +1402,7 @@ var _EX_ALIAS={
 'single arm cable row':'Seated_One-arm_Cable_Pulley_Rows','one arm cable row':'Seated_One-arm_Cable_Pulley_Rows','smith machine lunges':'Barbell_Lunge','smith machine lunge':'Barbell_Lunge','smith machine rdl':'Smith_Machine_Stiff-Legged_Deadlift','smith machine deadlift':'Smith_Machine_Stiff-Legged_Deadlift',
 'reverse curl':'Reverse_Barbell_Curl','wrist curl':'Cable_Wrist_Curl','lying leg curl':'Lying_Leg_Curls','stiff leg deadlift':'Stiff-Legged_Barbell_Deadlift','stiff legged deadlift':'Stiff-Legged_Barbell_Deadlift','thruster':'Kettlebell_Thruster','thrusters':'Kettlebell_Thruster','decline push up':'Decline_Push-Up'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
-function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
 function _normExName(s){return (s||'').toLowerCase().replace(/^ss\d+:\s*/i,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
 function _exTokens(s){var n=_normExName(s);return n?n.split(' '):[];}
