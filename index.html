@@ -345,8 +345,9 @@ display:flex;align-items:center;justify-content:space-between;
 
 /* ── EDIT PROGRAM ── */
 .edit-ex-row{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:6px;}
-.edit-ex-fields{display:grid;grid-template-columns:1fr auto auto;gap:6px;margin-bottom:8px;}
-.edit-ex-fields input{font-size:12px;padding:7px 10px;}
+.edit-ex-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.edit-ex-fields input{font-size:12px;padding:7px 10px;width:100%;box-sizing:border-box;}
+.edit-ex-fields input:first-child{grid-column:1 / -1;font-size:13px;}
 .edit-ex-actions{display:flex;gap:6px;flex-wrap:wrap;}
 .ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
 .ex-drag-handle:active{cursor:grabbing;}
