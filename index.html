@@ -1384,7 +1384,22 @@ var _EX_ALIAS={
 'overhead tricep extension':'Standing_Overhead_Barbell_Triceps_Extension','overhead triceps extension':'Standing_Overhead_Barbell_Triceps_Extension','tricep extension':'Standing_Overhead_Barbell_Triceps_Extension','tricep kickback':'Tricep_Dumbbell_Kickback','tricep kickbacks':'Tricep_Dumbbell_Kickback','rope pushdown':'Triceps_Pushdown_-_Rope_Attachment',
 'reverse pec deck':'Reverse_Machine_Flyes','rear delt machine':'Reverse_Machine_Flyes','dumbbell shoulder press':'Dumbbell_Shoulder_Press','seated dumbbell press':'Dumbbell_Shoulder_Press','cable lateral raise':'Cable_Seated_Lateral_Raise',
 'sit up':'Sit-Up','sit ups':'Sit-Up','situp':'Sit-Up','situps':'Sit-Up','mountain climber':'Mountain_Climbers','mountain climbers':'Mountain_Climbers','farmers walk':'Farmers_Walk','farmer walk':'Farmers_Walk','farmers carry':'Farmers_Walk',
-'box jump':'Front_Box_Jump','box jumps':'Front_Box_Jump','kettlebell swing':'One-Arm_Kettlebell_Swings','kb swing':'One-Arm_Kettlebell_Swings','pullover':'Straight-Arm_Dumbbell_Pullover','dumbbell pullover':'Straight-Arm_Dumbbell_Pullover'};
+'box jump':'Front_Box_Jump','box jumps':'Front_Box_Jump','kettlebell swing':'One-Arm_Kettlebell_Swings','kb swing':'One-Arm_Kettlebell_Swings','pullover':'Straight-Arm_Dumbbell_Pullover','dumbbell pullover':'Straight-Arm_Dumbbell_Pullover',
+// --- batch 3: from Alex's library coverage report ---
+'abduction machine':'Thigh_Abductor','hip abduction':'Thigh_Abductor','adduction machine':'Thigh_Adductor','hip adduction':'Thigh_Adductor',
+'arsenal flat chest press':'Leverage_Chest_Press','arsenal incline chest press':'Leverage_Incline_Chest_Press','arsenal shoulder press':'Machine_Shoulder_Military_Press','plate loaded shoulder press':'Leverage_Shoulder_Press','prime chest press':'Leverage_Chest_Press','machine shoulder press':'Machine_Shoulder_Military_Press',
+'back squat':'Barbell_Full_Squat','banded pull ups':'Band_Assisted_Pull-Up','banded pull up':'Band_Assisted_Pull-Up','assisted pull up':'Band_Assisted_Pull-Up','assisted pull ups':'Band_Assisted_Pull-Up',
+'barbell rdl':'Romanian_Deadlift','rdl':'Romanian_Deadlift','incline barbell bench press':'Barbell_Incline_Bench_Press_-_Medium_Grip','flat barbell bench press':'Barbell_Bench_Press_-_Medium_Grip','flat bench press':'Barbell_Bench_Press_-_Medium_Grip',
+'bicycle crunches':'Cross-Body_Crunch','bicycle crunch':'Cross-Body_Crunch','cable curl':'Standing_Biceps_Cable_Curl','cable face pulls':'Face_Pull','cable face pull':'Face_Pull','cable lat pulldown':'Wide-Grip_Lat_Pulldown','cable overhead extension':'Cable_Rope_Overhead_Triceps_Extension','cable tricep pushdown':'Triceps_Pushdown','cable tricep extension':'Cable_Rope_Overhead_Triceps_Extension','crunch machine':'Ab_Crunch_Machine','ab crunch machine':'Ab_Crunch_Machine',
+'db bench press':'Dumbbell_Bench_Press','db fly':'Dumbbell_Flyes','db flyes':'Dumbbell_Flyes','db front raise':'Front_Dumbbell_Raise','db goblet squat':'Goblet_Squat','db incline press':'Incline_Dumbbell_Press','db lateral raise':'Side_Lateral_Raise','db lunge':'Dumbbell_Lunges','db lunges':'Dumbbell_Lunges','db rdl':'Stiff-Legged_Dumbbell_Deadlift','db reverse fly':'Reverse_Flyes','db row':'One-Arm_Dumbbell_Row','db shoulder press':'Dumbbell_Shoulder_Press','db tricep overhead extension':'Seated_Triceps_Press','db overhead tricep extension':'Seated_Triceps_Press','db tricep extension':'Seated_Triceps_Press',
+'ez bar row':'Bent_Over_Barbell_Row','ez bar skull crusher':'EZ-Bar_Skullcrusher','ez bar skullcrusher':'EZ-Bar_Skullcrusher',
+'hanging leg raises':'Hanging_Leg_Raise','hanging straight leg raises':'Hanging_Leg_Raise','hanging straight leg raise':'Hanging_Leg_Raise',
+'hex bar deadlift':'Trap_Bar_Deadlift','trap bar deadlift':'Trap_Bar_Deadlift','hip thrust machine':'Barbell_Hip_Thrust',
+'kettlebell clean':'Kettlebell_Hang_Clean','kb clean':'Kettlebell_Hang_Clean','kettlebell goblet squat':'Goblet_Squat','kb goblet squat':'Goblet_Squat',
+'landmine press':'Landmine_Linear_Jammer','medicine ball slam':'One-Arm_Medicine_Ball_Slam','medicine ball slams':'One-Arm_Medicine_Ball_Slam','med ball slam':'One-Arm_Medicine_Ball_Slam',
+'neutral grip barbell row':'Bent_Over_Barbell_Row','pullover machine':'Straight-Arm_Dumbbell_Pullover',
+'seated hamstring curl':'Seated_Leg_Curl','seated leg curl':'Seated_Leg_Curl','sl hamstring curl':'Lying_Leg_Curls','single leg hamstring curl':'Lying_Leg_Curls','lying hamstring curl':'Lying_Leg_Curls',
+'single arm cable row':'Seated_One-arm_Cable_Pulley_Rows','one arm cable row':'Seated_One-arm_Cable_Pulley_Rows','smith machine lunges':'Barbell_Lunge','smith machine lunge':'Barbell_Lunge','smith machine rdl':'Smith_Machine_Stiff-Legged_Deadlift','smith machine deadlift':'Smith_Machine_Stiff-Legged_Deadlift'};
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
@@ -1404,14 +1419,14 @@ function _loadExDb(){
 }
 function _exDbMatch(name){
   if(!_exDb||!_exDbIdx)return null;
-  // 1) curated alias on the canonical name (reliable, hand-verified)
+  var n=_normExName(name);if(!n)return null;
+  // 1) curated alias on the raw typed name (most specific — wins over canonExName collapsing)
+  if(_EX_ALIAS[n]&&_exById&&_exById[_EX_ALIAS[n]])return _exById[_EX_ALIAS[n]];
+  // 2) curated alias on the canonical name
   if(typeof canonExName==='function'){
     var ck=_normExName(canonExName(name));
     if(ck&&_EX_ALIAS[ck]&&_exById&&_exById[_EX_ALIAS[ck]])return _exById[_EX_ALIAS[ck]];
   }
-  var n=_normExName(name);if(!n)return null;
-  // 2) alias on the raw typed name
-  if(_EX_ALIAS[n]&&_exById&&_exById[_EX_ALIAS[n]])return _exById[_EX_ALIAS[n]];
   // 3) exact dataset-name match
   if(_exDbIdx[n])return _exDbIdx[n];
   // No fuzzy guessing — a wrong demo is worse than none.
