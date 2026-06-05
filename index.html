@@ -836,7 +836,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
     <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
     <div id="editExerciseList"></div>
-    <button class="btn btn-secondary btn-full btn-sm" onclick="addExerciseToDay()" style="margin-top:6px">+ Add Exercise</button>
+    <button class="btn btn-secondary btn-full btn-sm" onclick="openExercisePicker()" style="margin-top:6px">+ Add Exercise</button>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-secondary btn-full" onclick="closeModal('editProgramModal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveProgramDay()">Save Changes</button>
@@ -2570,6 +2570,76 @@ function _updateEditThumb(i){
   el.style.backgroundImage='';el.style.backgroundColor='#161b27';
   var ph=el.querySelector('.ex-thumb-ph');if(ph)ph.style.display='';
   _hydrateExThumbs();
+}
+// ── EXERCISE SEARCH-PICKER (multi-select add to the day) ──
+function openExercisePicker(){
+  window._pickerSel={};
+  if(typeof _loadExDb==='function')_loadExDb();
+  _closeExPicker();
+  var sh=document.createElement('div');
+  sh.id='ex-picker-sheet';
+  sh.style.cssText='position:fixed;inset:0;z-index:8000;display:flex;flex-direction:column;background:#0a0d12;';
+  sh.innerHTML=
+    '<div style="flex:0 0 auto;padding:14px 16px 10px;border-bottom:1px solid rgba(100,160,255,0.1);">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+        '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:18px;color:#fff;flex:1;">Add Exercises</div>'+
+        '<button onclick="_closeExPicker()" style="background:rgba(255,255,255,0.08);border:none;color:#cbd5e1;font-size:13px;font-weight:700;border-radius:8px;padding:8px 14px;cursor:pointer;font-family:Syne,sans-serif;">Cancel</button>'+
+      '</div>'+
+      '<input id="ex-picker-search" placeholder="Search or type an exercise…" autocomplete="off" oninput="_pickerRender()" style="width:100%;box-sizing:border-box;background:#141820;border:1px solid rgba(100,160,255,0.25);border-radius:10px;color:#fff;font-size:16px;padding:12px 14px;outline:none;font-family:Instrument Sans,sans-serif;">'+
+    '</div>'+
+    '<div id="ex-picker-results" style="flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 12px;"></div>'+
+    '<div style="flex:0 0 auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(10,13,18,0.98);border-top:1px solid rgba(100,160,255,0.12);">'+
+      '<button id="ex-picker-add" onclick="_pickerAdd()" style="width:100%;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:12px;padding:15px;font-family:Syne,sans-serif;font-size:14px;font-weight:800;letter-spacing:.5px;cursor:pointer;opacity:0.45;">Select exercises to add</button>'+
+    '</div>';
+  document.body.appendChild(sh);
+  _loadExDb().then(_pickerRender);_pickerRender();
+  setTimeout(function(){var s=document.getElementById('ex-picker-search');if(s)s.focus();},120);
+}
+function _closeExPicker(){var el=document.getElementById('ex-picker-sheet');if(el)el.remove();}
+function _pickerRow(name,isCustom){
+  var sel=window._pickerSel&&window._pickerSel[name.toLowerCase()];
+  var thumb=isCustom?'<span style="width:42px;height:42px;border-radius:10px;background:rgba(37,99,235,0.12);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;color:#7ec8ff;font-size:22px;">＋</span>':_exThumbHTML(name,name,42);
+  var label=isCustom?('Add “'+name+'”'):name;
+  return '<div onclick="_pickerToggle(\''+_jsq(name)+'\')" style="display:flex;align-items:center;gap:12px;padding:9px 8px;border-radius:10px;cursor:pointer;'+(sel?'background:rgba(37,99,235,0.16);':'')+'">'+
+    thumb+'<div style="flex:1;min-width:0;font-weight:600;font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_attr(label)+'</div>'+
+    '<div style="width:26px;height:26px;border-radius:50%;border:2px solid '+(sel?'#2563eb':'rgba(180,200,230,0.3)')+';background:'+(sel?'#2563eb':'transparent')+';flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;">'+(sel?'✓':'')+'</div></div>';
+}
+function _pickerRender(){
+  var box=document.getElementById('ex-picker-results');if(!box)return;
+  var q=((document.getElementById('ex-picker-search')||{}).value||'').trim();
+  var list=_exAcGetList(),results;
+  if(q){
+    var typed=_exTokArr(q),scored=[];
+    for(var i=0;i<list.length;i++){var cand=list[i],ct=_exAcTokCache[cand]||(_exAcTokCache[cand]=_exTokArr(cand)),ok=true;
+      for(var t=0;t<typed.length;t++){var hit=false;for(var c=0;c<ct.length;c++){if(ct[c].indexOf(typed[t])===0){hit=true;break;}}if(!hit){ok=false;break;}}
+      if(!ok)continue;var lc=cand.toLowerCase(),pos=lc.indexOf(q.toLowerCase());scored.push({c:cand,s:(pos===0?0:(pos!==-1?1:2))*1000+cand.length});}
+    scored.sort(function(a,b){return a.s-b.s;});results=scored.slice(0,60).map(function(x){return x.c;});
+  } else results=_EX_SUGGEST.slice(0,60);
+  var st=box.scrollTop,html='';
+  if(q&&!list.some(function(n){return n.toLowerCase()===q.toLowerCase();}))html+=_pickerRow(q,true);
+  results.forEach(function(name){html+=_pickerRow(name,false);});
+  box.innerHTML=html||'<div style="text-align:center;color:rgba(180,200,230,0.4);padding:30px;font-size:13px;">No matches.</div>';
+  box.scrollTop=st;try{_thumbsRefresh();}catch(e){}_pickerSyncFooter();
+}
+function _pickerToggle(name){
+  if(!window._pickerSel)window._pickerSel={};
+  var k=name.toLowerCase();if(window._pickerSel[k])delete window._pickerSel[k];else window._pickerSel[k]=name;
+  _pickerRender();
+}
+function _pickerSyncFooter(){
+  var btn=document.getElementById('ex-picker-add');if(!btn)return;
+  var n=window._pickerSel?Object.keys(window._pickerSel).length:0;
+  if(n){btn.style.opacity='1';btn.textContent='Add '+n+' exercise'+(n>1?'s':'');}
+  else{btn.style.opacity='0.45';btn.textContent='Select exercises to add';}
+}
+function _pickerAdd(){
+  var sel=window._pickerSel||{},names=Object.keys(sel).map(function(k){return sel[k];});
+  if(!names.length){_closeExPicker();return;}
+  if(typeof editingExercises!=='undefined'&&Array.isArray(editingExercises)){
+    names.forEach(function(nm){editingExercises.push({name:nm,prescription:'3x10',load:''});});
+    _closeExPicker();if(typeof renderEditExerciseList==='function')renderEditExerciseList();
+    toast('Added '+names.length+' exercise'+(names.length>1?'s':''));
+  } else _closeExPicker();
 }
 function setupExDrag(){
   var list=document.getElementById('editExerciseList');
