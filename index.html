@@ -1354,8 +1354,9 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 
 // ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
 var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
-var _exDb=null,_exDbIdx=null,_exById=null,_exDbLoading=null,_exDemoTimer=null,_exTokIdx=null,_EX_ALIAS_TOK=null;
+var _exDb=null,_exDbIdx=null,_exById=null,_exDbLoading=null,_exDemoTimer=null,_exTokIdx=null,_EX_ALIAS_TOK=null,_EX_ALIAS_TOKLIST=null;
 var _EX_ABBR={db:'dumbbell',bb:'barbell',kb:'kettlebell',ohp:'overhead press',sldl:'romanian deadlift',rdl:'romanian deadlift'};
+var _EX_PLURAL={curls:'curl',rows:'row',raises:'raise',crunches:'crunch',flyes:'fly',flies:'fly',flys:'fly',presses:'press',pushdowns:'pushdown',extensions:'extension',lunges:'lunge',pushups:'pushup',pullups:'pullup',chinups:'chinup',situps:'situp',dips:'dip',kickbacks:'kickback',shrugs:'shrug',swings:'swing',thrusters:'thruster',twists:'twist',ups:'up',squats:'squat',deadlifts:'deadlift',pulldowns:'pulldown',pullovers:'pullover',slams:'slam',jumps:'jump',climbers:'climber',kicks:'kick',planks:'plank',extension:'extension'};
 // Curated map: canonical exercise name (normalized) -> exact free-exercise-db id.
 // canonExName() collapses ~all typed names to these, so this is the reliable demo source.
 var _EX_ALIAS={
@@ -1404,14 +1405,15 @@ function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
 function _normExName(s){return (s||'').toLowerCase().replace(/^ss\d+:\s*/i,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
 function _exTokens(s){var n=_normExName(s);return n?n.split(' '):[];}
-// Order-independent key: normalize, expand abbreviations (db->dumbbell etc), dedupe, sort.
-function _exSortKey(s){
-  var n=_normExName(s);if(!n)return '';
+// Tokens: normalize, expand abbreviations (db->dumbbell), singularize plurals (curls->curl), dedupe.
+function _exTokArr(s){
+  var n=_normExName(s);if(!n)return [];
   var out=[];
-  n.split(' ').forEach(function(t){(_EX_ABBR[t]||t).split(' ').forEach(function(w){if(w)out.push(w);});});
+  n.split(' ').forEach(function(t){(_EX_ABBR[t]||t).split(' ').forEach(function(w){w=_EX_PLURAL[w]||w;if(w)out.push(w);});});
   var seen={},u=[];out.forEach(function(w){if(!seen[w]){seen[w]=1;u.push(w);}});
-  return u.sort().join(' ');
+  return u;
 }
+function _exSortKey(s){return _exTokArr(s).slice().sort().join(' ');}
 function _musColor(m){var g=_EXDB_MUS[(m||'').toLowerCase()];return g?(MUSCLE_COLORS[g]||'#7ec8ff'):'#7ec8ff';}
 function _buildExIdx(){
   _exDbIdx={};_exById={};_exTokIdx={};_EX_ALIAS_TOK={};
@@ -1422,10 +1424,13 @@ function _buildExIdx(){
     var sk=_exSortKey(e.name);
     if(sk){ if(!(sk in _exTokIdx))_exTokIdx[sk]=e.id; else _exTokIdx[sk]=null; } // null = ambiguous, skip
   });
+  _EX_ALIAS_TOKLIST=[];
   Object.keys(_EX_ALIAS).forEach(function(a){
     var id=_EX_ALIAS[a];if(!_exById[id])return;
     var sk=_exSortKey(a);if(sk&&!(sk in _EX_ALIAS_TOK))_EX_ALIAS_TOK[sk]=id;
+    var t=_exTokArr(a);if(t.length)_EX_ALIAS_TOKLIST.push({t:t,id:id});
   });
+  _EX_ALIAS_TOKLIST.sort(function(a,b){return b.t.length-a.t.length;}); // longest (most specific) first
 }
 function _loadExDb(){
   if(_exDb)return Promise.resolve(_exDb);
@@ -1452,14 +1457,26 @@ function _exDbMatch(name){
   }
   // 3) exact dataset-name match
   if(_exDbIdx[n])return _exDbIdx[n];
-  // 4) order-independent token match (handles word order + db/bb/kb abbreviations,
+  // 4) order-independent token match (word order + db/bb/kb abbreviations + plurals,
   //    e.g. "Dumbbell Incline Press" == "Incline Dumbbell Press" == "DB Incline Press")
   var sk=_exSortKey(name);
   if(sk){
     if(_EX_ALIAS_TOK&&_EX_ALIAS_TOK[sk]&&_exById[_EX_ALIAS_TOK[sk]])return _exById[_EX_ALIAS_TOK[sk]];
     if(_exTokIdx&&_exTokIdx[sk]&&_exById[_exTokIdx[sk]])return _exById[_exTokIdx[sk]];
   }
-  // No fuzzy guessing — a wrong demo is worse than none.
+  // 5) last resort: name CONTAINS a known movement (handles modifier prefixes like
+  //    "Close Grip Lat Pulldown" -> Lat Pulldown, "Wide Grip Seated Cable Row" -> Seated Cable Row).
+  //    Picks the longest (most specific) alias whose words are all present.
+  var ut=_exTokArr(name);
+  if(ut.length&&_EX_ALIAS_TOKLIST){
+    var us={};ut.forEach(function(w){us[w]=1;});
+    for(var i=0;i<_EX_ALIAS_TOKLIST.length;i++){
+      var e=_EX_ALIAS_TOKLIST[i];if(e.t.length>ut.length)continue;
+      var all=true;for(var j=0;j<e.t.length;j++){if(!us[e.t[j]]){all=false;break;}}
+      if(all&&_exById[e.id])return _exById[e.id];
+    }
+  }
+  // No fuzzy guessing beyond this — a wrong demo is worse than none.
   return null;
 }
 function _exHistHtml(pts){
