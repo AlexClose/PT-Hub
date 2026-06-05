@@ -1455,22 +1455,29 @@ function _hydrateExThumbs(){
 }
 function _thumbsRefresh(){_loadExDb().then(_hydrateExThumbs);}
 // Admin helper: copy a ✅/❌ demo-coverage report of the whole exercise library.
+function _copyText(txt,okMsg){
+  var ok=function(){toast(okMsg);};
+  try{
+    var ta=document.createElement('textarea');ta.value=txt;
+    ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta);ta.focus();ta.select();try{ta.setSelectionRange(0,txt.length);}catch(e){}
+    var done=document.execCommand('copy');document.body.removeChild(ta);
+    if(done){ok();return;}
+  }catch(e){}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(ok,function(){window.prompt('Copy this list:',txt);});}
+  else window.prompt('Copy this list:',txt);
+}
 function copyLibDemoStatus(){
-  if(!Array.isArray(window.library)||!library.length){toast('No exercises in library yet');return;}
-  toast('Building demo report…');
-  _loadExDb().then(function(d){
-    if(!d){toast('Could not load demo data — try again');return;}
-    var rows=library.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
-    var have=0;
-    var lines=rows.map(function(e){
-      var m=_exDbMatch(e.name);if(m)have++;
-      return (m?'✅ ':'❌ ')+e.name+(m?'  → '+m.name:'');
-    });
-    var txt='PT-Hub demo coverage — '+have+'/'+rows.length+' have demos\n\n'+lines.join('\n');
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(txt).then(function(){toast('Copied '+rows.length+' exercises ✓');},function(){window.prompt('Copy this list:',txt);});
-    }else{window.prompt('Copy this list:',txt);}
+  if(typeof library==='undefined'||!Array.isArray(library)||!library.length){toast('No exercises in library yet');return;}
+  if(!_exDb){_loadExDb().then(function(){toast('Demo data loaded — tap ⧉ Demos again');});return;}
+  var rows=library.slice().sort(function(a,b){return (a.name||'').localeCompare(b.name||'');});
+  var have=0;
+  var lines=rows.map(function(e){
+    var m=_exDbMatch(e.name);if(m)have++;
+    return (m?'✅ ':'❌ ')+e.name+(m?'  → '+m.name:'');
   });
+  var txt='PT-Hub demo coverage — '+have+'/'+rows.length+' have demos\n\n'+lines.join('\n');
+  _copyText(txt,'Copied '+rows.length+' exercises ✓');
 }
 function openExerciseDetail(rawName,displayName,opts){
   opts=opts||{};displayName=displayName||rawName;
