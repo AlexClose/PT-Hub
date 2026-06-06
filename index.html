@@ -5565,6 +5565,7 @@ function startClientPortal(id) {
           '<span style="display:inline-block;width:4px;height:4px;border-radius:50%;background:rgba(79,163,232,0.6);"></span>' +
           (day.exercises ? day.exercises.length : 0) + ' exercise' + (day.exercises && day.exercises.length !== 1 ? 's' : '') +
         '</div></div>';
+    html += '<button onclick="window._fillLastPortal()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;">⚡ Fill Last Session</button>';
 
     window._portalExCount = exercises.length;
     window._portalExerciseData = exercises.map(function(ex) {
@@ -5612,11 +5613,11 @@ function startClientPortal(id) {
             '</div>' : '') +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
             '<div>' +
-              '<input id="wr-' + i + '" type="text" placeholder="e.g. 3x10" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
+              '<input id="wr-' + i + '" type="text" placeholder="' + (lastData&&lastData.reps?lastData.reps:'e.g. 3x10') + '" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.5);margin-top:6px;letter-spacing:0.5px;font-weight:600;">SETS × REPS</div>' +
             '</div>' +
             '<div>' +
-              '<input id="wt-' + i + '" type="text" placeholder="e.g. 50kg" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
+              '<input id="wt-' + i + '" type="text" placeholder="' + (lastData&&lastData.weight?lastData.weight:'e.g. 50kg') + '" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
               '<div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.5);margin-top:6px;letter-spacing:0.5px;font-weight:600;">WEIGHT / LOAD</div>' +
             '</div>' +
           '</div>' +
@@ -5817,6 +5818,23 @@ function startClientPortal(id) {
       draft.inputs[i] = {reps: wr ? wr.value : '', weight: wt ? wt.value : ''};
     }
     try { sessionStorage.setItem('bm_workout_draft', JSON.stringify(draft)); } catch(e) {}
+  };
+
+  window._fillLastPortal = function() {
+    var exs = (window._portalDay && window._portalDay.exercises) || [];
+    var filled = 0;
+    for (var i = 0; i < exs.length; i++) {
+      var hk = (exs[i].name||'').toLowerCase().replace(/\s+/g,'_');
+      var ld = window._portalHistory && window._portalHistory[hk];
+      if (!ld) continue;
+      var wr = document.getElementById('wr-' + i), wt = document.getElementById('wt-' + i);
+      if (wr && ld.reps) wr.value = ld.reps;
+      if (wt && ld.weight) wt.value = ld.weight;
+      if ((ld.reps || ld.weight) && window._checkExRow) window._checkExRow(i);
+      if (ld.reps || ld.weight) filled++;
+    }
+    if (window._saveDraft) window._saveDraft();
+    if (typeof toast === 'function') toast(filled ? 'Filled from last session ✓' : 'No previous data yet');
   };
 
   window._restoreDraft = function() {
