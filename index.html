@@ -5714,6 +5714,7 @@ function startClientPortal(id) {
           '</div>' +
         '</div>';
 
+      var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(/^SS\w+:\s*/i,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
       fetch(SUPABASE_URL + '/rest/v1/sessions', {
         method: 'POST',
         headers: H,
@@ -5726,11 +5727,13 @@ function startClientPortal(id) {
         window._portalHistory = updatedHistory;
         var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
         window._portalRemaining = newRemaining;
-        return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
+        var calls = [ fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
           method: 'PATCH',
           headers: H,
           body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
-        });
+        }) ];
+        if (exLogs.length) calls.push(fetch(SUPABASE_URL + '/rest/v1/exercise_logs', {method:'POST', headers:H, body: JSON.stringify(exLogs)}).catch(function(){}));
+        return Promise.all(calls);
       })
       .then(function() {
         var statusEl = document.getElementById('save-status');
