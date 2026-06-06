@@ -1512,22 +1512,62 @@ function _exDbMatch(name){
   // No fuzzy guessing beyond this — a wrong demo is worse than none.
   return null;
 }
+// Strength math: estimated 1RM (Epley, best set in the session) + session volume.
+function _e1rm(w,r){return r>0?Math.round(w*(1+r/30)):Math.round(w||0);}
+function _bestE1RM(repsStr,weightStr){
+  var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;}).filter(function(x){return x>0;});
+  if(!ws.length)return 0;
+  var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/),rs;
+  if(m)rs=ws.map(function(){return parseInt(m[2]);});
+  else rs=String(repsStr||'').split(/[,\/]+/).map(function(x){return parseInt(x)||0;});
+  var best=0;for(var i=0;i<ws.length;i++){var r=rs[i]||rs[rs.length-1]||rs[0]||0;var e=_e1rm(ws[i],r);if(e>best)best=e;}
+  return best;
+}
+function _sessionVolume(repsStr,weightStr){
+  var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;});
+  var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/);
+  if(m)return Math.round(parseInt(m[1])*parseInt(m[2])*(ws[0]||0));
+  var rs=String(repsStr||'').split(/[,\/]+/).map(function(x){return parseInt(x)||0;});
+  var vol=0;for(var i=0;i<Math.max(ws.length,rs.length);i++){vol+=(ws[i]||ws[0]||0)*(rs[i]||0);}
+  return Math.round(vol);
+}
 function _exHistHtml(pts){
   if(!pts||!pts.length)return '';
-  var maxW=Math.max.apply(null,pts.map(function(p){return p.weight||0;}));
-  var recent=pts.slice(-8);
-  var out='<div style="margin-bottom:8px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:4px 0 10px;">Your History</div>';
-  out+='<div style="display:flex;align-items:flex-end;gap:6px;height:72px;margin-bottom:6px;">';
-  recent.forEach(function(p){var h=maxW>0?Math.max(8,Math.round((p.weight/maxW)*60)):8;var isMax=p.weight>0&&p.weight===maxW;
-    out+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:8px;color:rgba(126,200,255,'+(isMax?'0.9':'0.4')+');font-weight:700;line-height:1;">'+(p.weight||'')+'</div><div style="width:100%;height:'+h+'px;background:'+(isMax?'linear-gradient(180deg,#f59e0b,#d97706)':'linear-gradient(180deg,rgba(79,163,232,0.8),rgba(29,78,216,0.5))')+';border-radius:3px 3px 0 0;"></div></div>';});
-  out+='</div><div style="display:flex;gap:6px;margin-bottom:14px;">'+recent.map(function(p){return '<div style="flex:1;font-size:8px;text-align:center;color:rgba(180,200,230,0.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+p.date+'</div>';}).join('')+'</div>';
-  out+='<div style="border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;">'+pts.slice().reverse().slice(0,5).map(function(p){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.06);"><div style="font-size:13px;color:rgba(180,200,230,0.45);">'+p.date+'</div><div style="font-size:13px;font-weight:700;color:#7ec8ff;">'+p.reps+(p.weight?' &nbsp;·&nbsp; '+p.weight:'')+'</div></div>';}).join('')+'</div></div>';
-  return out;
+  window._exDetailPts=pts;
+  var tog=function(m,lbl){return '<button id="exmt-'+m+'" onclick="_exChartRender(\''+m+'\')" style="flex:1;background:rgba(255,255,255,0.05);border:none;color:rgba(180,200,230,0.6);font-size:11px;font-weight:700;padding:7px 4px;border-radius:7px;cursor:pointer;font-family:Syne,sans-serif;">'+lbl+'</button>';};
+  return '<div style="margin-top:4px;">'
+    +'<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:4px 0 8px;">Progress</div>'
+    +'<div style="display:flex;gap:4px;margin-bottom:12px;background:rgba(0,0,0,0.22);padding:3px;border-radius:9px;">'+tog('e1rm','Est. 1RM')+tog('weight','Top Wt')+tog('vol','Volume')+'</div>'
+    +'<div id="ex-strength-chart"></div>'
+    +'<div style="border-top:1px solid rgba(100,160,255,0.08);padding-top:10px;margin-top:12px;">'+pts.slice().reverse().slice(0,5).map(function(p){return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.06);"><div style="font-size:13px;color:rgba(180,200,230,0.45);">'+p.date+'</div><div style="font-size:13px;font-weight:700;color:#7ec8ff;">'+p.reps+(p.weight?' &nbsp;·&nbsp; '+p.weight:'')+'</div></div>';}).join('')+'</div></div>';
+}
+function _exChartRender(metric){
+  metric=metric||'e1rm';window._exDetailMetric=metric;
+  var host=document.getElementById('ex-strength-chart');if(!host)return;
+  var pts=window._exDetailPts||[];
+  ['e1rm','weight','vol'].forEach(function(m){var b=document.getElementById('exmt-'+m);if(b){var on=m===metric;b.style.background=on?'#2563eb':'rgba(255,255,255,0.05)';b.style.color=on?'#fff':'rgba(180,200,230,0.6)';}});
+  var valOf=function(p){return metric==='weight'?(p.weight||0):(metric==='vol'?(p.vol||0):(p.e1rm||0));};
+  var series=pts.map(function(p){return {v:valOf(p),date:p.date};}).filter(function(x){return x.v>0;});
+  if(!series.length){host.innerHTML='<div style="text-align:center;padding:18px 0;color:rgba(180,200,230,0.4);font-size:12px;">Not enough data yet — keep logging.</div>';return;}
+  var label=metric==='e1rm'?'Est. 1RM':(metric==='weight'?'Top set':'Volume');
+  var maxV=Math.max.apply(null,series.map(function(s){return s.v;}));
+  var first=series[0].v,last=series[series.length-1].v,pct=first>0?Math.round((last-first)/first*100):0,isPR=last>0&&last===maxV&&series.length>1;
+  var recent=series.slice(-10);
+  var head='<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;">'
+    +'<div><div style="font-size:11px;color:rgba(180,200,230,0.45);">'+label+'</div><div style="font-size:22px;font-weight:800;color:#fff;font-family:Syne,sans-serif;line-height:1.1;">'+last+(isPR?' <span style="font-size:14px;">🏆</span>':'')+'</div></div>'
+    +(series.length>1?'<div style="text-align:right;"><div style="font-size:10px;color:rgba(180,200,230,0.4);">'+series.length+' sessions</div><div style="font-size:14px;font-weight:800;color:'+(pct>=0?'#43d9a2':'#ff6b6b')+';">'+(pct>=0?'▲ ':'▼ ')+Math.abs(pct)+'%</div></div>':'')
+    +'</div>';
+  var bars='<div style="display:flex;align-items:flex-end;gap:5px;height:74px;">'+recent.map(function(s){
+    var h=maxV>0?Math.max(6,Math.round(s.v/maxV*64)):6,top=s.v===maxV;
+    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:8px;color:rgba(126,200,255,'+(top?'0.95':'0.45')+');font-weight:700;line-height:1;">'+s.v+'</div><div style="width:100%;height:'+h+'px;background:'+(top?'linear-gradient(180deg,#f59e0b,#d97706)':'linear-gradient(180deg,rgba(79,163,232,0.8),rgba(29,78,216,0.5))')+';border-radius:3px 3px 0 0;"></div></div>';
+  }).join('')+'</div>'
+  +'<div style="display:flex;gap:5px;margin-top:4px;">'+recent.map(function(s){return '<div style="flex:1;font-size:8px;text-align:center;color:rgba(180,200,230,0.25);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+s.date+'</div>';}).join('')+'</div>';
+  host.innerHTML=head+bars;
 }
 function _closeExDetail(){if(_exDemoTimer){clearInterval(_exDemoTimer);_exDemoTimer=null;}var el=document.getElementById('ex-detail-sheet');if(el)el.remove();}
 function _ytId(url){var m=(''+(url||'')).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/))([\w-]{6,})/);return m?m[1]:'';}
 function _attr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
-function _openThumb(el){if(!el)return;var n=el.getAttribute('data-exname'),disp=el.getAttribute('data-exdisp')||n;if(el.getAttribute('data-exhist')==='portal'&&window._openExDetailPortal){window._openExDetailPortal(n,disp);return;}openExerciseDetail(n,disp);}
+function _openThumb(el){if(!el)return;var n=el.getAttribute('data-exname'),disp=el.getAttribute('data-exdisp')||n,ctx=el.getAttribute('data-exhist')||'';if(ctx==='portal'&&window._openExDetailPortal){window._openExDetailPortal(n,disp);return;}if(ctx.indexOf('coach:')===0){_openExDetailCoach(n,disp,ctx.slice(6));return;}openExerciseDetail(n,disp);}
 // Compact exercise thumbnail (the discoverable affordance). Starts as a placeholder; image is filled by _hydrateExThumbs once the dataset loads.
 function _exThumbHTML(rawName,displayName,size,histCtx){
   size=size||42;
@@ -1685,6 +1725,7 @@ function openExerciseDetail(rawName,displayName,opts){
     if(!hasAny)html+='<div style="text-align:center;padding:18px;color:rgba(180,200,230,0.4);font-size:12px;background:rgba(255,255,255,0.03);border-radius:12px;">No demo for this exercise yet.</div>';
     if(!window._portalClientId)html+='<button onclick="openExerciseEditorFor(\''+_jsq(rawName)+'\')" style="width:100%;margin-top:14px;background:rgba(37,99,235,0.1);border:1px dashed rgba(37,99,235,0.45);border-radius:10px;padding:12px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:#7ec8ff;cursor:pointer;">'+(hasAny?'✎ Edit details':'＋ Add demo & details')+'</button>';
     body.innerHTML=html;
+    if(document.getElementById('ex-strength-chart')){try{_exChartRender(window._exDetailMetric||'e1rm');}catch(e){}}
     if(!customImg&&m&&m.images&&m.images.length>1){
       var fr=0;
       if(_exDemoTimer)clearInterval(_exDemoTimer);
@@ -1698,13 +1739,28 @@ window._portalExPts=function(exName){
     window._portalRecentSessions.slice().reverse().forEach(function(s){
       if(s.workout)s.workout.forEach(function(e){
         var k=(e.name||'').toLowerCase().replace(/\s+/g,'_');
-        if(k===hk&&(e.weight||e.reps)){var dk=s.date||(s.created_at||'').slice(0,10);if(!seen[dk]){seen[dk]=true;var d=new Date(s.created_at||s.date);pts.push({weight:maxWeight(e.weight),reps:e.reps||'',date:d.toLocaleDateString('en-US',{month:'short',day:'numeric'})});}}
+        if(k===hk&&(e.weight||e.reps)){var dk=s.date||(s.created_at||'').slice(0,10);if(!seen[dk]){seen[dk]=true;var d=new Date(s.created_at||s.date);pts.push({weight:maxWeight(e.weight),reps:e.reps||'',date:d.toLocaleDateString('en-US',{month:'short',day:'numeric'}),e1rm:_bestE1RM(e.reps,e.weight),vol:_sessionVolume(e.reps,e.weight)});}}
       });
     });
   }
   return pts;
 };
 window._openExDetailPortal=function(exName,displayName){openExerciseDetail(exName,displayName,{historyPts:window._portalExPts(exName)});};
+// Coach side: build a viewed client's per-exercise history (with est-1RM + volume) from their sessions.
+function _coachExPts(clientId,exName){
+  var c=(typeof clients!=='undefined')&&clients.find?clients.find(function(x){return x.id===clientId;}):null;
+  if(!c)return [];
+  var sessions=c._sessions||[],hk=(exName||'').toLowerCase().replace(/\s+/g,'_'),pts=[],seen={};
+  sessions.slice().reverse().forEach(function(s){
+    if(!s.workout)return;
+    s.workout.forEach(function(e){
+      var k=(e.name||'').toLowerCase().replace(/\s+/g,'_');
+      if(k===hk&&(e.weight||e.reps)){var dk=s.date||(s.created_at||'').slice(0,10);if(!seen[dk]){seen[dk]=true;var d=new Date(s.created_at||s.date);pts.push({weight:maxWeight(e.weight),reps:e.reps||'',date:isNaN(d.getTime())?(s.date||''):d.toLocaleDateString('en-US',{month:'short',day:'numeric'}),e1rm:_bestE1RM(e.reps,e.weight),vol:_sessionVolume(e.reps,e.weight)});}}
+    });
+  });
+  return pts;
+}
+function _openExDetailCoach(exName,displayName,clientId){openExerciseDetail(exName,displayName,{historyPts:_coachExPts(clientId,exName)});}
 
 // ── DASHBOARD ──
 function getTodayClients(){
@@ -2896,7 +2952,7 @@ function updateLogWorkout(clientId){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
       html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
-        <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44)}<div class="workout-ex-name" onclick="openExerciseDetail('${_jsq(ex.name)}','${_jsq(displayName)}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
         ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
         <div class="workout-inputs">
@@ -2979,7 +3035,7 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
     +labelTag
     +`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:22px;">`
-    +_exThumbHTML('','',40)
+    +_exThumbHTML('','',40,'coach:'+(pendingLogId||''))
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
     +`<div class="workout-inputs">`
@@ -4788,7 +4844,7 @@ function startClientPortal(id) {
         '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;z-index:1;">×</button>' +
         labelTag +
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:22px;">' +
-        _exThumbHTML('','',40) +
+        _exThumbHTML('','',40,'portal') +
         '<input id="cex-name-'+n+'" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);window._updateCustomExCount();" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();">' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
