@@ -6373,7 +6373,7 @@ function exerciseToMuscles(name) {
     return[{muscle:'triceps',weight:1.0}];
   // Chin-up — back primary, biceps secondary (same as pull-up)
   if(/chin.?up/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5}];
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.3}];
   // Biceps isolation
   if(/bicep|hammer curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
@@ -6411,10 +6411,12 @@ function exerciseToMuscles(name) {
   if(/pullover/.test(n))
     return[{muscle:'back',weight:1.0}];
   // Back rows/pulls — biceps secondary, traps + forearms tertiary (scapular retraction + grip)
-  if(/pull.?up|pull.?down|lat pull|seated row|bent.?over row|t.?bar row|cable row|machine row/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
+  // Vertical pulls (pull-up / pulldown / lat pulldown) — lat-dominant; modest mid/lower trap
+  if(/pull.?up|pull.?down|lat.?pull/.test(n))
+    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.3},{muscle:'forearms',weight:0.2}];
+  // Horizontal rows — highest mid-trap/rhomboid activation of any back exercise (EMG) + lats
   if(/\brow\b/.test(n)&&!/upright/.test(n))
-    return[{muscle:'back',weight:1.0},{muscle:'biceps',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
+    return[{muscle:'back',weight:1.0},{muscle:'traps',weight:0.6},{muscle:'biceps',weight:0.5},{muscle:'forearms',weight:0.25}];
   // Conventional deadlift — back primary, glutes + hamstrings secondary, traps + forearms tertiary
   if(/\bdeadlift\b/.test(n)&&!/romanian|rdl|stiff/.test(n))
     return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
