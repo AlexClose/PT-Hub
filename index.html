@@ -1534,6 +1534,47 @@ function _bestSet(repsStr,weightStr){
   for(var i=0;i<ws.length;i++){var w=ws[i];if(!(w>0))continue;var r=rs[i]||rs[rs.length-1]||rs[0]||0;var e=_e1rm(w,r);if(!best||e>best.e1rm)best={weight:w,reps:r,e1rm:e};}
   return best;
 }
+// ── Progressive-overload suggestion (double progression) ──
+// Parse a prescription ("3x10", "3x8-12", "10-12", "12") into {sets, lo, hi} rep targets.
+function _prescTarget(prescription){
+  var p=String(prescription||'').toLowerCase().replace(/reps?/g,'').replace(/sets?/g,'');
+  var sets=null,lo=null,hi=null;
+  var m=p.match(/(\d+)\s*[x×]\s*(\d+)\s*(?:-\s*(\d+))?/); // NxM or NxM-K
+  if(m){sets=parseInt(m[1]);lo=parseInt(m[2]);hi=m[3]?parseInt(m[3]):lo;}
+  else{var r=p.match(/(\d+)\s*-\s*(\d+)/);if(r){lo=parseInt(r[1]);hi=parseInt(r[2]);}else{var s=p.match(/(\d+)/);if(s){lo=hi=parseInt(s[1]);}}}
+  if(lo==null)return null;
+  return {sets:sets,lo:lo,hi:(hi==null?lo:hi)};
+}
+// Weight jump heuristic: light/isolation lifts step less, heavy compounds more. Rounded to 2.5.
+function _loadIncrement(weight){return weight<30?2.5:(weight<120?5:10);}
+// Given the prescription + last logged performance, suggest the next target {sets,weight,reps,note,dir}.
+// Hit the top of the rep range -> add load, reset to the bottom; in range -> +1 rep; short -> consolidate.
+function _suggestNext(prescription,lastReps,lastWeight){
+  var t=_prescTarget(prescription);if(!t)return null;
+  var best=_bestSet(lastReps,lastWeight);
+  if(!best||!best.weight)return null; // need a prior weighted set to progress from
+  if(best.reps>=t.hi){
+    var inc=_loadIncrement(best.weight);
+    return {sets:t.sets,weight:Math.round((best.weight+inc)/2.5)*2.5,reps:t.lo,note:'+'+inc+' lb · hit all reps',dir:'up'};
+  }
+  if(best.reps>=t.lo)return {sets:t.sets,weight:best.weight,reps:best.reps+1,note:'+1 rep',dir:'rep'};
+  return {sets:t.sets,weight:best.weight,reps:t.lo,note:'aim for '+t.lo+' reps',dir:'hold'};
+}
+// Format a suggestion as "3×8" (sets×reps) for the reps input, or just "8" when sets unknown.
+function _suggestRepsStr(s){return s?((s.sets?s.sets+'×':'')+s.reps):'';}
+function _suggestChipHtml(s,onclickFn){
+  if(!s)return '';
+  var col=s.dir==='up'?'67,217,162':(s.dir==='rep'?'126,200,255':'180,200,230');
+  return '<div onclick="'+onclickFn+'" style="font-size:13px;font-weight:700;color:rgba('+col+',0.95);background:rgba('+col+',0.1);border:1px solid rgba('+col+',0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;cursor:pointer;">'
+    +'<span>🎯 Target: '+_suggestRepsStr(s)+(s.weight?' &nbsp;·&nbsp; '+s.weight+' lb':'')+'</span>'
+    +'<span style="font-size:11px;font-weight:600;color:rgba('+col+',0.6);">'+s.note+'</span>'
+    +'<span style="margin-left:auto;font-size:10px;font-weight:600;color:rgba('+col+',0.55);white-space:nowrap;">tap to fill ›</span></div>';
+}
+function _applyTargetCoach(ei,wrVal,wtVal){
+  var wr=document.getElementById('wr-'+ei),wt=document.getElementById('wt-'+ei);
+  if(wr)wr.value=wrVal;if(wt)wt.value=wtVal;
+  try{checkExRowCoach(ei);}catch(e){}try{saveDraftCoach();}catch(e){}
+}
 function _sessionVolume(repsStr,weightStr){
   var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;});
   var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/);
@@ -2966,6 +3007,7 @@ function updateLogWorkout(clientId){
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
         ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
+        ${(()=>{const sg=_suggestNext(ex.prescription,last&&last.reps,last&&last.weight);return sg?_suggestChipHtml(sg,`_applyTargetCoach(${ei},'${_suggestRepsStr(sg)}','${sg.weight}')`):'';})()}
         <div class="workout-inputs">
           <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
           <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
