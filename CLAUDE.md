@@ -26,8 +26,8 @@ git push -u origin main
 
 ## Current Commit State
 
-**Current HEAD**: `339e4bd` — strength charts, portal-logs fix, muscle-map calibration (current session)
-**File**: `index.html`, ~7640 lines
+**Current HEAD**: `e19ae47` — client→coach library sync, coach Library dataset search
+**File**: `index.html`, ~7740 lines
 
 ### What is WORKING:
 - Auto-login (reads `bm_session` from localStorage via `startApp()`)
@@ -167,7 +167,7 @@ git push -u origin main
 
 ### Library growth & dedup
 - `_ensureLibraryHas(names)` (called from `saveProgramDay` + `confirmLogSession`) adds any not-already-present exercise, **keyed by `_exIdentity` = resolved demo id (or normalized name)** so naming variants collapse to one row. Novel/unmatched → added bare (muscle_group `Other`).
-- Client-portal custom-workout logging does NOT yet feed the coach library (separate context) — known gap.
+- Client-portal custom-workout logging NOW feeds the coach library (`_logCustomPortalSession` loads the library first — the portal never runs `init()` — then calls `_ensureLibraryHas`).
 
 ### Autocomplete (rewritten)
 - `_exAcGetList()` = `_EX_SUGGEST` (182 curated clean names) + `_KNOWN_EXERCISES` + library + **full 873 dataset** (deduped). Loads dataset on first keystroke.
@@ -367,13 +367,20 @@ Tabs: **Overview / Program / Progress**
 
 ## Next Logical Steps (in priority order)
 
-1. **User testing feedback** on the workout-of-day builder (user building one "later today")
-2. **Client-portal custom workout → coach library sync** (currently a gap — portal logging doesn't feed `exercise_library`)
-3. **Continue `exerciseToMuscles()` calibration** via breakdown panel + untracked warning
-4. **Strength-over-time charts** (per-exercise est. 1RM trends) — the detail sheet already has a mini history chart to build on
-5. **Business tab** (revenue/invoices), **notifications** (low-session reminders)
-6. Longer-term SaaS direction: real per-user auth + RLS + multi-coach tenancy + white-label branding + Stripe tiers (see earlier roadmap discussion)
+1. **Smarter PRs (rep + estimated-1RM)** — client PRs (PRs tab card builder ~`renderPortalPRs` + the in-save PB detector in `_logCustomPortalSession`) currently compare `maxWeight()` ONLY, so rep progress at the same weight (135×5 → 135×8) is never rewarded. Reuse the existing `_bestE1RM` (Epley). Highest client-facing value, low cost.
+2. **Continue `exerciseToMuscles()` calibration** via breakdown panel + untracked warning. Known untracked compound lifts: Thruster, Clean, Snatch, Farmers Walk, Sled Push (in `_EX_SUGGEST` but return `null` → untracked, no volume/PR credit).
+3. **Home streak / "on track this week"** nudge on the client Home tab (uses `_portalRecentSessions` + `_portalScheduleDays`, already loaded).
+4. **Body-tab goal lines** — target weight / body-fat % reference lines on the existing body-stat trend charts.
+5. **Notifications** (low-session reminders) — the **Business tab is already built** (`renderBusinessView`: Needs Attention / Inactive 10+ / month overview / Renewals projection / Long-Term clients).
+6. Longer-term SaaS direction: real per-user auth + RLS + multi-coach tenancy + white-label branding + Stripe tiers (see earlier roadmap discussion).
 
 ---
 
-**Last Updated:** Current session (HEAD `339e4bd`) — strength charts, portal exercise_logs fix + backfill, portal logging matched to coach (Fill Last Session, last-session placeholders, "Last:" badge), EMG-calibrated secondary-muscle weights + bench guard, muscle-diagram untrained-blend + quad-strand fix. Body-diagram anatomy (lower-back wings, glute_med shape) deferred to the visual rework / SVG asset swap.
+## Features Completed (latest session — library reach)
+
+- ✅ **Client custom-workout → coach library sync** — `_logCustomPortalSession` now loads the library (the portal never runs `init()`, so the `library` global is empty there → load first or POST duplicates) then calls `_ensureLibraryHas`. Closes the documented gap.
+- ✅ **Coach Library search → dataset fall-through** — searching the Library tab (`renderLibrary`, 2+ chars) now surfaces matching `free-exercise-db` exercises not already in the library, under an "Exercise Database" section with a **+ Add** button (`addLibFromDataset(id)`, links the demo via `demo_id`). Deduped by demo identity; one-shot re-render once the dataset loads (`_libDbReload` guard).
+
+---
+
+**Last Updated:** HEAD `e19ae47` — client custom-workout now feeds the coach exercise library; coach Library search falls through to the 873-exercise free-exercise-db dataset (+ Add to library). Prior session: strength charts, portal exercise_logs fix + backfill, portal logging matched to coach, EMG-calibrated secondary-muscle weights + bench guard, muscle-diagram untrained-blend + quad-strand fix. Body-diagram anatomy deferred to the visual rework / SVG asset swap.
