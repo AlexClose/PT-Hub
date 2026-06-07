@@ -4996,28 +4996,32 @@ function startClientPortal(id) {
           var d = new Date(dateStr);
           return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
         }
-        // Build all-time max and previous-best (before this month)
+        // Best by estimated 1RM (Epley) so rep progress at the same weight counts as a PR,
+        // not just top weight. prevBest = best e1RM before this month (to show the gain).
         var allTime = {}, prevBest = {};
         logs.forEach(function(l) {
-          var w = maxWeight(l.weight);
-          if (!w) return;
-          if (!allTime[l.exercise_name] || w > allTime[l.exercise_name].max) {
-            allTime[l.exercise_name] = {max: w, date: l.session_date, reps: l.reps};
+          var e = _bestE1RM(l.reps, l.weight), w = maxWeight(l.weight);
+          if (!e && !w) return;
+          var cur = allTime[l.exercise_name];
+          if (!cur || e > cur.e1rm) {
+            allTime[l.exercise_name] = {e1rm: e, weight: w, reps: l.reps, date: l.session_date};
           }
           if (!isThisMonth(l.session_date)) {
-            if (!prevBest[l.exercise_name] || w > prevBest[l.exercise_name]) {
-              prevBest[l.exercise_name] = w;
+            if (!prevBest[l.exercise_name] || e > prevBest[l.exercise_name]) {
+              prevBest[l.exercise_name] = e;
             }
           }
         });
-        var exercises = Object.keys(allTime).filter(function(k){ return allTime[k].max > 0; });
-        exercises.sort(function(a,b){ return allTime[b].max - allTime[a].max; });
-        var newThisMonth = exercises.filter(function(ex){ return isThisMonth(allTime[ex].date); });
+        var exercises = Object.keys(allTime).filter(function(k){ return allTime[k].e1rm > 0; });
+        exercises.sort(function(a,b){ return allTime[b].e1rm - allTime[a].e1rm; });
+        // New PR this month = best-ever e1RM was set this month (catches rep PRs, not just heavier loads).
+        var newThisMonth = exercises.filter(function(ex){ return isThisMonth(allTime[ex].date) && allTime[ex].e1rm > (prevBest[ex]||0); });
         function prCard(ex, highlight) {
           var pr = allTime[ex];
           var prev = prevBest[ex];
           var borderCol = highlight ? 'rgba(192,132,252,0.35)' : 'rgba(192,132,252,0.1)';
           var bg = highlight ? 'rgba(192,132,252,0.07)' : 'rgba(15,19,23,0.5)';
+          var setLabel = (pr.weight ? pr.weight + ' lbs' : '') + (pr.reps ? (pr.weight ? ' × ' : '') + pr.reps + ' reps' : '');
           return '<div style="background:' + bg + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
               '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
@@ -5025,11 +5029,14 @@ function startClientPortal(id) {
                 (highlight ? '<div style="background:rgba(192,132,252,0.2);border:1px solid rgba(192,132,252,0.4);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#c084fc;white-space:nowrap;">NEW PR</div>' : '') +
               '</div>' +
               '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' +
-                (pr.date || '') + (pr.reps ? ' · ' + pr.reps + ' reps' : '') +
-                (highlight && prev ? '<span style="margin-left:8px;color:rgba(180,200,230,0.25);">prev: ' + prev + ' lbs</span>' : '') +
+                (pr.date || '') + (setLabel ? ' · ' + setLabel : '') +
+                (highlight && prev ? '<span style="margin-left:8px;color:rgba(180,200,230,0.25);">prev 1RM: ' + prev + '</span>' : '') +
               '</div>' +
             '</div>' +
-            '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:' + (highlight ? '#c084fc' : '#9b7fc7') + ';margin-left:12px;white-space:nowrap;">' + pr.max + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
+            '<div style="text-align:right;margin-left:12px;white-space:nowrap;">' +
+              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:' + (highlight ? '#c084fc' : '#9b7fc7') + ';line-height:1.05;">' + pr.e1rm + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
+              '<div style="font-size:8px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(180,200,230,0.3);">est 1RM</div>' +
+            '</div>' +
           '</div>';
         }
         var html = '';
