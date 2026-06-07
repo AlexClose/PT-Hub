@@ -7354,6 +7354,12 @@ function renderMuscleDiagram(scores,weeksInPeriod){
     });
   }
   
+  // The two long inner-thigh strands are anatomically quad (not adductor) — paint them with the quad color
+  // so a worked quad fills the whole front of the thigh, leaving only the innermost strip as adductor.
+  ['M760.41','M1015.98'].forEach(function(dp){
+    colored=colored.replace('<path class="st4" d="'+dp,'<path class="st4" style="fill:'+c('quads')+';stroke:'+c('quads')+';opacity:'+o('quads')+'" d="'+dp);
+  });
+
   var legend='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;font-size:11px;">'+
     [['rgba(255,255,255,0.08)','None'],['#fef9c3','<25%'],['#fde68a','25–50%'],['#fbbf24','50–75%'],['#f97316','75–100%'],['#ef4444','Optimal'],['#b91c1c','Above']].map(function(l){
       return'<div style="display:flex;align-items:center;gap:3px;"><span style="width:10px;height:10px;border-radius:2px;background:'+l[0]+';border:1px solid rgba(255,255,255,0.08);display:inline-block;"></span><span style="font-size:10px;color:rgba(180,200,230,0.55);">'+l[1]+'</span></div>';
