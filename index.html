@@ -6643,8 +6643,9 @@ window.showMhInfo = function() {
 };
 function renderMuscleDiagram(scores,weeksInPeriod){
   var weeks=weeksInPeriod||1;
-  function c(m){var wk=(scores[m]||0)/weeks;return _mhColor(wk,_MH_TARGETS[m]||10)||'#1e3c5e';}
-  function o(m){return(scores[m]||0)>0?'0.88':'0.5';}
+  // Untrained muscles blend into the body color (no stark gray patches/"holes"); trained muscles pop.
+  function c(m){var wk=(scores[m]||0)/weeks;return _mhColor(wk,_MH_TARGETS[m]||10)||'rgba(15,35,65,0.6)';}
+  function o(m){return(scores[m]||0)>0?'0.88':'1';}
   
   // Professional anatomical diagram from workout-planner GitHub
   // Muscle groups mapped to our heat map colors
