@@ -6462,7 +6462,8 @@ function exerciseToMuscles(name) {
   if(!n.includes('reverse')&&!n.includes('rear')&&/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
     return[{muscle:'chest',weight:1.0}];
   // Chest press — triceps secondary, shoulders (front delt) tertiary
-  if(/bench|push.?up/.test(n))
+  // Guard: "bench" alone must not grab hip thrusts / glute bridges / bench rows / bench step-ups
+  if((/bench|push.?up/.test(n)) && !/thrust|glute|bridge|\brow\b|step.?up|sit.?up|crunch/.test(n))
     return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5},{muscle:'shoulders',weight:0.4}];
   if(/\bpress\b/.test(n)&&/chest|incline|decline|flat/.test(n))
     return[{muscle:'chest',weight:1.0},{muscle:'triceps',weight:0.5},{muscle:'shoulders',weight:0.4}];
