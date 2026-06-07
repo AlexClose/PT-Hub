@@ -5719,6 +5719,7 @@ function startClientPortal(id) {
               (lastData.date ? ' &nbsp;·&nbsp; <span style="font-size:12px;opacity:0.7;font-weight:600;">' + lastData.date + '</span>' : '') +
               ' <span style="font-size:11px;opacity:0.5;">▸ history</span>' +
             '</div>' : '') +
+          (function(){var sg=_suggestNext(ex.prescription,lastData&&lastData.reps,lastData&&lastData.weight);return sg?_suggestChipHtml(sg,"window._applyTargetPortal("+i+",'"+_suggestRepsStr(sg)+"','"+sg.weight+"')"):'';})() +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
             '<div>' +
               '<input id="wr-' + i + '" type="text" placeholder="' + (lastData&&lastData.reps?lastData.reps:'e.g. 3x10') + '" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
@@ -5738,6 +5739,11 @@ function startClientPortal(id) {
       '<button onclick="window._logPortalSession()" style="width:100%;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:12px;padding:16px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-bottom:20px;box-shadow:0 4px 24px rgba(37,99,235,0.45);transition:all 0.2s;" onmouseover="this.style.boxShadow=\'0 8px 32px rgba(37,99,235,0.55)\';" onmouseout="this.style.boxShadow=\'0 4px 24px rgba(37,99,235,0.45)\';">LOG WORKOUT</button>' +
       '</div>';
 
+    window._applyTargetPortal = function(i, wrVal, wtVal) {
+      var wr = document.getElementById('wr-' + i), wt = document.getElementById('wt-' + i);
+      if (wr) wr.value = wrVal; if (wt) wt.value = wtVal;
+      try { window._checkExRow(i); } catch(e) {} try { window._saveDraft(); } catch(e) {}
+    };
     portalBody.innerHTML = html;
     try{_thumbsRefresh();}catch(e){}
     setTimeout(window._restoreDraft, 50);
