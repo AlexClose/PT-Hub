@@ -26,7 +26,7 @@ git push -u origin main
 
 ## Current Commit State
 
-**Current HEAD**: `df7e4db` — Muscle-balance bars (current session)
+**Current HEAD**: `339e4bd` — strength charts, portal-logs fix, muscle-map calibration (current session)
 **File**: `index.html`, ~7640 lines
 
 ### What is WORKING:
@@ -135,6 +135,10 @@ git push -u origin main
 | `exerciseToMuscles(name)` | ~6365 | name → [{muscle, weight}] regex |
 | `_mhColor` / `_MH_TARGETS` | ~6469 | color scale / weekly targets |
 | `_muscleBalanceHtml(scores,weeks)` | ~6487 | weekly-volume-vs-target bars |
+| `_bestE1RM` / `_sessionVolume` / `_exChartRender` | ~1500 | strength-chart math + Est-1RM/Top/Volume toggle |
+| `_coachExPts` / `_openExDetailCoach` | ~1700 | coach-side per-client history for the detail sheet |
+| `_fillLastPortal` (window) | ~5820 | client portal "Fill Last Session" |
+| `renderMuscleDiagram(scores,weeks)` | ~6644 | body-map SVG; colors `<g id>` groups via `muscleMappings` |
 | `loadMuscleHeatmap(clientId,containerId,period)` | ~7280 | fetch logs, score, render diagram+balance+breakdown |
 
 ---
@@ -211,6 +215,15 @@ Use this to catch `exerciseToMuscles()` mis-mappings (e.g., the Reverse Fly → 
 ### Muscle-balance bars (`_muscleBalanceHtml`, current session)
 Rendered right below the diagram (coach Progress + client Muscles): one ranked bar per `_MH_TARGETS` muscle showing weekly sets vs target (`X/Y sets/wk · NN%`), heatmap color scale, target marker at 66.6% of bar (= 100% of target), sorted most→least trained so over/under-worked muscles are obvious. Reuses the heatmap's `scores`/`weeksInPeriod` — no extra fetch.
 
+### Per-exercise strength charts (current session)
+The detail sheet's history (`_exHistHtml` + `_exChartRender`) is a strength-progression view: **Est. 1RM** (Epley on the best set/session via `_bestE1RM`) by default, toggle to **Top Wt** / **Volume** (`_sessionVolume`), headline (current value, % change, 🏆 on all-time best), per-session bars, recent sets. **Client-specific**: portal passes the client's own pts (`_portalExPts`); coach passes the *viewed* client's pts (`_coachExPts` via `_openExDetailCoach`, wired by `coach:<clientId>` thumbnail context). Library detail (no client) shows demo only.
+
+### Muscle diagram (`renderMuscleDiagram`)
+- Stock anatomical SVG (workout-planner). Colors `<g id="...">` groups by setting a group `style="fill:..."`; child `.st4/.st5` paths converted to `fill:inherit`. `muscleMappings` wires our muscle keys → SVG group ids.
+- **Untrained muscles blend into the body color** (`c()` 0-score fallback = `rgba(15,35,65,0.6)`, opacity 1) so there are no stark gray "holes"; trained muscles use the heat scale.
+- Per-region tweak: the two long inner-thigh strands (`M760.41`/`M1015.98`) are repainted with the quad color (anatomically quad, were in `hip_adductor`).
+- **Known stock-SVG limitations** (defer to visual rework / asset swap): lower-back drawn as two outward "wings" not a single erector block; `hip_abductor` (glute_med) region a bit large; thigh split across quads/adductor/abductor groups. Reshaping paths can't be done reliably "blind" — needs a better-segmented SVG.
+
 ### Untracked exercise warning
 Any exercise that `exerciseToMuscles()` can't map appears in a yellow warning box below the diagram.
 This also means it won't appear in PRs — the signal to add new exercises to `exerciseToMuscles()`.
@@ -223,6 +236,13 @@ This also means it won't appear in PRs — the signal to add new exercises to `e
 ### `exerciseToMuscles()` coverage (regex-based, broad)
 All bench/push-up variants → chest; all curl variants → biceps; pull-up/pulldown/row → back; squat/leg press/lunge → quads; hip thrust/glute bridge → glutes; deadlift → back+glutes+hams; RDL → hams+glutes; shoulder press/lateral raise/face pull → shoulders; tricep pushdowns/skull crushers/dips → triceps; etc.
 **Reverse fly / rear delt fly / band pull-apart** → shoulders (NOT chest).
+
+### Secondary-muscle weights (calibrated current session, EMG-informed)
+- **Chest press** → chest 1.0, triceps 0.5, **shoulders 0.3** (was 0.4)
+- **Horizontal rows** → back 1.0, **traps 0.6** (mid-trap/rhomboid; was 0.25), biceps 0.4, forearms 0.25
+- **Vertical pulls** (pull-up/pulldown) → back 1.0, **biceps 0.35** (was 0.5, lat-dominant), traps 0.3, forearms 0.2
+- **Chin-up** → back 1.0, biceps 0.45, traps 0.3
+- **Bench guard**: the chest `/bench|push.?up/` rule is guarded `&& !/thrust|glute|bridge|\brow\b|step.?up|sit.?up|crunch/` so "Hip Thrust on Bench", bench rows, etc. fall through to their correct mapping (don't get tagged chest).
 
 ### `canonExName()` normalization (applied at save time)
 Canonical list of ~40 known exercises + loaded library → case-insensitive match. Falls back to synonym table (~80 mappings: rdl→Romanian Deadlift, ohp→Overhead Press, bss→Bulgarian Split Squat, etc.). Applied in `_logCustomPortalSession` and `confirmLogSession` ad-hoc section.
@@ -309,6 +329,7 @@ Tabs: **Overview / Program / Progress**
 - **`window._portalClientId`** etc. — client portal uses global window vars
 - **Session date format**: `"May 15, 2026"` (US locale), NOT ISO — used for matching/display
 - **`exercise_logs.session_date`**: also US locale text. `new Date("Jun 3, 2026")` parses inconsistently across browsers/timezones — potential bug in "This Week" filter
+- **`exercise_logs` is the source for the client PRs tab AND the muscle heatmap.** The portal *program-day* save (`_logPortalSession`) used to write only `sessions` + `exercise_history`, so self-logging clients had empty PRs/Muscles. Fixed (now writes `exercise_logs` too, SS-prefix stripped). Historical sessions were backfilled via a one-time SQL (`INSERT INTO exercise_logs … FROM sessions, jsonb_array_elements(workout) … NOT EXISTS`). The coach `confirmLogSession` and the custom-workout path always wrote it.
 - **Superset rows inside ssWrap**: `querySelectorAll('[id^="custom-ex-row-"]')` finds them regardless of nesting — save loop still works
 - **`renderCustomWorkoutSheet` must be `window.renderCustomWorkoutSheet`** (not a local function) — inline onclick handlers are global scope only
 - **Tab background**: inactive tabs must use `background:'transparent'` not `background:''`
@@ -355,4 +376,4 @@ Tabs: **Overview / Program / Progress**
 
 ---
 
-**Last Updated:** Current session (HEAD `df7e4db`)
+**Last Updated:** Current session (HEAD `339e4bd`) — strength charts, portal exercise_logs fix + backfill, portal logging matched to coach (Fill Last Session, last-session placeholders, "Last:" badge), EMG-calibrated secondary-muscle weights + bench guard, muscle-diagram untrained-blend + quad-strand fix. Body-diagram anatomy (lower-back wings, glute_med shape) deferred to the visual rework / SVG asset swap.
