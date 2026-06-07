@@ -3278,11 +3278,39 @@ async function deleteClient(id){
 // ── LIBRARY ──
 function renderLibrary(){
   try{_loadExDb();}catch(e){}
-  const q=(document.getElementById('libSearch')?.value||'').toLowerCase();
+  const q=(document.getElementById('libSearch')?.value||'').toLowerCase().trim();
   const filtered=library.filter(e=>e.name.toLowerCase().includes(q)||(e.muscle_group||'').toLowerCase().includes(q));
   const groups={};
   filtered.forEach(e=>{if(!groups[e.muscle_group])groups[e.muscle_group]=[];groups[e.muscle_group].push(e);});
-  if(Object.keys(groups).length===0){
+  // Dataset fall-through: while searching, surface free-exercise-db matches not already in the library.
+  let dbHtml='';
+  if(q.length>=2){
+    if(!_exDb){
+      if(!_libDbReload){_libDbReload=true;_loadExDb().then(function(){_libDbReload=false;if(_exDb&&(document.getElementById('libSearch')?.value||'').trim())renderLibrary();});}
+    }else{
+      const have=_libIdMap();
+      let hits=_exDb.filter(e=>e.name.toLowerCase().includes(q)&&!have['id:'+e.id]);
+      hits.sort((a,b)=>{const aw=a.name.toLowerCase().indexOf(q)===0?0:1,bw=b.name.toLowerCase().indexOf(q)===0?0:1;return aw-bw||a.name.length-b.name.length;});
+      hits=hits.slice(0,25);
+      if(hits.length){
+        dbHtml='<div class="muscle-group" style="margin-top:4px;"><div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 4px 8px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.55);">Exercise Database<span style="color:rgba(180,200,230,0.3);font-weight:600;letter-spacing:0;text-transform:none;">tap + to add to your library</span></div>'
+          +hits.map(e=>{const mg=_demoMuscleGroup(e)||'';return `<div class="lib-exercise" onclick="openExerciseDetail('${_jsq(e.name)}','${_jsq(e.name)}')" style="cursor:pointer">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+              ${_exThumbHTML(e.name,e.name,46)}
+              <div style="min-width:0;">
+                <div class="lib-ex-name">${_attr(e.name)}</div>
+                ${mg?`<div class="lib-ex-equip">${mg}</div>`:''}
+              </div>
+            </div>
+            <div class="lib-ex-actions">
+              <button class="lib-btn" onclick="event.stopPropagation();addLibFromDataset('${e.id}')">+ Add</button>
+            </div>
+          </div>`;}).join('')
+          +'</div>';
+      }
+    }
+  }
+  if(Object.keys(groups).length===0 && !dbHtml){
     document.getElementById('libraryList').innerHTML=`<div class="empty"><div class="empty-icon">📋</div><p>${library.length===0?'No exercises yet<br>Tap + Exercise to start building your library':'No exercises match your search'}</p></div>`;
     return;
   }
@@ -3311,13 +3339,24 @@ function renderLibrary(){
           </div>
         </div>`).join('')}
       </div>
-    </div>`).join('');
+    </div>`).join('')+dbHtml;
   try{_thumbsRefresh();}catch(e){}
+}
+// Add a free-exercise-db entry straight into the coach library (links the demo via demo_id).
+async function addLibFromDataset(id){
+  var m=(_exById&&_exById[id])?_exById[id]:null;if(!m)return;
+  if(library.some(function(e){return _exIdentity(e.name)==='id:'+id;})){toast('Already in library');return;}
+  try{
+    var created=await db.addLibEx({name:m.name,muscle_group:_demoMuscleGroup(m)||'Other',equipment:m.equipment?_cap(m.equipment):'',demo_id:id});
+    if(created&&created[0])library.push(created[0]);
+    _libIdCache=null;renderLibrary();toast(m.name+' added ✓');
+  }catch(e){toast('Error adding exercise');}
 }
 function _libMusclesGet(){return [].slice.call(document.querySelectorAll('#libExMuscleChips .mchip.sel')).map(function(c){return c.getAttribute('data-mg');});}
 function _libMusclesSet(arr){var set={};(arr||[]).forEach(function(m){if(m)set[(''+m).trim()]=1;});document.querySelectorAll('#libExMuscleChips .mchip').forEach(function(c){if(set[c.getAttribute('data-mg')])c.classList.add('sel');else c.classList.remove('sel');});}
 // Library entry lookup by resolved identity (cached), used to apply custom demo/media overrides.
 var _libIdCache=null;
+var _libDbReload=false; // guards the one-shot re-render once the dataset finishes loading
 function _libIdMap(){
   if(!Array.isArray(library))return {};
   if(_libIdCache&&_libIdCache.len===library.length)return _libIdCache.map;
