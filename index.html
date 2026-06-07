@@ -1523,6 +1523,17 @@ function _bestE1RM(repsStr,weightStr){
   var best=0;for(var i=0;i<ws.length;i++){var r=rs[i]||rs[rs.length-1]||rs[0]||0;var e=_e1rm(ws[i],r);if(e>best)best=e;}
   return best;
 }
+// Like _bestE1RM but returns the actual set {weight, reps, e1rm} that produced the best estimated 1RM,
+// so the PRs view can display the real weight×reps (clients read est-1RM as the weight lifted).
+function _bestSet(repsStr,weightStr){
+  var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;});
+  var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/),rs;
+  if(m)rs=ws.map(function(){return parseInt(m[2]);});
+  else rs=String(repsStr||'').split(/[,\/]+/).map(function(x){return parseInt(x)||0;});
+  var best=null;
+  for(var i=0;i<ws.length;i++){var w=ws[i];if(!(w>0))continue;var r=rs[i]||rs[rs.length-1]||rs[0]||0;var e=_e1rm(w,r);if(!best||e>best.e1rm)best={weight:w,reps:r,e1rm:e};}
+  return best;
+}
 function _sessionVolume(repsStr,weightStr){
   var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;});
   var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/);
@@ -4996,32 +5007,35 @@ function startClientPortal(id) {
           var d = new Date(dateStr);
           return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
         }
-        // Best by estimated 1RM (Epley) so rep progress at the same weight counts as a PR,
-        // not just top weight. prevBest = best e1RM before this month (to show the gain).
+        // Rank by estimated 1RM (Epley) so rep progress at the same weight counts as a PR, not just
+        // top weight — but store the actual best set {weight,reps} so the card shows what was lifted.
+        // prevBest = best set before this month (to show the gain on a new PR).
         var allTime = {}, prevBest = {};
         logs.forEach(function(l) {
-          var e = _bestE1RM(l.reps, l.weight), w = maxWeight(l.weight);
-          if (!e && !w) return;
+          var s = _bestSet(l.reps, l.weight);
+          if (!s) return;
           var cur = allTime[l.exercise_name];
-          if (!cur || e > cur.e1rm) {
-            allTime[l.exercise_name] = {e1rm: e, weight: w, reps: l.reps, date: l.session_date};
+          if (!cur || s.e1rm > cur.e1rm) {
+            allTime[l.exercise_name] = {e1rm: s.e1rm, weight: s.weight, reps: s.reps, date: l.session_date};
           }
           if (!isThisMonth(l.session_date)) {
-            if (!prevBest[l.exercise_name] || e > prevBest[l.exercise_name]) {
-              prevBest[l.exercise_name] = e;
-            }
+            var pb = prevBest[l.exercise_name];
+            if (!pb || s.e1rm > pb.e1rm) prevBest[l.exercise_name] = {e1rm: s.e1rm, weight: s.weight, reps: s.reps};
           }
         });
         var exercises = Object.keys(allTime).filter(function(k){ return allTime[k].e1rm > 0; });
         exercises.sort(function(a,b){ return allTime[b].e1rm - allTime[a].e1rm; });
         // New PR this month = best-ever e1RM was set this month (catches rep PRs, not just heavier loads).
-        var newThisMonth = exercises.filter(function(ex){ return isThisMonth(allTime[ex].date) && allTime[ex].e1rm > (prevBest[ex]||0); });
+        var newThisMonth = exercises.filter(function(ex){ return isThisMonth(allTime[ex].date) && allTime[ex].e1rm > ((prevBest[ex]&&prevBest[ex].e1rm)||0); });
+        function setStr(s) {
+          if (!s) return '';
+          return (s.weight ? s.weight + ' lbs' : '') + (s.reps > 0 ? (s.weight ? ' × ' : '') + s.reps : '');
+        }
         function prCard(ex, highlight) {
           var pr = allTime[ex];
           var prev = prevBest[ex];
           var borderCol = highlight ? 'rgba(192,132,252,0.35)' : 'rgba(192,132,252,0.1)';
           var bg = highlight ? 'rgba(192,132,252,0.07)' : 'rgba(15,19,23,0.5)';
-          var setLabel = (pr.weight ? pr.weight + ' lbs' : '') + (pr.reps ? (pr.weight ? ' × ' : '') + pr.reps + ' reps' : '');
           return '<div style="background:' + bg + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
               '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
@@ -5029,14 +5043,11 @@ function startClientPortal(id) {
                 (highlight ? '<div style="background:rgba(192,132,252,0.2);border:1px solid rgba(192,132,252,0.4);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#c084fc;white-space:nowrap;">NEW PR</div>' : '') +
               '</div>' +
               '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' +
-                (pr.date || '') + (setLabel ? ' · ' + setLabel : '') +
-                (highlight && prev ? '<span style="margin-left:8px;color:rgba(180,200,230,0.25);">prev 1RM: ' + prev + '</span>' : '') +
+                (pr.date || '') +
+                (highlight && prev ? '<span style="margin-left:8px;color:rgba(180,200,230,0.25);">prev: ' + setStr(prev) + '</span>' : '') +
               '</div>' +
             '</div>' +
-            '<div style="text-align:right;margin-left:12px;white-space:nowrap;">' +
-              '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:' + (highlight ? '#c084fc' : '#9b7fc7') + ';line-height:1.05;">' + pr.e1rm + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span></div>' +
-              '<div style="font-size:8px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(180,200,230,0.3);">est 1RM</div>' +
-            '</div>' +
+            '<div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:' + (highlight ? '#c084fc' : '#9b7fc7') + ';margin-left:12px;white-space:nowrap;">' + pr.weight + '<span style="font-size:11px;color:rgba(180,200,230,0.4);font-weight:400;"> lbs</span>' + (pr.reps > 0 ? '<span style="font-size:13px;color:rgba(180,200,230,0.5);font-weight:600;"> × ' + pr.reps + '</span>' : '') + '</div>' +
           '</div>';
         }
         var html = '';
