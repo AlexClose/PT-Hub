@@ -4914,6 +4914,14 @@ function startClientPortal(id) {
         return fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+window._portalClientId, {method:'PATCH',headers:H,body:JSON.stringify({exercise_history:newHistory})});
       }).then(function() {
         window._portalHistory = newHistory;
+        // Feed the coach exercise library (deduped by demo identity). The portal never runs
+        // init(), so the `library` global is empty here — load it first or we'd POST duplicates.
+        try {
+          db.getLibrary().then(function(lib) {
+            if (Array.isArray(lib)) library = lib;
+            _ensureLibraryHas(exercises.map(function(e){ return e.name; }));
+          }).catch(function(){});
+        } catch(e) {}
         if (navigator.vibrate) navigator.vibrate([10,40,20,40,40]);
         var pbHtml = newPBs.length > 0 ? '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 16px;margin-bottom:24px;text-align:left;"><div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f59e0b;margin-bottom:8px;">Personal Bests!</div>'+newPBs.map(function(n){return'<div style="font-size:13px;color:#fff;margin-bottom:4px;">&#127942; '+n+'</div>';}).join('')+'</div>' : '';
         inner.innerHTML =
