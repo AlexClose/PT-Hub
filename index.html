@@ -4592,6 +4592,7 @@ function startClientPortal(id) {
       var greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
       var clientFirstName = window._portalClientName || 'there';
       var weekTarget = scheduledDays.length || days.length;
+      var noProgram = (days.length === 0 && !window._portalRunProgram);
       var runSchedMap = parseScheduleMap(window._portalRunScheduleStr || '');
       var runTypeColors = {easy:'#43d9a2',tempo:'#4fa3e8',long:'#c084fc',intervals:'#ff8c47',recovery:'#43d9a2'};
 
@@ -4632,12 +4633,24 @@ function startClientPortal(id) {
         }
       }
       if (!heroHtml) {
-        heroHtml =
-          '<div style="background:linear-gradient(145deg,rgba(67,217,162,0.1),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.15);border-radius:20px;padding:24px 24px 22px;margin-bottom:16px;">' +
-            '<div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(67,217,162,0.5);margin-bottom:10px;">Today</div>' +
-            '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:30px;color:rgba(232,237,245,0.85);letter-spacing:-0.4px;line-height:1.1;margin-bottom:8px;">Rest Day</div>' +
-            '<div style="font-size:13px;color:rgba(180,200,230,0.4);line-height:1.6;">Prioritise sleep, mobility, and nutrition. Recovery is part of the program.</div>' +
-          '</div>';
+        if (noProgram) {
+          // No program assigned — invite the client to log a workout on their own.
+          heroHtml =
+            '<div style="position:relative;overflow:hidden;background:linear-gradient(145deg,rgba(79,163,232,0.16),rgba(79,163,232,0.05) 55%,transparent);border:1px solid rgba(79,163,232,0.3);border-radius:20px;padding:24px;margin-bottom:16px;">' +
+              '<div style="position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(79,163,232,0.18),transparent 70%);pointer-events:none;"></div>' +
+              '<div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(126,200,255,0.7);margin-bottom:10px;">Ready when you are</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:26px;color:#fff;letter-spacing:-0.4px;line-height:1.12;margin-bottom:8px;">Log today\'s workout</div>' +
+              '<div style="font-size:13px;color:rgba(180,200,230,0.5);line-height:1.55;margin-bottom:20px;">No set program yet — train however you like and log it. Every session feeds your PRs and muscle map.</div>' +
+              '<button onclick="renderCustomWorkoutSheet()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:15px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.5px;box-shadow:0 6px 28px rgba(37,99,235,0.45);">+ Log a Workout</button>' +
+            '</div>';
+        } else {
+          heroHtml =
+            '<div style="background:linear-gradient(145deg,rgba(67,217,162,0.1),rgba(67,217,162,0.04));border:1px solid rgba(67,217,162,0.15);border-radius:20px;padding:24px 24px 22px;margin-bottom:16px;">' +
+              '<div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(67,217,162,0.5);margin-bottom:10px;">Today</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:30px;color:rgba(232,237,245,0.85);letter-spacing:-0.4px;line-height:1.1;margin-bottom:8px;">Rest Day</div>' +
+              '<div style="font-size:13px;color:rgba(180,200,230,0.4);line-height:1.6;">Prioritise sleep, mobility, and nutrition. Recovery is part of the program.</div>' +
+            '</div>';
+        }
       }
 
       // ---- COACH NOTE ----
@@ -4720,7 +4733,7 @@ function startClientPortal(id) {
         '<div style="background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.055);border-radius:16px;padding:18px 20px;margin-bottom:20px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
             '<span style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.32);">This Week</span>' +
-            '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:#4fa3e8;">— / ' + weekTarget + '</span>' +
+            '<span id="portal-week-count" style="font-size:13px;font-weight:700;color:#4fa3e8;">' + (weekTarget > 0 ? '— / ' + weekTarget : '—') + '</span>' +
           '</div>' +
           weekDotsHtml +
         '</div>' +
@@ -4747,7 +4760,7 @@ function startClientPortal(id) {
         var weekSess = weekSessions.length;
         var wkColor = weekSess >= weekTarget && weekTarget > 0 ? '#43d9a2' : '#4fa3e8';
         var weekEl = document.getElementById('portal-week-count');
-        if (weekEl) { weekEl.style.color = wkColor; weekEl.textContent = weekSess + ' / ' + weekTarget; }
+        if (weekEl) { weekEl.style.color = wkColor; weekEl.textContent = weekTarget > 0 ? (weekSess + ' / ' + weekTarget) : (weekSess + (weekSess === 1 ? ' session' : ' sessions')); }
         // Mark completed day dots green
         var completedDays = {};
         weekSessions.forEach(function(s) {
