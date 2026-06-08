@@ -3690,6 +3690,7 @@ function _showSessionDetail(s, histCtx){
   if(!s)return;
   const workout=Array.isArray(s.workout)?s.workout:[];
   const dayName=(workout[0]&&workout[0].day)||'';
+  window._repeatSrc={ctx:histCtx||'',workout:workout};
   let ov=document.getElementById('sess-detail-ov');
   if(!ov){ov=document.createElement('div');ov.id='sess-detail-ov';document.body.appendChild(ov);}
   ov.style.cssText='position:fixed;inset:0;z-index:8900;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';/* below the demo sheet (9000) so tapping a thumbnail opens the demo on top */
@@ -3715,6 +3716,7 @@ function _showSessionDetail(s, histCtx){
     <div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">${workout.length} exercise${workout.length!==1?'s':''}</div>
     ${rows}
     ${s.note&&s.note!==dayName?`<div style="margin-top:18px;background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.16);border-radius:10px;padding:12px 14px;font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;"><span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);font-weight:700;display:block;margin-bottom:4px;">Note</span>${s.note}</div>`:''}
+    ${workout.length?`<button onclick="window._repeatThisWorkout()" style="width:100%;margin-top:22px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;border:none;border-radius:12px;padding:15px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.4);">&#8635; Log This Workout Again</button><div style="font-size:11px;color:rgba(180,200,230,0.4);text-align:center;margin-top:8px;">Pre-fills a new custom workout with these exercises${histCtx&&histCtx.indexOf('coach:')===0?' for this client':''}.</div>`:''}
   </div>`;
   if(typeof _thumbsRefresh==='function')_thumbsRefresh();
 }
@@ -3722,6 +3724,51 @@ window._showSessionDetail=_showSessionDetail;
 // Lookup wrappers so inline onclicks can resolve a session by id from either portal's cache
 window._coachShowSession=function(cid,id){var m=window['_sessMap_'+cid];if(m&&m[id])_showSessionDetail(m[id],'coach:'+cid);};
 window._portalShowSession=function(id){var s=(window._portalRecentSessions||[]).find(function(x){return String(x.id)===String(id);});if(s)_showSessionDetail(s,'portal');};
+// "Repeat this workout" — pre-load a completed session's exercises into a fresh custom workout.
+// Shared from the session-detail viewer (both portals); dispatches to the matching builder.
+// Superset prefixes are flattened (the custom-workout savers store flat exercise names).
+window._repeatThisWorkout=function(){
+  var src=window._repeatSrc;
+  if(!src||!Array.isArray(src.workout)||!src.workout.length)return;
+  var ov=document.getElementById('sess-detail-ov');if(ov)ov.remove();
+  if(src.ctx&&src.ctx.indexOf('coach:')===0)window._repeatWorkoutCoach(src.ctx.slice(6),src.workout);
+  else window._repeatWorkoutPortal(src.workout);
+};
+window._repeatWorkoutPortal=function(workout){
+  if(typeof window.renderCustomWorkoutSheet!=='function')return;
+  window.renderCustomWorkoutSheet();
+  var list=document.getElementById('custom-ex-list');if(!list)return;
+  list.innerHTML='';
+  workout.forEach(function(ex){
+    window._addCustomExRow();
+    var id=window._customExN-1;
+    var ni=document.getElementById('cex-name-'+id);if(ni)ni.value=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+    var ri=document.getElementById('cex-reps-'+id);if(ri)ri.value=ex.reps||'';
+    var wi=document.getElementById('cex-wt-'+id);if(wi)wi.value=ex.weight||'';
+    if(ni&&typeof _syncRowThumb==='function')_syncRowThumb(ni);
+  });
+  if(window._updateCustomExCount)window._updateCustomExCount();
+};
+window._repeatWorkoutCoach=function(cid,workout){
+  if(!cid||typeof openLogSession!=='function')return;
+  openLogSession(cid,-1); // opens the coach log modal on the Custom Workout (di=-1) screen
+  var tries=0;
+  (function fill(){
+    var container=document.getElementById('adhoc-exercises');
+    if(!container){if(tries++<25)setTimeout(fill,40);return;}
+    container.innerHTML='';window._adhocCount=0;
+    workout.forEach(function(ex){
+      addAdHocExercise();
+      var id=window._adhocCount-1;
+      var ni=document.getElementById('an-adhoc-'+id);if(ni)ni.value=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+      var ri=document.getElementById('wr-adhoc-'+id);if(ri)ri.value=ex.reps||'';
+      var wi=document.getElementById('wt-adhoc-'+id);if(wi)wi.value=ex.weight||'';
+      if(ni&&typeof _syncRowThumb==='function')_syncRowThumb(ni);
+    });
+    try{_setupBlockDrag(container);}catch(e){}
+    try{saveDraftCoach();}catch(e){}
+  })();
+};
 function openEditSession(cid, sessionId) {
   const sessMap = window['_sessMap_'+cid];
   const s = sessMap && sessMap[sessionId];
