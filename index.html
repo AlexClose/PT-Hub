@@ -901,9 +901,26 @@ const AUTH_URL = `${SB_URL}/auth/v1`;
 const AUTH_H = {'apikey':SB_KEY,'Content-Type':'application/json'};
 
 async function sb(method,table,body=null,params=''){
-  const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
-  if(!res.ok)throw new Error(await res.text());
-  const t=await res.text();return t?JSON.parse(t):[];
+  // Reads (GET) are idempotent — retry transient network/5xx failures with backoff so a
+  // momentary blip doesn't blank the dashboard. Writes are NOT retried (avoid dup inserts).
+  const attempts=(method==='GET')?3:1;
+  let lastErr;
+  for(let i=0;i<attempts;i++){
+    try{
+      const res=await fetch(`${SB_URL}/rest/v1/${table}${params}`,{method,headers:H,body:body?JSON.stringify(body):null});
+      if(!res.ok){
+        const txt=await res.text();
+        if(method==='GET'&&res.status>=500&&i<attempts-1){lastErr=new Error(txt);await new Promise(r=>setTimeout(r,400*(i+1)));continue;}
+        throw new Error(txt);
+      }
+      const t=await res.text();return t?JSON.parse(t):[];
+    }catch(e){
+      lastErr=e;
+      if(method==='GET'&&i<attempts-1){await new Promise(r=>setTimeout(r,400*(i+1)));continue;}
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 const db={
@@ -1282,7 +1299,9 @@ async function init(){
   setupSwipeGestures();
   showLoading('dashClients');
   try{
-    [clients,equipment,library,sharedPackages,runPrograms]=await Promise.all([db.getClients(),db.getEquipment(),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[]),db.getRunPrograms().catch(()=>[])]);
+    // Only the clients fetch is fatal — everything else degrades gracefully so a blip on a
+    // non-critical table (equipment/library/etc.) never blanks the whole dashboard.
+    [clients,equipment,library,sharedPackages,runPrograms]=await Promise.all([db.getClients(),db.getEquipment().catch(()=>[]),db.getLibrary().catch(()=>[]),db.getSharedPkgs().catch(()=>[]),db.getRunPrograms().catch(()=>[])]);
     const _tiers=JSON.parse(localStorage.getItem('bm_tiers')||'{}');
     clients.forEach(c=>{if(_tiers[c.id])c.tier=_tiers[c.id];});
     document.querySelector('#view-dashboard h2').textContent=`${getGreeting()} 👋`;
@@ -1293,7 +1312,7 @@ async function init(){
     restoreDraftCoach();
     saveSessionBackup();
   }catch(e){
-    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection and try again.</div></div>`;
+    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection.<br><button onclick="init()" style="margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">↻ Retry</button></div></div>`;
   }
 }
 
