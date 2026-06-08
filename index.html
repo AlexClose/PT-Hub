@@ -822,7 +822,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="applyTemplateTitle">Apply Template</div>
-    <p style="font-size:12px;color:rgba(180,200,230,0.45);margin-bottom:14px">Choose a client to apply this program to. Existing programs will be replaced.</p>
+    <p id="applyTemplateDesc" style="font-size:12px;color:rgba(180,200,230,0.45);margin-bottom:14px">Choose a client to apply this program to. Existing programs will be replaced.</p>
     <div id="applyClientList" style="max-height:60vh;overflow-y:auto"></div>
     <button class="btn btn-secondary btn-full" onclick="closeModal('applyTemplateModal')" style="margin-top:12px">Cancel</button>
   </div>
@@ -2422,9 +2422,12 @@ function renderClientModal(c){
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
             <div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:2px">${c.structured_program?c.structured_program.days.length+' workout days':'No program yet'}</div>
           </div>
-          ${c.structured_program
-            ?`<button onclick="openBuildProgram('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.55);border:1px solid rgba(100,160,255,0.12);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✎ Edit Structure</button>`
-            :`<button onclick="openBuildProgram('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 10px rgba(37,99,235,0.35)">+ Build Program</button>`}
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:stretch;">
+            ${c.structured_program
+              ?`<button onclick="openBuildProgram('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.55);border:1px solid rgba(100,160,255,0.12);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">✎ Edit Structure</button>`
+              :`<button onclick="openBuildProgram('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px;box-shadow:0 2px 10px rgba(37,99,235,0.35)">+ Build Program</button>`}
+            <button onclick="openAssignFromLibrary('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:8px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">📋 From Library</button>
+          </div>
         </div>
         <div id="prog-${c.id}">${progSection}</div>
       </div>
@@ -4009,6 +4012,45 @@ async function confirmApplyTemplate(clientId){
   }catch(e){toast('Error applying template');}
 }
 
+// Client-first flow: from a client's Program tab, pick a saved program from the library.
+function openAssignFromLibrary(clientId){
+  const c=clients.find(x=>x.id===clientId);if(!c)return;
+  window._pendingAssignClientId=clientId;
+  document.getElementById('applyTemplateTitle').textContent=`Assign Program — ${c.first}`;
+  const desc=document.getElementById('applyTemplateDesc');
+  if(desc)desc.textContent=c.structured_program?'Choose a saved program. This will replace the current one.':'Choose a saved program from your library.';
+  renderAssignTemplateList();openModal('applyTemplateModal');
+}
+function renderAssignTemplateList(){
+  const el=document.getElementById('applyClientList');if(!el)return;
+  if(!Array.isArray(templates)||!templates.length){
+    el.innerHTML='<p style="color:rgba(180,200,230,0.4);font-size:13px;line-height:1.5;">No saved programs yet.<br>Build a program, then tap “Save to Library”, or build one in the Programs tab.</p>';
+    return;
+  }
+  el.innerHTML=templates.map(t=>{
+    const dayCount=(t.days||[]).length;
+    return `<div onclick="confirmAssignFromLibrary('${t.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);margin-bottom:8px;cursor:pointer;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${dayCount} workout day${dayCount===1?'':'s'}</div>
+      </div>
+      <div style="font-size:12px;color:#7ec8ff;font-weight:600;white-space:nowrap">Assign →</div>
+    </div>`;}).join('');
+}
+async function confirmAssignFromLibrary(templateId){
+  const t=templates.find(x=>x.id===templateId);
+  const c=clients.find(x=>x.id===window._pendingAssignClientId);
+  if(!t||!c)return;
+  if(c.structured_program&&!confirm(`Replace ${c.first}'s current program with "${t.name}"?`))return;
+  const prog={days:JSON.parse(JSON.stringify(t.days)),started_at:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+  try{
+    await db.updateClient(c.id,{structured_program:prog});
+    c.structured_program=prog;closeModal('applyTemplateModal');
+    renderClientModal(c);openModal('clientModal');
+    toast(`"${t.name}" assigned to ${c.first} ✓`);
+  }catch(e){toast('Error assigning program');}
+}
+
 // ── AI PROGRAM ──
 
 // ── SCHEDULE PARSER (client portal utility) ──
@@ -4296,9 +4338,8 @@ function startClientPortal(id) {
               '<span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>' +
             '</div>' +
           '</div>' +
-          '<div style="background:rgba(26,31,40,0.8);border:1px solid rgba(100,160,255,0.18);border-radius:10px;padding:7px 13px;text-align:right;">' +
+          '<div style="background:rgba(26,31,40,0.8);border:1px solid rgba(100,160,255,0.18);border-radius:10px;padding:8px 14px;text-align:right;">' +
             '<div style="font-size:13px;font-weight:700;color:#fff;">' + (client ? client.first : 'Client') + '</div>' +
-            '<div style="font-size:10px;color:rgba(180,200,230,0.4);margin-top:1px;">' + (client ? (client.level || '') : '') + '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
