@@ -2886,38 +2886,14 @@ function setupExDrag(){
 // DOM-order builders (no array). `_blockDrag` flag lets the bottom-sheet swipe-to-dismiss
 // handlers stand down so they don't steal the gesture.
 var _blockDrag=false;
-// ---- TEMP DRAG DEBUG (remove once diagnosed) ----
-// On-screen HUD so we can see, on the iPhone, exactly where the drag gesture dies.
-// Toggle with window._DRAG_DEBUG. Distinguishes: pointerdown reaching the list,
-// the handle matching, pointermove firing, vs pointercancel (= iOS stole it for scroll).
-window._DRAG_DEBUG=true;
-function _dbg(msg){
-  if(!window._DRAG_DEBUG)return;
-  var d=document.getElementById('_dragdbg');
-  if(!d){
-    d=document.createElement('div');d.id='_dragdbg';
-    d.style.cssText='position:fixed;left:6px;bottom:6px;z-index:2147483647;max-width:88vw;max-height:42vh;overflow:auto;background:rgba(0,0,0,0.88);color:#3effa1;font:11px/1.35 ui-monospace,monospace;padding:7px 9px;border:1px solid #3effa1;border-radius:7px;white-space:pre-wrap;pointer-events:auto;';
-    d.addEventListener('click',function(){d.textContent='';});
-    document.body.appendChild(d);
-  }
-  d.textContent=(new Date().toLocaleTimeString().replace(/\s?[AP]M/,''))+'  '+msg+'\n'+d.textContent;
-}
 function _setupBlockDrag(list){
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
-  _dbg('setup OK on '+(list.id||'list'));
-  // Raw touchstart probe — confirms touches reach the list at all + event ordering vs pointerdown.
-  list.addEventListener('touchstart',function(e){
-    var h=e.target.closest&&e.target.closest('.ex-drag-handle');
-    _dbg('touchstart'+(h?' ON HANDLE':' (not handle: '+(e.target.className||e.target.tagName)+')'));
-  },{passive:true});
   list.addEventListener('pointerdown',function(e){
-    _dbg('pointerdown type='+e.pointerType+' tgt='+(e.target.className||e.target.tagName));
     var handle=e.target.closest&&e.target.closest('.ex-drag-handle');
-    if(!handle||!list.contains(handle)){_dbg('  -> no handle, bail');return;}
+    if(!handle||!list.contains(handle))return;
     e.preventDefault();
-    var block=handle.closest('[data-dragitem]'); if(!block){_dbg('  -> handle but NO [data-dragitem] block');return;}
-    _dbg('  -> grabbed block, capturing pointer '+e.pointerId);
+    var block=handle.closest('[data-dragitem]'); if(!block)return;
     var container=block.parentNode;
     _blockDrag=true;
     var rect=block.getBoundingClientRect();
@@ -2928,25 +2904,21 @@ function _setupBlockDrag(list){
     container.insertBefore(ph,block);
     block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='99999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';
     document.body.appendChild(block);
-    try{block.setPointerCapture(e.pointerId);_dbg('  -> setPointerCapture ok');}catch(err){_dbg('  -> setPointerCapture THREW: '+err);}
+    try{block.setPointerCapture(e.pointerId);}catch(err){}
     var sibsOf=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block&&c!==ph;});};
-    var moveCount=0;
     var onMove=function(ev){
-      moveCount++; if(moveCount<=3||moveCount%10===0)_dbg('  move #'+moveCount+' y='+Math.round(ev.clientY));
       block.style.top=(origTop+(ev.clientY-startY))+'px';
       var rows=sibsOf(),ins=null;
       for(var i=0;i<rows.length;i++){var rr=rows[i].getBoundingClientRect();if(ev.clientY<rr.top+rr.height/2){ins=rows[i];break;}}
       if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
     };
     var cleanup=function(){
-      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onCancel);
+      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',cleanup);block.removeEventListener('pointercancel',cleanup);
       block.setAttribute('style',origCss);
       container.insertBefore(block,ph);container.removeChild(ph);
       _blockDrag=false;
     };
-    var onUp=function(){_dbg('  POINTERUP (clean drop, '+moveCount+' moves)');cleanup();};
-    var onCancel=function(){_dbg('  !! POINTERCANCEL after '+moveCount+' moves (iOS stole it)');cleanup();};
-    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onCancel);
+    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',cleanup);block.addEventListener('pointercancel',cleanup);
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
@@ -5134,12 +5106,9 @@ function startClientPortal(id) {
       requestAnimationFrame(function(){ requestAnimationFrame(function(){ sheet.classList.add('sheet-open'); }); });
       if (!sheet._swipeListenersAdded) {
         sheet._swipeListenersAdded = true;
-        var _sy = 0, _sd = false, _swArmed = false;
-        // Only arm swipe-to-dismiss when the touch starts OFF interactive content (rows/inputs/
-        // buttons/handles) — so dragging or interacting with the workout never closes the sheet.
-        sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swArmed = !(e.target.closest && e.target.closest('input,textarea,select,button,.ex-drag-handle,[data-dragitem]')); if(!_swArmed)return; _sy = e.touches[0].clientY; _sd = false; }, {passive:true});
-        sheet.addEventListener('touchmove', function(e){ if(_blockDrag||!_swArmed)return; var dy = e.touches[0].clientY - _sy; if(dy>0&&sheet.scrollTop===0){_sd=true;sheet.style.transition='none';sheet.style.transform='translateY('+Math.min(dy,window.innerHeight*.85)+'px)';}},{passive:true});
-        sheet.addEventListener('touchend', function(e){ if(_blockDrag||!_swArmed){_swArmed=false;return;} var dy=e.changedTouches[0].clientY-_sy; if(_sd&&dy>100){sheet.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)';sheet.style.transform='translateY(100%)';window._closeWorkoutSheet(true);}else{sheet.style.transition='';sheet.style.transform='';} _sd=false; _swArmed=false;});
+        // Swipe-to-dismiss intentionally removed: an accidental downward swipe could discard an
+        // in-progress (even finished-but-unlogged) workout — catastrophic data loss. Close the
+        // sheet only via the deliberate "← Back" button.
       }
       window._closeWorkoutSheet = function(skipAnim) {
         var s = document.getElementById('workout-sheet'); if (!s) return;
@@ -5892,37 +5861,11 @@ function startClientPortal(id) {
     sheet.innerHTML = '<div id="workout-sheet-inner" style="padding-bottom:48px;"></div>';
     requestAnimationFrame(function(){requestAnimationFrame(function(){sheet.classList.add('sheet-open');});});
 
-    // Swipe-down to dismiss — attach once per sheet instance
+    // Swipe-to-dismiss intentionally removed: an accidental downward swipe could discard an
+    // in-progress (even finished-but-unlogged) workout — catastrophic data loss. Close the
+    // sheet only via the deliberate "← Back" button.
     if (!sheet._swipeListenersAdded) {
       sheet._swipeListenersAdded = true;
-      var _swipeTouchStartY = 0, _swipeDragging = false, _swipeArmed = false;
-      // Only arm swipe-to-dismiss when the touch starts OFF interactive content (rows/inputs/
-      // buttons/handles) — so dragging or interacting with the workout never closes the sheet.
-      sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swipeArmed = !(e.target.closest && e.target.closest('input,textarea,select,button,.ex-drag-handle,[data-dragitem]')); if(!_swipeArmed)return; _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
-      sheet.addEventListener('touchmove', function(e){
-        if(_blockDrag||!_swipeArmed)return;
-        var dy = e.touches[0].clientY - _swipeTouchStartY;
-        if (dy > 0 && sheet.scrollTop === 0) {
-          _swipeDragging = true;
-          sheet.style.transition = 'none';
-          sheet.style.transform = 'translateY(' + Math.min(dy, window.innerHeight * 0.85) + 'px)';
-        }
-      }, {passive:true});
-      sheet.addEventListener('touchend', function(e){
-        if(!_swipeArmed){_swipeDragging=false;return;}
-        var dy = e.changedTouches[0].clientY - _swipeTouchStartY;
-        if (_swipeDragging && dy > 100) {
-          // Explicitly animate to fully off-screen before calling close
-          sheet.style.transition = 'transform .32s cubic-bezier(0.32,0,0.2,1)';
-          sheet.style.transform = 'translateY(100%)';
-          window._closeWorkoutSheet(true);
-        } else {
-          sheet.style.transition = '';
-          sheet.style.transform = '';
-        }
-        _swipeDragging = false;
-        _swipeArmed = false;
-      });
     }
     var portalBody = document.getElementById('workout-sheet-inner');
 
