@@ -3694,6 +3694,15 @@ function _showSessionDetail(s, histCtx){
   let ov=document.getElementById('sess-detail-ov');
   if(!ov){ov=document.createElement('div');ov.id='sess-detail-ov';document.body.appendChild(ov);}
   ov.style.cssText='position:fixed;inset:0;z-index:8900;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';/* below the demo sheet (9000) so tapping a thumbnail opens the demo on top */
+  // Swipe-down to dismiss — safe here because this viewer is READ-ONLY (no in-progress data to lose),
+  // unlike the workout sheet. Lets you back out fast if you tapped the wrong session.
+  if(!ov._swipeAdded){
+    ov._swipeAdded=true;
+    var _sdy=0,_sdDrag=false;
+    ov.addEventListener('touchstart',function(e){ _sdy=e.touches[0].clientY; _sdDrag=false; },{passive:true});
+    ov.addEventListener('touchmove',function(e){ var dy=e.touches[0].clientY-_sdy; if(dy>0&&ov.scrollTop===0){ _sdDrag=true; ov.style.transition='none'; ov.style.transform='translateY('+Math.min(dy,window.innerHeight)+'px)'; ov.style.opacity=String(Math.max(1-dy/650,0.35)); } },{passive:true});
+    ov.addEventListener('touchend',function(e){ if(!_sdDrag)return; var dy=e.changedTouches[0].clientY-_sdy; if(dy>80){ ov.style.transition='transform .26s ease,opacity .26s ease'; ov.style.transform='translateY(100%)'; ov.style.opacity='0'; setTimeout(function(){var o=document.getElementById('sess-detail-ov');if(o)o.remove();},260); } else { ov.style.transition='transform .2s ease,opacity .2s ease'; ov.style.transform=''; ov.style.opacity=''; } _sdDrag=false; },{passive:true});
+  }
   const rows=workout.length?workout.map(ex=>{
     const disp=(ex.name||'').replace(/^SS\w+:\s*/i,'');
     const isSS=/^SS/i.test(ex.name||'');
@@ -3707,6 +3716,7 @@ function _showSessionDetail(s, histCtx){
     </div>`;
   }).join(''):'<div style="color:rgba(180,200,230,0.35);font-size:14px;padding:24px 0;text-align:center;">No exercises were logged for this session.</div>';
   ov.innerHTML=`<div style="max-width:520px;width:100%;margin:0 auto;padding:0 20px 60px;">
+    <div style="width:40px;height:4px;background:rgba(180,200,230,0.28);border-radius:2px;margin:10px auto 0;"></div>
     <div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:18px;">
       <button onclick="var o=document.getElementById('sess-detail-ov');if(o)o.remove();" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;">&times;</button>
       <div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:#fff;">Completed Session</div>
