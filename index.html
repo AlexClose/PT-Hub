@@ -538,7 +538,10 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
         <div class="page-label">Exercise & Equipment</div>
         <h2>Library</h2>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="libReviewBtn" class="btn btn-sm" onclick="toggleLibReview()" style="background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);">🔍 Review Demos</button>
+        <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
+      </div>
     </div>
     <div class="search-wrap"><input type="text" placeholder="Search exercises..." id="libSearch" oninput="renderLibrary()"></div>
     <div id="libraryList"></div>
@@ -3336,8 +3339,53 @@ async function deleteClient(id){
 }
 
 // ── LIBRARY ──
+// Review-demos mode: flip through every library exercise's animated demo to spot/fix wrong ones.
+var _libReview=false;
+function toggleLibReview(){
+  _libReview=!_libReview;
+  var b=document.getElementById('libReviewBtn');
+  if(b){b.textContent=_libReview?'✓ Done Reviewing':'🔍 Review Demos';b.style.background=_libReview?'rgba(67,217,162,0.15)':'rgba(79,163,232,0.12)';b.style.color=_libReview?'#43d9a2':'#7ec8ff';b.style.borderColor=_libReview?'rgba(67,217,162,0.4)':'rgba(79,163,232,0.3)';}
+  if(!_libReview&&window._libRevTimer){clearInterval(window._libRevTimer);window._libRevTimer=null;}
+  renderLibrary();
+}
+function _renderLibReview(){
+  var host=document.getElementById('libraryList');if(!host)return;
+  if(window._libRevTimer){clearInterval(window._libRevTimer);window._libRevTimer=null;}
+  if(!_exDb){host.innerHTML='<div style="text-align:center;padding:30px 0;color:rgba(180,200,230,0.4);font-size:13px;">Loading demos…</div>';_loadExDb().then(function(){if(_libReview)_renderLibReview();});return;}
+  var q=(document.getElementById('libSearch')?.value||'').toLowerCase().trim();
+  var list=Array.isArray(library)?library.filter(function(e){return !q||e.name.toLowerCase().includes(q);}):[];
+  if(!list.length){host.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>'+(library.length===0?'No exercises in your library yet':'No exercises match your search')+'</p></div>';return;}
+  var rows=list.map(function(e){
+    var dm=(e.demo_id&&_exById&&_exById[e.demo_id])?_exById[e.demo_id]:_exDbMatch(e.name);
+    var f0=e.image_url||(dm&&dm.images&&dm.images[0]?_EXDB_BASE+'exercises/'+dm.images[0]:'');
+    var f1=(!e.image_url&&dm&&dm.images&&dm.images[1])?_EXDB_BASE+'exercises/'+dm.images[1]:f0;
+    var demoLabel=e.demo_id&&dm?('🔗 '+dm.name):(e.image_url?'🖼 custom image':(dm?dm.name:'⚠ no demo matched'));
+    var mus=dm&&dm.primaryMuscles&&dm.primaryMuscles.length?dm.primaryMuscles.join(', '):'';
+    var noDemo=!f0;
+    var imgHtml=noDemo
+      ?'<span style="display:flex;width:74px;height:74px;border-radius:10px;background:#161b27;align-items:center;justify-content:center;font-size:30px;opacity:0.4;flex:0 0 auto;">🏋️</span>'
+      :'<img class="rev-demo-img" data-f0="'+_attr(f0)+'" data-f1="'+_attr(f1)+'" src="'+_attr(f0)+'" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';" style="width:74px;height:74px;object-fit:cover;border-radius:10px;background:#fff;flex:0 0 auto;display:block;">'
+        +'<span style="display:none;width:74px;height:74px;border-radius:10px;background:#161b27;align-items:center;justify-content:center;font-size:30px;opacity:0.4;flex:0 0 auto;">🏋️</span>';
+    return '<div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(15,19,23,0.5);border:1px solid '+(noDemo?'rgba(255,170,70,0.25)':'rgba(100,160,255,0.1)')+';border-radius:12px;margin-bottom:10px;">'
+      +'<div onclick="openExerciseDetail(\''+_jsq(e.name)+'\',\''+_jsq(e.name)+'\')" style="cursor:pointer;flex:0 0 auto;position:relative;">'+imgHtml+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_attr(e.name)+'</div>'
+        +'<div style="font-size:11px;color:'+(noDemo?'rgba(255,170,70,0.85)':'rgba(180,200,230,0.45)')+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_attr(demoLabel)+(mus?' · '+_attr(mus):'')+'</div>'
+      +'</div>'
+      +'<button onclick="openEditLibEx(\''+e.id+'\')" style="flex:0 0 auto;background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);border-radius:8px;padding:9px 14px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Fix ✎</button>'
+    +'</div>';
+  }).join('');
+  host.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.5);line-height:1.5;margin-bottom:14px;background:rgba(79,163,232,0.05);border:1px solid rgba(79,163,232,0.12);border-radius:10px;padding:11px 14px;">Check each demo against the exercise name. Tap an animation to view it large; tap <b style="color:#7ec8ff;">Fix ✎</b> to link the correct demo (or paste your own image/video).</div>'+rows;
+  // Animate all demos (alternate the start/end frame) so wrong movements are obvious at a glance.
+  window._libRevTimer=setInterval(function(){
+    var imgs=document.querySelectorAll('.rev-demo-img');
+    if(!imgs.length){clearInterval(window._libRevTimer);window._libRevTimer=null;return;}
+    for(var i=0;i<imgs.length;i++){var im=imgs[i],f0=im.getAttribute('data-f0'),f1=im.getAttribute('data-f1');if(f1&&f1!==f0)im.setAttribute('src',im.getAttribute('src')===f0?f1:f0);}
+  },900);
+}
 function renderLibrary(){
   try{_loadExDb();}catch(e){}
+  if(_libReview){_renderLibReview();return;}
   const q=(document.getElementById('libSearch')?.value||'').toLowerCase().trim();
   const filtered=library.filter(e=>e.name.toLowerCase().includes(q)||(e.muscle_group||'').toLowerCase().includes(q));
   const groups={};
