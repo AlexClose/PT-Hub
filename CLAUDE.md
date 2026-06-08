@@ -26,8 +26,20 @@ git push -u origin main
 
 ## Current Commit State
 
-**Current HEAD**: `e19ae47` — client→coach library sync, coach Library dataset search
-**File**: `index.html`, ~7740 lines
+**Current HEAD**: `4011e4c` — custom-workout drag-reorder (program-editor mechanism) + full-height handle
+**File**: `index.html`, ~7790 lines
+
+> **Standing rule (user instruction):** Shared features like the **custom-workout sheet** must be updated for **BOTH** the coaching portal and the client portal in the **same state**, unless the user says otherwise. When something is clearly a shared feature, update both sides in one pass and call it out — don't ask each time.
+
+### Session log (most recent work — newest first)
+- **Custom-workout drag-reorder** (`⠿` handle): added to BOTH client portal (`_addCustomExRow`/`_addCustomSupersetPair`) and coach ad-hoc log (`addAdHocExercise`/`addAdHocSuperset`). Shared engine `_setupBlockDrag(list)` (~line 2882) = **exact same pointer-event mechanism as the program editor's `setupExDrag`** (lift block to `position:fixed` on `<body>`, placeholder, `setPointerCapture` on block, reorder DOM on drop; DOM order IS the data — savers read rows in document order). Global `var _blockDrag` flag: the bottom-sheet **swipe-to-dismiss** handlers (`#workout-sheet`, ~lines 5129 & 5886) were stealing the touch (and firing iOS `pointercancel`), so they now `if(_blockDrag)return`. Rows restructured to `display:flex` with a **full-height `.ex-drag-handle` strip on the left** (matches program editor). **⚠️ User reported the drag still not working through several iterations (touch-events, no-reparent, etc.); latest `4011e4c` reverts to the proven program-editor pointer mechanism — NEEDS USER VERIFICATION. If still broken, add ▲/▼ buttons as a fallback.**
+- **Smarter PRs by estimated 1RM (Epley)**: all PR/PB detection now uses `_bestE1RM` (rep PRs at same weight count). Touched coach live badge + `confirmLogSession` (program-day + ad-hoc), client portal live badge + `_logPortalSession` + `_logCustomPortalSession`, and client Home "PRs this month" chip. PRs *tab* (`renderPortalPRs`) already used e1RM. +0.01 float tolerance.
+- **Tap a completed session to view it**: read-only `_showSessionDetail(s,histCtx)` (~line 3627, z-index 8900 so demo sheet 9000 layers above). Wired to coach session-history rows (`_coachShowSession`) and client Home "Recent Workouts" rows (`_portalShowSession`). Home "Recent Workouts" list made prominent (accent bar + Syne heading + "Tap to view").
+- **Abbreviation matching**: `exerciseToMuscles` normalizes `oh→overhead, db→dumbbell, bb→barbell, kb→kettlebell` at the top; `_EX_ABBR` got `oh→overhead`. Rescues pre-dropdown hand-typed programs ("OH DB Extension" etc.).
+- **DB-connect resilience**: `sb()` retries GET 3× w/ backoff; `init()` only fatal on clients fetch (equipment etc. `.catch`); error box has ↻ Retry + shows real error. (A "could not connect" report turned out to be the user's WiFi having no real internet path to Supabase.)
+- **Exercise accuracy pass**: fixed muscle-chart mappings (0 untracked of 182) + blank/wrong demos. Notable demo aliases added: chest dips, reverse lunge, sissy squat, overhead/OH DB extension→Standing_Dumbbell_Triceps_Extension, machine dip(s)→Dip_Machine, hamstring curl(s)→Lying/Seated_Leg_Curl. Muscle-chart fixes: close-grip lat pulldown→back, wrist curl→forearms, nordic curl→hamstrings, cable crossover/svend→chest, reverse pec deck→shoulders, hanging knee raise/flutter/wood chop/hollow/med-ball-slam→abs, rack pull→back, thruster/farmers walk/sled push/olympic lifts/burpee mapped.
+
+**Verification harness** (rebuild after edits to test matcher/muscle mapping in Node): a Python extractor pulls `_EX_ALIAS`, `_exDbMatch`, `exerciseToMuscles`, etc. from index.html into `/tmp/lib.js`; load with the dataset at `/tmp/exdb.json` (`curl raw.githubusercontent…free-exercise-db…/dist/exercises.json` with `dangerouslyDisableSandbox:true`). Used to verify exercise demos + muscle mappings without a browser.
 
 ### What is WORKING:
 - Auto-login (reads `bm_session` from localStorage via `startApp()`)
@@ -367,7 +379,8 @@ Tabs: **Overview / Program / Progress**
 
 ## Next Logical Steps (in priority order)
 
-1. **Smarter PRs (rep + estimated-1RM)** — client PRs (PRs tab card builder ~`renderPortalPRs` + the in-save PB detector in `_logCustomPortalSession`) currently compare `maxWeight()` ONLY, so rep progress at the same weight (135×5 → 135×8) is never rewarded. Reuse the existing `_bestE1RM` (Epley). Highest client-facing value, low cost.
+1. ✅ **DONE — Smarter PRs (estimated-1RM)**: all PR/PB detection now uses `_bestE1RM` (Epley) everywhere (see session log).
+   - **"Repeat this workout" button** (requested, not urgent): add a "＋ Log this again" button in the `_showSessionDetail` viewer that pre-loads the exercises into the custom-workout sheet. User said nice-to-have for custom workouts.
 2. **Continue `exerciseToMuscles()` calibration** via breakdown panel + untracked warning. Known untracked compound lifts: Thruster, Clean, Snatch, Farmers Walk, Sled Push (in `_EX_SUGGEST` but return `null` → untracked, no volume/PR credit).
 3. **Home streak / "on track this week"** nudge on the client Home tab (uses `_portalRecentSessions` + `_portalScheduleDays`, already loaded).
 4. **Body-tab goal lines** — target weight / body-fat % reference lines on the existing body-stat trend charts.
@@ -383,4 +396,4 @@ Tabs: **Overview / Program / Progress**
 
 ---
 
-**Last Updated:** HEAD `e19ae47` — client custom-workout now feeds the coach exercise library; coach Library search falls through to the 873-exercise free-exercise-db dataset (+ Add to library). Prior session: strength charts, portal exercise_logs fix + backfill, portal logging matched to coach, EMG-calibrated secondary-muscle weights + bench guard, muscle-diagram untrained-blend + quad-strand fix. Body-diagram anatomy deferred to the visual rework / SVG asset swap.
+**Last Updated:** HEAD `4011e4c` — see the **Session log** near the top for this session's work (custom-workout drag-reorder ⚠️needs verification, e1RM PRs, tap-to-view sessions, abbreviation matching, DB resilience, exercise accuracy pass). **Open items:** (1) confirm custom-workout drag actually works on the user's iPhone — if not, add ▲/▼ reorder buttons; (2) "repeat this workout" button; (3) simplifying program building (user says it still feels slow — ask which part drags); (4) ongoing `exerciseToMuscles` calibration as the user reports wrong demos/muscles while training. Prior session: client→coach library sync, coach Library dataset search, strength charts, portal exercise_logs fix + backfill, EMG-calibrated secondary-muscle weights, muscle-diagram untrained-blend. Body-diagram anatomy deferred to the visual rework / SVG asset swap.
