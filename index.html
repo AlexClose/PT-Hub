@@ -4477,11 +4477,9 @@ function startClientPortal(id) {
       var hasDays = prog && prog.days && prog.days.length > 0;
 
       var finish = function() {
-        var portalBody = document.getElementById('portal-body');
-        if (!hasDays && !window._portalRunProgram) {
-          portalBody.innerHTML = '<p style="color:rgba(180,200,230,0.4);font-size:15px;padding:20px 0;">No program set up yet. Ask your coach!</p>';
-          return;
-        }
+        // Always build the full tabbed portal — even with no program, a client may log custom
+        // workouts daily. renderDayPicker defines the tab handlers and renders the Home tab;
+        // skipping it (the old "Ask your coach" dead-end) left the tab bar unresponsive.
         renderDayPicker(hasDays ? prog.days : []);
       };
 
