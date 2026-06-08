@@ -2196,7 +2196,7 @@ function renderClientModal(c){
   // Cache sessions by ID so Edit buttons can look them up by ID
   window['_sessMap_'+c.id]={};
   sessions.forEach(s=>{if(s.id)window['_sessMap_'+c.id][s.id]=s;});
-  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06)"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div>${s.id?`<button onclick="event.stopPropagation();openEditSession('${c.id}','${s.id}')" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 9px;cursor:pointer;font-family:Syne,sans-serif;flex-shrink:0;">Edit</button>`:''}</div>`;};
+  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div ${s.id?`onclick="window._coachShowSession('${c.id}','${s.id}')" `:''}style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06);cursor:${s.id?'pointer':'default'}"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div>${s.id?`<button onclick="event.stopPropagation();openEditSession('${c.id}','${s.id}')" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 9px;cursor:pointer;font-family:Syne,sans-serif;flex-shrink:0;">Edit</button>`:''}</div>`;};
   const buildSessHtml=dnm=>sessions.length===0
     ?'<div style="padding:10px 0;font-size:13px;color:rgba(180,200,230,0.3)">No sessions logged yet.</div>'
     :sessions.slice(0,3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
@@ -3622,6 +3622,44 @@ function confirmAddDay(){
 }
 
 // ── Edit completed session (coach only) ─────────────────────────────────────
+// Read-only viewer for a completed/logged session — shows exactly what was done
+// (exercises, sets/reps, weight) so a workout can be repeated later. Used by both portals.
+function _showSessionDetail(s, histCtx){
+  if(!s)return;
+  const workout=Array.isArray(s.workout)?s.workout:[];
+  const dayName=(workout[0]&&workout[0].day)||'';
+  let ov=document.getElementById('sess-detail-ov');
+  if(!ov){ov=document.createElement('div');ov.id='sess-detail-ov';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;z-index:8900;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';/* below the demo sheet (9000) so tapping a thumbnail opens the demo on top */
+  const rows=workout.length?workout.map(ex=>{
+    const disp=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+    const isSS=/^SS/i.test(ex.name||'');
+    return `<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid rgba(100,160,255,0.07);${isSS?'border-left:3px solid rgba(255,140,71,0.55);padding-left:12px;':''}">
+      ${_exThumbHTML(ex.name||'',disp,44,histCtx)}
+      <div style="flex:1;min-width:0;">
+        ${isSS?`<div style="font-size:9px;color:rgba(255,140,71,0.75);letter-spacing:1.5px;font-weight:700;margin-bottom:2px;">SUPERSET</div>`:''}
+        <div onclick="${histCtx&&histCtx.indexOf('coach:')===0?`_openExDetailCoach('${_jsq(ex.name||'')}','${_jsq(disp)}','${histCtx.slice(6)}')`:`window._openExDetailPortal&&window._openExDetailPortal('${_jsq(ex.name||'')}','${_jsq(disp)}')`}" style="font-size:15px;font-weight:600;color:#fff;cursor:pointer;">${disp}</div>
+        <div style="font-size:13px;color:rgba(180,200,230,0.55);margin-top:3px;">${ex.reps?`<span>${ex.reps}</span>`:''}${ex.reps&&ex.weight?' &nbsp;·&nbsp; ':''}${ex.weight?`<span style="color:#43d9a2;font-weight:700;">${ex.weight} lb</span>`:''}${!ex.reps&&!ex.weight?'<span style="opacity:.4">no sets logged</span>':''}</div>
+      </div>
+    </div>`;
+  }).join(''):'<div style="color:rgba(180,200,230,0.35);font-size:14px;padding:24px 0;text-align:center;">No exercises were logged for this session.</div>';
+  ov.innerHTML=`<div style="max-width:520px;width:100%;margin:0 auto;padding:0 20px 60px;">
+    <div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:18px;">
+      <button onclick="var o=document.getElementById('sess-detail-ov');if(o)o.remove();" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;">&times;</button>
+      <div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:#fff;">Completed Session</div>
+    </div>
+    <div style="font-size:12px;color:rgba(126,200,255,0.6);margin-bottom:2px;letter-spacing:.5px;">${s.date||''}</div>
+    ${dayName?`<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:#fff;margin-bottom:6px;">${dayName}</div>`:''}
+    <div style="font-size:12px;color:rgba(180,200,230,0.4);margin-bottom:16px;">${workout.length} exercise${workout.length!==1?'s':''}</div>
+    ${rows}
+    ${s.note&&s.note!==dayName?`<div style="margin-top:18px;background:rgba(79,163,232,0.06);border:1px solid rgba(79,163,232,0.16);border-radius:10px;padding:12px 14px;font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;"><span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);font-weight:700;display:block;margin-bottom:4px;">Note</span>${s.note}</div>`:''}
+  </div>`;
+  if(typeof _thumbsRefresh==='function')_thumbsRefresh();
+}
+window._showSessionDetail=_showSessionDetail;
+// Lookup wrappers so inline onclicks can resolve a session by id from either portal's cache
+window._coachShowSession=function(cid,id){var m=window['_sessMap_'+cid];if(m&&m[id])_showSessionDetail(m[id],'coach:'+cid);};
+window._portalShowSession=function(id){var s=(window._portalRecentSessions||[]).find(function(x){return String(x.id)===String(id);});if(s)_showSessionDetail(s,'portal');};
 function openEditSession(cid, sessionId) {
   const sessMap = window['_sessMap_'+cid];
   const s = sessMap && sessMap[sessionId];
@@ -4866,10 +4904,11 @@ function startClientPortal(id) {
           last5.forEach(function(s, i) {
             var wName = dayNameMap[s.date] || s.note || (s.workout && s.workout.length > 0 ? s.workout.length + ' exercise' + (s.workout.length !== 1 ? 's' : '') : 'Workout');
             var bdr = i < last5.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,0.04);' : '';
+            var tap = s.id ? 'onclick="window._portalShowSession(\'' + s.id + '\')" ' : '';
             rwHtml +=
-              '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;' + bdr + '">' +
+              '<div ' + tap + 'style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;' + bdr + (s.id?'cursor:pointer;':'') + '"' + (s.id?' onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'transparent\'"':'') + '>' +
                 '<div style="font-size:13px;color:rgba(232,237,245,0.7);font-weight:500;">' + s.date + '</div>' +
-                '<div style="font-size:13px;font-weight:600;color:rgba(180,200,230,0.5);">' + wName + '</div>' +
+                '<div style="display:flex;align-items:center;gap:8px;"><div style="font-size:13px;font-weight:600;color:rgba(180,200,230,0.5);">' + wName + '</div>' + (s.id?'<span style="font-size:14px;color:rgba(100,160,255,0.4);">&#9656;</span>':'') + '</div>' +
               '</div>';
           });
           rwHtml += '</div></div>';
