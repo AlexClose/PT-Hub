@@ -2879,68 +2879,46 @@ function setupExDrag(){
 // DOM order IS the data — both savers read rows in document order — so we just move the block.
 // Delegated on the list, so it covers rows/supersets added after setup. A row inside a superset
 // reorders within that superset; a standalone row or a whole superset moves among the top level.
-// Drag-to-reorder engine. Uses TOUCH events on iOS (Pointer Events let iOS hijack the
-// gesture into text-selection — the "highlights blue but won't move" symptom) and MOUSE
-// events on desktop. No reparenting: the block stays in place, follows the finger via a
-// transform, and the list reshuffles live with position re-anchoring. Move/end listeners
-// are attached to document ONCE; per-list we only bind the start trigger.
-var _blockDrag=null;
-function _bdReorder(ref){
-  var d=_blockDrag; if(!d||ref===d.block)return;
-  var before=d.block.getBoundingClientRect().top;
-  d.container.insertBefore(d.block,ref);
-  var after=d.block.getBoundingClientRect().top;
-  d.anchorY+=(after-before); // keep the block under the finger across the DOM move
-  d.block.style.transform='translateY('+(d.lastY-d.anchorY)+'px)';
-}
-function _bdMove(clientY){
-  var d=_blockDrag; if(!d)return;
-  d.lastY=clientY;
-  d.block.style.transform='translateY('+(clientY-d.anchorY)+'px)';
-  var ss=Array.prototype.filter.call(d.container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==d.block;});
-  for(var i=0;i<ss.length;i++){
-    var rr=ss[i].getBoundingClientRect(),mid=rr.top+rr.height/2;
-    var sibFollows=(d.block.compareDocumentPosition(ss[i])&Node.DOCUMENT_POSITION_FOLLOWING)!==0;
-    if(clientY<mid&&!sibFollows){_bdReorder(ss[i]);break;}
-    if(clientY>mid&&sibFollows){_bdReorder(ss[i].nextSibling);break;}
-  }
-}
-function _bdEnd(){
-  var d=_blockDrag; if(!d)return;
-  d.block.setAttribute('style',d.origCss);
-  document.body.style.webkitUserSelect='';document.body.style.userSelect='';
-  _blockDrag=null;
-}
-function _bdBegin(handle,clientY){
-  var block=handle.closest('[data-dragitem]'); if(!block)return false;
-  var origCss=block.getAttribute('style')||'';
-  block.style.transition='none';block.style.position='relative';block.style.zIndex='9999';
-  block.style.boxShadow='0 12px 40px rgba(0,0,0,0.6)';block.style.opacity='0.95';
-  document.body.style.webkitUserSelect='none';document.body.style.userSelect='none';
-  _blockDrag={block:block,container:block.parentNode,anchorY:clientY,lastY:clientY,origCss:origCss};
-  return true;
-}
-// document-level move/end listeners — attached exactly once
-(function(){
-  if(window._bdGlobalBound)return; window._bdGlobalBound=true;
-  document.addEventListener('touchmove',function(e){ if(!_blockDrag)return; e.preventDefault(); _bdMove(e.touches[0].clientY); },{passive:false});
-  document.addEventListener('touchend',_bdEnd);
-  document.addEventListener('touchcancel',_bdEnd);
-  document.addEventListener('mousemove',function(e){ if(_blockDrag)_bdMove(e.clientY); });
-  document.addEventListener('mouseup',_bdEnd);
-})();
+// Drag-to-reorder engine — the SAME pointer-event mechanism as the program editor's
+// setupExDrag (proven to work): on pointerdown on a handle, lift the block to a fixed
+// position on <body>, leave a placeholder, capture the pointer on the block, and move a
+// placeholder among siblings; on drop, slot the block where the placeholder is. Works for
+// DOM-order builders (no array). `_blockDrag` flag lets the bottom-sheet swipe-to-dismiss
+// handlers stand down so they don't steal the gesture.
+var _blockDrag=false;
 function _setupBlockDrag(list){
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
-  list.addEventListener('touchstart',function(e){
+  list.addEventListener('pointerdown',function(e){
     var handle=e.target.closest&&e.target.closest('.ex-drag-handle');
-    if(!handle||!list.contains(handle)||!e.touches[0])return;
-    if(_bdBegin(handle,e.touches[0].clientY))e.preventDefault();
-  },{passive:false});
-  list.addEventListener('mousedown',function(e){
-    var handle=e.target.closest('.ex-drag-handle');
     if(!handle||!list.contains(handle))return;
-    if(_bdBegin(handle,e.clientY))e.preventDefault();
+    e.preventDefault();
+    var block=handle.closest('[data-dragitem]'); if(!block)return;
+    var container=block.parentNode;
+    _blockDrag=true;
+    var rect=block.getBoundingClientRect();
+    var startY=e.clientY,origTop=rect.top;
+    var origCss=block.getAttribute('style')||'';
+    var ph=document.createElement('div');
+    ph.style.cssText='height:'+block.offsetHeight+'px;margin:'+getComputedStyle(block).margin+';border:2px dashed rgba(79,163,232,0.5);border-radius:12px;background:rgba(79,163,232,0.07);box-sizing:border-box;';
+    container.insertBefore(ph,block);
+    block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='99999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';
+    document.body.appendChild(block);
+    try{block.setPointerCapture(e.pointerId);}catch(_){}
+    var sibsOf=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block&&c!==ph;});};
+    var onMove=function(ev){
+      block.style.top=(origTop+(ev.clientY-startY))+'px';
+      var rows=sibsOf(),ins=null;
+      for(var i=0;i<rows.length;i++){var rr=rows[i].getBoundingClientRect();if(ev.clientY<rr.top+rr.height/2){ins=rows[i];break;}}
+      if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
+    };
+    var onUp=function(){
+      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onUp);
+      block.setAttribute('style',origCss);
+      container.insertBefore(block,ph);container.removeChild(ph);
+      _blockDrag=false;
+    };
+    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onUp);
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
@@ -3191,21 +3169,23 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   row.dataset.dragitem='1';
   if(supGroup)row.dataset.supGroup=supGroup;
   if(inWrap){
-    row.style.cssText='padding:14px;position:relative;'+(supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
+    row.style.cssText='position:relative;display:flex;align-items:stretch;'+(supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
   }else{
-    row.style.cssText='background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;position:relative;';
+    row.style.cssText='background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);margin-bottom:12px;position:relative;display:flex;align-items:stretch;overflow:hidden;';
   }
   const labelTag=inWrap?`<div style="font-size:10px;font-weight:700;color:rgba(126,200,255,0.45);letter-spacing:1.2px;margin-bottom:8px;">${supLabel}</div>`:'';
-  row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
+  row.innerHTML=`<div class="ex-drag-handle" title="Drag to reorder" style="align-self:stretch;display:flex;align-items:center;justify-content:center;padding:0 14px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(100,160,255,0.08);">⠿</div>`
+    +`<div style="flex:1;min-width:0;padding:14px;position:relative;">`
+    +`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:6px;right:4px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
     +labelTag
     +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-right:22px;">`
-    +`<div class="ex-drag-handle" title="Drag to reorder">⠿</div>`
     +_exThumbHTML('','',40,'coach:'+(pendingLogId||''))
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
     +`<div class="workout-inputs">`
     +`<div><input id="wr-adhoc-${n}" placeholder="3×10  ·  or 8,8,6"><div class="wi-label">Sets × Reps</div></div>`
     +`<div><input id="wt-adhoc-${n}" placeholder="135  ·  or 135,145,155"><div class="wi-label">Weight / Load</div></div>`
+    +`</div>`
     +`</div>`;
   container.appendChild(row);
   if(!isSS||supLabel==='B') setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
@@ -5181,22 +5161,24 @@ function startClientPortal(id) {
       row.dataset.dragitem = '1';
       if (supGroup) row.dataset.supGroup = supGroup;
       if (inWrap) {
-        row.style.cssText = 'padding:14px 16px;position:relative;' + (supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
+        row.style.cssText = 'position:relative;display:flex;align-items:stretch;' + (supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
       } else {
-        row.style.cssText = 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;';
+        row.style.cssText = 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;margin-bottom:12px;position:relative;display:flex;align-items:stretch;overflow:hidden;';
       }
       var labelTag = inWrap ? '<div style="font-size:10px;font-weight:700;color:rgba(255,179,128,0.7);letter-spacing:1.2px;margin-bottom:8px;">'+supLabel+'</div>' : '';
       row.innerHTML =
-        '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;z-index:1;">×</button>' +
+        '<div class="ex-drag-handle" title="Drag to reorder" style="align-self:stretch;display:flex;align-items:center;justify-content:center;padding:0 14px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(100,160,255,0.08);">⠿</div>' +
+        '<div style="flex:1;min-width:0;padding:14px 16px;position:relative;">' +
+        '<button onclick="document.getElementById(\'custom-ex-row-'+n+'\').remove();window._updateCustomExCount();" style="position:absolute;top:6px;right:4px;background:none;border:none;color:rgba(180,200,230,0.25);font-size:18px;cursor:pointer;line-height:1;padding:4px 8px;z-index:1;">×</button>' +
         labelTag +
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-right:22px;">' +
-        '<div class="ex-drag-handle" title="Drag to reorder">⠿</div>' +
         _exThumbHTML('','',40,'portal') +
         '<input id="cex-name-'+n+'" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.18);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:Syne,sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);window._updateCustomExCount();" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();">' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
           '<div><input id="cex-reps-'+n+'" type="text" placeholder="3×10  ·  or 8,8,6" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:13px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">SETS × REPS</div></div>' +
           '<div><input id="cex-wt-'+n+'" type="text" placeholder="135  ·  or 135,145,155" style="width:100%;padding:12px;border:1px solid rgba(100,160,255,0.2);border-radius:10px;font-size:13px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\'" onblur="this.style.borderColor=\'rgba(100,160,255,0.2)\'"><div style="font-size:10px;text-align:center;color:rgba(180,200,230,0.4);margin-top:5px;letter-spacing:.5px;font-weight:600;">WEIGHT / LOAD</div></div>' +
+        '</div>' +
         '</div>';
       list.appendChild(row);
       window._updateCustomExCount();
