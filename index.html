@@ -1392,6 +1392,10 @@ var _EX_PLURAL={curls:'curl',rows:'row',raises:'raise',crunches:'crunch',flyes:'
 // Curated map: canonical exercise name (normalized) -> exact free-exercise-db id.
 // canonExName() collapses ~all typed names to these, so this is the reliable demo source.
 var _EX_ALIAS={
+// Demo corrections — the dataset's default demo for these names is the wrong movement/variant:
+'flutter kicks':'Scissor_Kick','flutter kick':'Scissor_Kick', // dataset "Flutter Kicks" is a prone glute move; flutter kicks is a supine ab move
+'leg press calf raise':'Calf_Press_On_The_Leg_Press_Machine', // was matching plain "Leg Press" (quads) via subset fallback
+'hack squat calf raise':'Standing_Calf_Raises','smith machine calf raise':'Smith_Machine_Calf_Raise', // calf-raise-on-machine variants were matching the machine, not calves
 'bench press':'Barbell_Bench_Press_-_Medium_Grip','incline bench press':'Barbell_Incline_Bench_Press_-_Medium_Grip','decline bench press':'Decline_Barbell_Bench_Press',
 'squat':'Barbell_Full_Squat','front squat':'Front_Barbell_Squat','goblet squat':'Goblet_Squat',
 'deadlift':'Barbell_Deadlift','romanian deadlift':'Romanian_Deadlift','sumo deadlift':'Sumo_Deadlift',
