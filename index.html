@@ -2886,14 +2886,38 @@ function setupExDrag(){
 // DOM-order builders (no array). `_blockDrag` flag lets the bottom-sheet swipe-to-dismiss
 // handlers stand down so they don't steal the gesture.
 var _blockDrag=false;
+// ---- TEMP DRAG DEBUG (remove once diagnosed) ----
+// On-screen HUD so we can see, on the iPhone, exactly where the drag gesture dies.
+// Toggle with window._DRAG_DEBUG. Distinguishes: pointerdown reaching the list,
+// the handle matching, pointermove firing, vs pointercancel (= iOS stole it for scroll).
+window._DRAG_DEBUG=true;
+function _dbg(msg){
+  if(!window._DRAG_DEBUG)return;
+  var d=document.getElementById('_dragdbg');
+  if(!d){
+    d=document.createElement('div');d.id='_dragdbg';
+    d.style.cssText='position:fixed;left:6px;bottom:6px;z-index:2147483647;max-width:88vw;max-height:42vh;overflow:auto;background:rgba(0,0,0,0.88);color:#3effa1;font:11px/1.35 ui-monospace,monospace;padding:7px 9px;border:1px solid #3effa1;border-radius:7px;white-space:pre-wrap;pointer-events:auto;';
+    d.addEventListener('click',function(){d.textContent='';});
+    document.body.appendChild(d);
+  }
+  d.textContent=(new Date().toLocaleTimeString().replace(/\s?[AP]M/,''))+'  '+msg+'\n'+d.textContent;
+}
 function _setupBlockDrag(list){
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
+  _dbg('setup OK on '+(list.id||'list'));
+  // Raw touchstart probe — confirms touches reach the list at all + event ordering vs pointerdown.
+  list.addEventListener('touchstart',function(e){
+    var h=e.target.closest&&e.target.closest('.ex-drag-handle');
+    _dbg('touchstart'+(h?' ON HANDLE':' (not handle: '+(e.target.className||e.target.tagName)+')'));
+  },{passive:true});
   list.addEventListener('pointerdown',function(e){
+    _dbg('pointerdown type='+e.pointerType+' tgt='+(e.target.className||e.target.tagName));
     var handle=e.target.closest&&e.target.closest('.ex-drag-handle');
-    if(!handle||!list.contains(handle))return;
+    if(!handle||!list.contains(handle)){_dbg('  -> no handle, bail');return;}
     e.preventDefault();
-    var block=handle.closest('[data-dragitem]'); if(!block)return;
+    var block=handle.closest('[data-dragitem]'); if(!block){_dbg('  -> handle but NO [data-dragitem] block');return;}
+    _dbg('  -> grabbed block, capturing pointer '+e.pointerId);
     var container=block.parentNode;
     _blockDrag=true;
     var rect=block.getBoundingClientRect();
@@ -2904,21 +2928,25 @@ function _setupBlockDrag(list){
     container.insertBefore(ph,block);
     block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='99999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';
     document.body.appendChild(block);
-    try{block.setPointerCapture(e.pointerId);}catch(_){}
+    try{block.setPointerCapture(e.pointerId);_dbg('  -> setPointerCapture ok');}catch(err){_dbg('  -> setPointerCapture THREW: '+err);}
     var sibsOf=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block&&c!==ph;});};
+    var moveCount=0;
     var onMove=function(ev){
+      moveCount++; if(moveCount<=3||moveCount%10===0)_dbg('  move #'+moveCount+' y='+Math.round(ev.clientY));
       block.style.top=(origTop+(ev.clientY-startY))+'px';
       var rows=sibsOf(),ins=null;
       for(var i=0;i<rows.length;i++){var rr=rows[i].getBoundingClientRect();if(ev.clientY<rr.top+rr.height/2){ins=rows[i];break;}}
       if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
     };
-    var onUp=function(){
-      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onUp);
+    var cleanup=function(){
+      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onCancel);
       block.setAttribute('style',origCss);
       container.insertBefore(block,ph);container.removeChild(ph);
       _blockDrag=false;
     };
-    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onUp);
+    var onUp=function(){_dbg('  POINTERUP (clean drop, '+moveCount+' moves)');cleanup();};
+    var onCancel=function(){_dbg('  !! POINTERCANCEL after '+moveCount+' moves (iOS stole it)');cleanup();};
+    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onCancel);
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
