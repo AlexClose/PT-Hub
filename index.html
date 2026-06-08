@@ -351,7 +351,7 @@ display:flex;align-items:center;justify-content:space-between;
 .edit-ex-actions{display:flex;gap:6px;flex-wrap:wrap;}
 .mchip{font-size:12px;font-weight:600;color:rgba(180,200,230,0.6);background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.2);border-radius:20px;padding:6px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;}
 .mchip.sel{background:#2563eb;border-color:#2563eb;color:#fff;}
-.ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
+.ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
 .ex-drag-handle:active{cursor:grabbing;}
 
 /* ── LOADING ── */
@@ -2879,51 +2879,68 @@ function setupExDrag(){
 // DOM order IS the data — both savers read rows in document order — so we just move the block.
 // Delegated on the list, so it covers rows/supersets added after setup. A row inside a superset
 // reorders within that superset; a standalone row or a whole superset moves among the top level.
+// Drag-to-reorder engine. Uses TOUCH events on iOS (Pointer Events let iOS hijack the
+// gesture into text-selection — the "highlights blue but won't move" symptom) and MOUSE
+// events on desktop. No reparenting: the block stays in place, follows the finger via a
+// transform, and the list reshuffles live with position re-anchoring. Move/end listeners
+// are attached to document ONCE; per-list we only bind the start trigger.
+var _blockDrag=null;
+function _bdReorder(ref){
+  var d=_blockDrag; if(!d||ref===d.block)return;
+  var before=d.block.getBoundingClientRect().top;
+  d.container.insertBefore(d.block,ref);
+  var after=d.block.getBoundingClientRect().top;
+  d.anchorY+=(after-before); // keep the block under the finger across the DOM move
+  d.block.style.transform='translateY('+(d.lastY-d.anchorY)+'px)';
+}
+function _bdMove(clientY){
+  var d=_blockDrag; if(!d)return;
+  d.lastY=clientY;
+  d.block.style.transform='translateY('+(clientY-d.anchorY)+'px)';
+  var ss=Array.prototype.filter.call(d.container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==d.block;});
+  for(var i=0;i<ss.length;i++){
+    var rr=ss[i].getBoundingClientRect(),mid=rr.top+rr.height/2;
+    var sibFollows=(d.block.compareDocumentPosition(ss[i])&Node.DOCUMENT_POSITION_FOLLOWING)!==0;
+    if(clientY<mid&&!sibFollows){_bdReorder(ss[i]);break;}
+    if(clientY>mid&&sibFollows){_bdReorder(ss[i].nextSibling);break;}
+  }
+}
+function _bdEnd(){
+  var d=_blockDrag; if(!d)return;
+  d.block.setAttribute('style',d.origCss);
+  document.body.style.webkitUserSelect='';document.body.style.userSelect='';
+  _blockDrag=null;
+}
+function _bdBegin(handle,clientY){
+  var block=handle.closest('[data-dragitem]'); if(!block)return false;
+  var origCss=block.getAttribute('style')||'';
+  block.style.transition='none';block.style.position='relative';block.style.zIndex='9999';
+  block.style.boxShadow='0 12px 40px rgba(0,0,0,0.6)';block.style.opacity='0.95';
+  document.body.style.webkitUserSelect='none';document.body.style.userSelect='none';
+  _blockDrag={block:block,container:block.parentNode,anchorY:clientY,lastY:clientY,origCss:origCss};
+  return true;
+}
+// document-level move/end listeners — attached exactly once
+(function(){
+  if(window._bdGlobalBound)return; window._bdGlobalBound=true;
+  document.addEventListener('touchmove',function(e){ if(!_blockDrag)return; e.preventDefault(); _bdMove(e.touches[0].clientY); },{passive:false});
+  document.addEventListener('touchend',_bdEnd);
+  document.addEventListener('touchcancel',_bdEnd);
+  document.addEventListener('mousemove',function(e){ if(_blockDrag)_bdMove(e.clientY); });
+  document.addEventListener('mouseup',_bdEnd);
+})();
 function _setupBlockDrag(list){
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
-  list.addEventListener('pointerdown',function(e){
+  list.addEventListener('touchstart',function(e){
+    var handle=e.target.closest&&e.target.closest('.ex-drag-handle');
+    if(!handle||!list.contains(handle)||!e.touches[0])return;
+    if(_bdBegin(handle,e.touches[0].clientY))e.preventDefault();
+  },{passive:false});
+  list.addEventListener('mousedown',function(e){
     var handle=e.target.closest('.ex-drag-handle');
     if(!handle||!list.contains(handle))return;
-    e.preventDefault();
-    var block=handle.closest('[data-dragitem]'); if(!block)return;
-    var container=block.parentNode;
-    var pid=e.pointerId;
-    var anchorY=e.clientY,lastY=e.clientY;
-    var origCss=block.getAttribute('style')||'';
-    // No reparenting (iOS fires pointercancel when an element is moved to <body> mid-touch).
-    // Keep the block in place, follow the finger with a transform, and reshuffle the list live.
-    block.style.transition='none';block.style.position='relative';block.style.zIndex='9999';
-    block.style.boxShadow='0 12px 40px rgba(0,0,0,0.6)';block.style.opacity='0.95';
-    try{handle.setPointerCapture(pid);}catch(_){}
-    var sibs=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block;});};
-    var reorder=function(ref){
-      if(ref===block)return;
-      var before=block.getBoundingClientRect().top;
-      container.insertBefore(block,ref);
-      var after=block.getBoundingClientRect().top;
-      anchorY+=(after-before); // keep the block visually under the finger across the DOM move
-      block.style.transform='translateY('+(lastY-anchorY)+'px)';
-    };
-    var onMove=function(ev){
-      if(ev.pointerId!==pid)return;
-      lastY=ev.clientY;
-      block.style.transform='translateY('+(lastY-anchorY)+'px)';
-      var ss=sibs();
-      for(var i=0;i<ss.length;i++){
-        var rr=ss[i].getBoundingClientRect(),mid=rr.top+rr.height/2;
-        var sibFollows=(block.compareDocumentPosition(ss[i])&Node.DOCUMENT_POSITION_FOLLOWING)!==0;
-        if(lastY<mid&&!sibFollows){reorder(ss[i]);break;}
-        if(lastY>mid&&sibFollows){reorder(ss[i].nextSibling);break;}
-      }
-    };
-    var onUp=function(ev){
-      if(ev&&ev.pointerId!==undefined&&ev.pointerId!==pid)return;
-      handle.removeEventListener('pointermove',onMove);handle.removeEventListener('pointerup',onUp);handle.removeEventListener('pointercancel',onUp);
-      try{handle.releasePointerCapture(pid);}catch(_){}
-      block.setAttribute('style',origCss);
-    };
-    handle.addEventListener('pointermove',onMove);handle.addEventListener('pointerup',onUp);handle.addEventListener('pointercancel',onUp);
+    if(_bdBegin(handle,e.clientY))e.preventDefault();
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
