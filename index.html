@@ -1390,7 +1390,7 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 // ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
 var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
 var _exDb=null,_exDbIdx=null,_exById=null,_exDbLoading=null,_exDemoTimer=null,_exTokIdx=null,_EX_ALIAS_TOK=null,_EX_ALIAS_TOKLIST=null;
-var _EX_ABBR={db:'dumbbell',bb:'barbell',kb:'kettlebell',ohp:'overhead press',sldl:'romanian deadlift',rdl:'romanian deadlift'};
+var _EX_ABBR={db:'dumbbell',bb:'barbell',kb:'kettlebell',oh:'overhead',ohp:'overhead press',sldl:'romanian deadlift',rdl:'romanian deadlift'};
 var _EX_PLURAL={curls:'curl',rows:'row',raises:'raise',crunches:'crunch',flyes:'fly',flies:'fly',flys:'fly',presses:'press',pushdowns:'pushdown',extensions:'extension',lunges:'lunge',pushups:'pushup',pullups:'pullup',chinups:'chinup',situps:'situp',dips:'dip',kickbacks:'kickback',shrugs:'shrug',swings:'swing',thrusters:'thruster',twists:'twist',ups:'up',squats:'squat',deadlifts:'deadlift',pulldowns:'pulldown',pullovers:'pullover',slams:'slam',jumps:'jump',climbers:'climber',kicks:'kick',planks:'plank',extension:'extension'};
 // Curated map: canonical exercise name (normalized) -> exact free-exercise-db id.
 // canonExName() collapses ~all typed names to these, so this is the reliable demo source.
@@ -1400,6 +1400,8 @@ var _EX_ALIAS={
 'leg press calf raise':'Calf_Press_On_The_Leg_Press_Machine', // was matching plain "Leg Press" (quads) via subset fallback
 'hack squat calf raise':'Standing_Calf_Raises','smith machine calf raise':'Smith_Machine_Calf_Raise', // calf-raise-on-machine variants were matching the machine, not calves
 'chest dips':'Dips_-_Chest_Version','reverse lunge':'Dumbbell_Rear_Lunge','sissy squat':'Weighted_Sissy_Squat', // were blank — now mapped to correct demos
+'overhead dumbbell extension':'Standing_Dumbbell_Triceps_Extension','overhead db extension':'Standing_Dumbbell_Triceps_Extension','oh db extension':'Standing_Dumbbell_Triceps_Extension','dumbbell overhead extension':'Standing_Dumbbell_Triceps_Extension', // "OH DB Extension" from programs was blank
+'machine dips':'Dip_Machine','machine dip':'Dip_Machine', // lock the machine-dip demo so it doesn't depend on token fallback
 'bench press':'Barbell_Bench_Press_-_Medium_Grip','incline bench press':'Barbell_Incline_Bench_Press_-_Medium_Grip','decline bench press':'Decline_Barbell_Bench_Press',
 'squat':'Barbell_Full_Squat','front squat':'Front_Barbell_Squat','goblet squat':'Goblet_Squat',
 'deadlift':'Barbell_Deadlift','romanian deadlift':'Romanian_Deadlift','sumo deadlift':'Sumo_Deadlift',
@@ -6675,6 +6677,9 @@ async function openProgressReport(cid) {
 // ── MUSCLE HEATMAP ──
 function exerciseToMuscles(name) {
   var n=(name||'').toLowerCase();
+  // Normalize common shorthand coaches type in programs so every rule below sees full words
+  // (e.g. "OH DB Extension" -> "overhead dumbbell extension", "BB Row" -> "barbell row")
+  n=n.replace(/\boh\b/g,'overhead').replace(/\bdb\b/g,'dumbbell').replace(/\bbb\b/g,'barbell').replace(/\bkb\b/g,'kettlebell');
   // Returns [{muscle, weight}] — weight 1.0 = primary, 0.5 = secondary
   // Forearms — wrist work (BEFORE the curl→biceps rule so "wrist curl" isn't tagged biceps)
   if(/wrist curl|wrist extension|\bforearm|wrist roller|reverse wrist/.test(n))
