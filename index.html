@@ -5134,10 +5134,12 @@ function startClientPortal(id) {
       requestAnimationFrame(function(){ requestAnimationFrame(function(){ sheet.classList.add('sheet-open'); }); });
       if (!sheet._swipeListenersAdded) {
         sheet._swipeListenersAdded = true;
-        var _sy = 0, _sd = false;
-        sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _sy = e.touches[0].clientY; _sd = false; }, {passive:true});
-        sheet.addEventListener('touchmove', function(e){ if(_blockDrag)return; var dy = e.touches[0].clientY - _sy; if(dy>0&&sheet.scrollTop===0){_sd=true;sheet.style.transition='none';sheet.style.transform='translateY('+Math.min(dy,window.innerHeight*.85)+'px)';}},{passive:true});
-        sheet.addEventListener('touchend', function(e){ if(_blockDrag)return; var dy=e.changedTouches[0].clientY-_sy; if(_sd&&dy>100){sheet.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)';sheet.style.transform='translateY(100%)';window._closeWorkoutSheet(true);}else{sheet.style.transition='';sheet.style.transform='';} _sd=false;});
+        var _sy = 0, _sd = false, _swArmed = false;
+        // Only arm swipe-to-dismiss when the touch starts OFF interactive content (rows/inputs/
+        // buttons/handles) — so dragging or interacting with the workout never closes the sheet.
+        sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swArmed = !(e.target.closest && e.target.closest('input,textarea,select,button,.ex-drag-handle,[data-dragitem]')); if(!_swArmed)return; _sy = e.touches[0].clientY; _sd = false; }, {passive:true});
+        sheet.addEventListener('touchmove', function(e){ if(_blockDrag||!_swArmed)return; var dy = e.touches[0].clientY - _sy; if(dy>0&&sheet.scrollTop===0){_sd=true;sheet.style.transition='none';sheet.style.transform='translateY('+Math.min(dy,window.innerHeight*.85)+'px)';}},{passive:true});
+        sheet.addEventListener('touchend', function(e){ if(_blockDrag||!_swArmed){_swArmed=false;return;} var dy=e.changedTouches[0].clientY-_sy; if(_sd&&dy>100){sheet.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)';sheet.style.transform='translateY(100%)';window._closeWorkoutSheet(true);}else{sheet.style.transition='';sheet.style.transform='';} _sd=false; _swArmed=false;});
       }
       window._closeWorkoutSheet = function(skipAnim) {
         var s = document.getElementById('workout-sheet'); if (!s) return;
@@ -5893,10 +5895,12 @@ function startClientPortal(id) {
     // Swipe-down to dismiss — attach once per sheet instance
     if (!sheet._swipeListenersAdded) {
       sheet._swipeListenersAdded = true;
-      var _swipeTouchStartY = 0, _swipeDragging = false;
-      sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
+      var _swipeTouchStartY = 0, _swipeDragging = false, _swipeArmed = false;
+      // Only arm swipe-to-dismiss when the touch starts OFF interactive content (rows/inputs/
+      // buttons/handles) — so dragging or interacting with the workout never closes the sheet.
+      sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swipeArmed = !(e.target.closest && e.target.closest('input,textarea,select,button,.ex-drag-handle,[data-dragitem]')); if(!_swipeArmed)return; _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
       sheet.addEventListener('touchmove', function(e){
-        if(_blockDrag)return;
+        if(_blockDrag||!_swipeArmed)return;
         var dy = e.touches[0].clientY - _swipeTouchStartY;
         if (dy > 0 && sheet.scrollTop === 0) {
           _swipeDragging = true;
@@ -5905,6 +5909,7 @@ function startClientPortal(id) {
         }
       }, {passive:true});
       sheet.addEventListener('touchend', function(e){
+        if(!_swipeArmed){_swipeDragging=false;return;}
         var dy = e.changedTouches[0].clientY - _swipeTouchStartY;
         if (_swipeDragging && dy > 100) {
           // Explicitly animate to fully off-screen before calling close
@@ -5916,6 +5921,7 @@ function startClientPortal(id) {
           sheet.style.transform = '';
         }
         _swipeDragging = false;
+        _swipeArmed = false;
       });
     }
     var portalBody = document.getElementById('workout-sheet-inner');
