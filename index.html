@@ -2875,6 +2875,43 @@ function setupExDrag(){
     row.addEventListener('pointercancel',onUp);
   });
 }
+// Shared drag-to-reorder for DOM-order builders (custom-workout sheet + coach ad-hoc log).
+// DOM order IS the data — both savers read rows in document order — so we just move the block.
+// Delegated on the list, so it covers rows/supersets added after setup. A row inside a superset
+// reorders within that superset; a standalone row or a whole superset moves among the top level.
+function _setupBlockDrag(list){
+  if(!list||list._dragSetup)return;
+  list._dragSetup=true;
+  list.addEventListener('pointerdown',function(e){
+    var handle=e.target.closest('.ex-drag-handle');
+    if(!handle||!list.contains(handle))return;
+    e.preventDefault();
+    var block=handle.closest('[data-dragitem]'); if(!block)return;
+    var container=block.parentNode;
+    var rect=block.getBoundingClientRect();
+    var startY=e.clientY,origTop=rect.top;
+    var origCss=block.getAttribute('style')||'';
+    var ph=document.createElement('div');
+    ph.style.cssText='height:'+block.offsetHeight+'px;margin-bottom:'+(getComputedStyle(block).marginBottom||'12px')+';border:2px dashed rgba(79,163,232,0.45);border-radius:12px;background:rgba(79,163,232,0.06);box-sizing:border-box;';
+    container.insertBefore(ph,block);
+    block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='9999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';block.style.pointerEvents='none';
+    document.body.appendChild(block);
+    try{handle.setPointerCapture(e.pointerId);}catch(_){}
+    var siblings=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block;});};
+    var onMove=function(ev){
+      block.style.top=(origTop+(ev.clientY-startY))+'px';
+      var rows=siblings(),ins=null;
+      for(var i=0;i<rows.length;i++){var rr=rows[i].getBoundingClientRect();if(ev.clientY<rr.top+rr.height/2){ins=rows[i];break;}}
+      if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
+    };
+    var onUp=function(){
+      handle.removeEventListener('pointermove',onMove);handle.removeEventListener('pointerup',onUp);handle.removeEventListener('pointercancel',onUp);
+      block.setAttribute('style',origCss);
+      container.insertBefore(block,ph);container.removeChild(ph);
+    };
+    handle.addEventListener('pointermove',onMove);handle.addEventListener('pointerup',onUp);handle.addEventListener('pointercancel',onUp);
+  });
+}
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
 function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:'',ss:null});renderEditExerciseList();}
 // Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
@@ -3064,6 +3101,7 @@ function updateLogWorkout(clientId){
   + `<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
   + `</div>`;
   try{_thumbsRefresh();}catch(e){}
+  try{_setupBlockDrag(document.getElementById('adhoc-exercises'));}catch(e){}
   saveDraftCoach();
 }
 
@@ -3119,6 +3157,7 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   const isSS=!!supGroup;
   const row=document.createElement('div');
   row.id='adhoc-row-'+n;
+  row.dataset.dragitem='1';
   if(supGroup)row.dataset.supGroup=supGroup;
   if(inWrap){
     row.style.cssText='padding:14px;position:relative;'+(supLabel==='A'?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
@@ -3128,7 +3167,8 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   const labelTag=inWrap?`<div style="font-size:10px;font-weight:700;color:rgba(126,200,255,0.45);letter-spacing:1.2px;margin-bottom:8px;">${supLabel}</div>`:'';
   row.innerHTML=`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
     +labelTag
-    +`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:22px;">`
+    +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-right:22px;">`
+    +`<div class="ex-drag-handle" title="Drag to reorder">⠿</div>`
     +_exThumbHTML('','',40,'coach:'+(pendingLogId||''))
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
@@ -3145,8 +3185,9 @@ function addAdHocSuperset(){
   const grp='ahs-'+(window._adhocSSN++);
   const wrap=document.createElement('div');
   wrap.dataset.ssWrap=grp;
+  wrap.dataset.dragitem='1';
   wrap.style.cssText='background:rgba(255,140,71,0.03);border:2px solid rgba(255,140,71,0.35);border-radius:12px;overflow:hidden;margin-bottom:12px;';
-  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,140,71,0.08);border-bottom:1px solid rgba(255,140,71,0.18);"><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#ffb380;letter-spacing:2px;white-space:nowrap;">⊕ SUPERSET</span><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div></div>';
+  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,140,71,0.08);border-bottom:1px solid rgba(255,140,71,0.18);"><div class="ex-drag-handle" title="Drag superset to reorder" style="color:rgba(255,179,128,0.55);padding:0 4px;">⠿</div><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#ffb380;letter-spacing:2px;white-space:nowrap;">⊕ SUPERSET</span><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div></div>';
   container.appendChild(wrap);
   addAdHocExercise(grp,'A',wrap);
   addAdHocExercise(grp,'B',wrap);
@@ -5149,52 +5190,9 @@ function startClientPortal(id) {
       rows.forEach(function(r){ var n = document.getElementById(r.id.replace('custom-ex-row-','cex-name-')); if(n && n.value.trim()) filled++; });
       lbl.textContent = filled + (filled===1?' exercise':' exercises');
     };
-    // Drag-to-reorder for the custom-workout builder. DOM-order IS the data (save reads rows
-    // in document order), so we just physically move the block. Delegated on the list, so it
-    // covers rows/supersets added later. A row inside a superset reorders within that superset;
-    // a standalone row or a whole superset reorders among the top-level blocks.
-    window._setupCustomDrag = function() {
-      var list = document.getElementById('custom-ex-list');
-      if (!list || list._dragSetup) return;
-      list._dragSetup = true;
-      list.addEventListener('pointerdown', function(e) {
-        var handle = e.target.closest('.ex-drag-handle');
-        if (!handle || !list.contains(handle)) return;
-        e.preventDefault();
-        var block = handle.closest('[data-dragitem]');
-        if (!block) return;
-        var container = block.parentNode;
-        var rect = block.getBoundingClientRect();
-        var startY = e.clientY, origTop = rect.top;
-        var origCss = block.getAttribute('style') || '';
-        var ph = document.createElement('div');
-        ph.style.cssText = 'height:' + block.offsetHeight + 'px;margin-bottom:' + (getComputedStyle(block).marginBottom || '12px') + ';border:2px dashed rgba(79,163,232,0.45);border-radius:12px;background:rgba(79,163,232,0.06);box-sizing:border-box;';
-        container.insertBefore(ph, block);
-        block.style.position = 'fixed'; block.style.top = origTop + 'px'; block.style.left = rect.left + 'px';
-        block.style.width = rect.width + 'px'; block.style.zIndex = '9999'; block.style.boxShadow = '0 12px 40px rgba(0,0,0,0.7)';
-        block.style.margin = '0'; block.style.pointerEvents = 'none';
-        document.body.appendChild(block);
-        try { handle.setPointerCapture(e.pointerId); } catch(_) {}
-        var siblings = function() { return Array.prototype.filter.call(container.children, function(c) { return c.nodeType === 1 && c.hasAttribute('data-dragitem') && c !== block; }); };
-        var onMove = function(ev) {
-          block.style.top = (origTop + (ev.clientY - startY)) + 'px';
-          var rows = siblings(), ins = null;
-          for (var i = 0; i < rows.length; i++) { var rr = rows[i].getBoundingClientRect(); if (ev.clientY < rr.top + rr.height / 2) { ins = rows[i]; break; } }
-          if (ins) container.insertBefore(ph, ins); else container.appendChild(ph);
-        };
-        var onUp = function() {
-          handle.removeEventListener('pointermove', onMove);
-          handle.removeEventListener('pointerup', onUp);
-          handle.removeEventListener('pointercancel', onUp);
-          block.setAttribute('style', origCss);
-          container.insertBefore(block, ph);
-          container.removeChild(ph);
-        };
-        handle.addEventListener('pointermove', onMove);
-        handle.addEventListener('pointerup', onUp);
-        handle.addEventListener('pointercancel', onUp);
-      });
-    };
+    // Drag-to-reorder for the custom-workout builder — uses the shared _setupBlockDrag helper
+    // (same behavior as the coach ad-hoc log builder).
+    window._setupCustomDrag = function() { _setupBlockDrag(document.getElementById('custom-ex-list')); };
     window._logCustomPortalSession = function() {
       var SUPABASE_URL = 'https://oneykldgivaqcrqmrqha.supabase.co';
       var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uZXlrbGRnaXZhcWNycW1ycWhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTQ4NTYsImV4cCI6MjA5MzU3MDg1Nn0.Os-XjWM6nJuFOLLQhBUH0DUL40So-jkpXGx9iBequyw';
