@@ -2888,28 +2888,42 @@ function _setupBlockDrag(list){
     e.preventDefault();
     var block=handle.closest('[data-dragitem]'); if(!block)return;
     var container=block.parentNode;
-    var rect=block.getBoundingClientRect();
-    var startY=e.clientY,origTop=rect.top;
+    var pid=e.pointerId;
+    var anchorY=e.clientY,lastY=e.clientY;
     var origCss=block.getAttribute('style')||'';
-    var ph=document.createElement('div');
-    ph.style.cssText='height:'+block.offsetHeight+'px;margin-bottom:'+(getComputedStyle(block).marginBottom||'12px')+';border:2px dashed rgba(79,163,232,0.45);border-radius:12px;background:rgba(79,163,232,0.06);box-sizing:border-box;';
-    container.insertBefore(ph,block);
-    block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='9999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';
-    document.body.appendChild(block);
-    try{block.setPointerCapture(e.pointerId);}catch(_){}
-    var siblings=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block;});};
+    // No reparenting (iOS fires pointercancel when an element is moved to <body> mid-touch).
+    // Keep the block in place, follow the finger with a transform, and reshuffle the list live.
+    block.style.transition='none';block.style.position='relative';block.style.zIndex='9999';
+    block.style.boxShadow='0 12px 40px rgba(0,0,0,0.6)';block.style.opacity='0.95';
+    try{handle.setPointerCapture(pid);}catch(_){}
+    var sibs=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block;});};
+    var reorder=function(ref){
+      if(ref===block)return;
+      var before=block.getBoundingClientRect().top;
+      container.insertBefore(block,ref);
+      var after=block.getBoundingClientRect().top;
+      anchorY+=(after-before); // keep the block visually under the finger across the DOM move
+      block.style.transform='translateY('+(lastY-anchorY)+'px)';
+    };
     var onMove=function(ev){
-      block.style.top=(origTop+(ev.clientY-startY))+'px';
-      var rows=siblings(),ins=null;
-      for(var i=0;i<rows.length;i++){var rr=rows[i].getBoundingClientRect();if(ev.clientY<rr.top+rr.height/2){ins=rows[i];break;}}
-      if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
+      if(ev.pointerId!==pid)return;
+      lastY=ev.clientY;
+      block.style.transform='translateY('+(lastY-anchorY)+'px)';
+      var ss=sibs();
+      for(var i=0;i<ss.length;i++){
+        var rr=ss[i].getBoundingClientRect(),mid=rr.top+rr.height/2;
+        var sibFollows=(block.compareDocumentPosition(ss[i])&Node.DOCUMENT_POSITION_FOLLOWING)!==0;
+        if(lastY<mid&&!sibFollows){reorder(ss[i]);break;}
+        if(lastY>mid&&sibFollows){reorder(ss[i].nextSibling);break;}
+      }
     };
-    var onUp=function(){
-      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onUp);
+    var onUp=function(ev){
+      if(ev&&ev.pointerId!==undefined&&ev.pointerId!==pid)return;
+      handle.removeEventListener('pointermove',onMove);handle.removeEventListener('pointerup',onUp);handle.removeEventListener('pointercancel',onUp);
+      try{handle.releasePointerCapture(pid);}catch(_){}
       block.setAttribute('style',origCss);
-      container.insertBefore(block,ph);container.removeChild(ph);
     };
-    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onUp);
+    handle.addEventListener('pointermove',onMove);handle.addEventListener('pointerup',onUp);handle.addEventListener('pointercancel',onUp);
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
