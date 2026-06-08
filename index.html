@@ -5126,9 +5126,9 @@ function startClientPortal(id) {
       if (!sheet._swipeListenersAdded) {
         sheet._swipeListenersAdded = true;
         var _sy = 0, _sd = false;
-        sheet.addEventListener('touchstart', function(e){ _sy = e.touches[0].clientY; _sd = false; }, {passive:true});
-        sheet.addEventListener('touchmove', function(e){ var dy = e.touches[0].clientY - _sy; if(dy>0&&sheet.scrollTop===0){_sd=true;sheet.style.transition='none';sheet.style.transform='translateY('+Math.min(dy,window.innerHeight*.85)+'px)';}},{passive:true});
-        sheet.addEventListener('touchend', function(e){ var dy=e.changedTouches[0].clientY-_sy; if(_sd&&dy>100){sheet.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)';sheet.style.transform='translateY(100%)';window._closeWorkoutSheet(true);}else{sheet.style.transition='';sheet.style.transform='';} _sd=false;});
+        sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _sy = e.touches[0].clientY; _sd = false; }, {passive:true});
+        sheet.addEventListener('touchmove', function(e){ if(_blockDrag)return; var dy = e.touches[0].clientY - _sy; if(dy>0&&sheet.scrollTop===0){_sd=true;sheet.style.transition='none';sheet.style.transform='translateY('+Math.min(dy,window.innerHeight*.85)+'px)';}},{passive:true});
+        sheet.addEventListener('touchend', function(e){ if(_blockDrag)return; var dy=e.changedTouches[0].clientY-_sy; if(_sd&&dy>100){sheet.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)';sheet.style.transform='translateY(100%)';window._closeWorkoutSheet(true);}else{sheet.style.transition='';sheet.style.transform='';} _sd=false;});
       }
       window._closeWorkoutSheet = function(skipAnim) {
         var s = document.getElementById('workout-sheet'); if (!s) return;
@@ -5883,8 +5883,9 @@ function startClientPortal(id) {
     if (!sheet._swipeListenersAdded) {
       sheet._swipeListenersAdded = true;
       var _swipeTouchStartY = 0, _swipeDragging = false;
-      sheet.addEventListener('touchstart', function(e){ _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
+      sheet.addEventListener('touchstart', function(e){ if(_blockDrag)return; _swipeTouchStartY = e.touches[0].clientY; _swipeDragging = false; }, {passive:true});
       sheet.addEventListener('touchmove', function(e){
+        if(_blockDrag)return;
         var dy = e.touches[0].clientY - _swipeTouchStartY;
         if (dy > 0 && sheet.scrollTop === 0) {
           _swipeDragging = true;
