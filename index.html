@@ -5190,11 +5190,26 @@ function startClientPortal(id) {
         if (!bsEl2) return;
         var entries = Array.isArray(data) ? data : [];
         if (entries.length === 0) {
+          var mCard = function(icon, label, desc, col) {
+            return '<div style="background:rgba(' + col + ',0.06);border:1px solid rgba(' + col + ',0.18);border-radius:14px;padding:14px 10px;text-align:center;">' +
+              '<div style="font-size:24px;margin-bottom:7px;">' + icon + '</div>' +
+              '<div style="font-size:12px;font-weight:800;color:rgba(' + col + ',0.95);margin-bottom:3px;">' + label + '</div>' +
+              '<div style="font-size:10px;color:rgba(180,200,230,0.4);line-height:1.4;">' + desc + '</div>' +
+            '</div>';
+          };
           bsEl2.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-              '<div style="font-size:13px;color:rgba(180,200,230,0.35);">No stats logged yet.</div>' +
+            '<div style="text-align:center;padding:10px 0 2px;">' +
+              '<div style="font-size:46px;margin-bottom:10px;filter:drop-shadow(0 0 18px rgba(79,163,232,0.3));">📊</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:21px;color:#fff;margin-bottom:7px;letter-spacing:0.2px;">Track Your Body Stats</div>' +
+              '<div style="font-size:13px;color:rgba(180,200,230,0.5);line-height:1.55;max-width:310px;margin:0 auto 20px;">Log your measurements over time and watch your progress turn into clear trend charts. You can also attach a body-scan photo.</div>' +
             '</div>' +
-            '<button onclick="window._openBodyStatSheet()" style="width:100%;margin-top:14px;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:14px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Stats</button>';
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;">' +
+              mCard('⚖️', 'Weight', 'Scale weight in lbs', '79,163,232') +
+              mCard('🔥', 'Body Fat', 'Body-fat %', '192,132,252') +
+              mCard('💪', 'Muscle', 'Muscle mass in lbs', '67,217,162') +
+            '</div>' +
+            '<button onclick="window._openBodyStatSheet()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:15px;font-family:Syne,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.3px;box-shadow:0 4px 18px rgba(37,99,235,0.35);">+ Log Your First Entry</button>' +
+            '<div style="text-align:center;font-size:11px;color:rgba(180,200,230,0.3);margin-top:10px;">Just your weight is enough to get started.</div>';
           return;
         }
         window._portalBsEntries = entries;
@@ -7576,7 +7591,11 @@ async function loadMuscleHeatmap(clientId,containerId,period){
       }else if(l.exercise_name){_unrecognized.add(l.exercise_name);}
     });
     if(!Object.values(scores).some(function(v){return v>0;})){
-      el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.25);text-align:center;padding:16px 0;">No exercise data for this period</div>';
+      // No data yet — still show the (blank) body map + every muscle group at 0 so the
+      // client sees what this page is and what fills in as they train.
+      el.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.45);text-align:center;padding:2px 0 14px;line-height:1.55;">Nothing logged for this period yet — your muscle map fills in as you train.</div>'
+        +renderMuscleDiagram({},1)
+        +_muscleBalanceHtml({},1);
       return;
     }
     // Determine weeks in period so colors reflect weekly-average vs RP targets
