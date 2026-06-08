@@ -1312,7 +1312,15 @@ async function init(){
     restoreDraftCoach();
     saveSessionBackup();
   }catch(e){
-    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database. Check your connection.<br><button onclick="init()" style="margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">↻ Retry</button></div></div>`;
+    // Surface the real cause so we can tell auth (401/JWT) vs paused project /
+    // network ("Failed to fetch") vs server (5xx) apart at a glance.
+    var detail=(e&&(e.message||e.toString()))||'unknown error';
+    var hint=/failed to fetch|networkerror|load failed/i.test(detail)?'Network unreachable or the Supabase project may be paused.'
+            :/jwt|401|apikey|unauthorized/i.test(detail)?'API key / auth was rejected.'
+            :/40[34]/.test(detail)?'Endpoint or table not found.'
+            :/5\d\d/.test(detail)?'Supabase server error.':'';
+    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database.${hint?' '+hint:''}<br><button onclick="init()" style="margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">↻ Retry</button><div style="margin-top:10px;font-size:11px;color:rgba(255,150,150,0.65);font-family:monospace;word-break:break-word;max-height:80px;overflow:auto;">${(detail+'').replace(/</g,'&lt;').slice(0,300)}</div></div></div>`;
+    console.error('[init] DB connect failed:',e);
   }
 }
 
