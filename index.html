@@ -1399,6 +1399,7 @@ var _EX_ALIAS={
 'flutter kicks':'Scissor_Kick','flutter kick':'Scissor_Kick', // dataset "Flutter Kicks" is a prone glute move; flutter kicks is a supine ab move
 'leg press calf raise':'Calf_Press_On_The_Leg_Press_Machine', // was matching plain "Leg Press" (quads) via subset fallback
 'hack squat calf raise':'Standing_Calf_Raises','smith machine calf raise':'Smith_Machine_Calf_Raise', // calf-raise-on-machine variants were matching the machine, not calves
+'chest dips':'Dips_-_Chest_Version','reverse lunge':'Dumbbell_Rear_Lunge','sissy squat':'Weighted_Sissy_Squat', // were blank — now mapped to correct demos
 'bench press':'Barbell_Bench_Press_-_Medium_Grip','incline bench press':'Barbell_Incline_Bench_Press_-_Medium_Grip','decline bench press':'Decline_Barbell_Bench_Press',
 'squat':'Barbell_Full_Squat','front squat':'Front_Barbell_Squat','goblet squat':'Goblet_Squat',
 'deadlift':'Barbell_Deadlift','romanian deadlift':'Romanian_Deadlift','sumo deadlift':'Sumo_Deadlift',
@@ -6675,11 +6676,31 @@ async function openProgressReport(cid) {
 function exerciseToMuscles(name) {
   var n=(name||'').toLowerCase();
   // Returns [{muscle, weight}] — weight 1.0 = primary, 0.5 = secondary
+  // Forearms — wrist work (BEFORE the curl→biceps rule so "wrist curl" isn't tagged biceps)
+  if(/wrist curl|wrist extension|\bforearm|wrist roller|reverse wrist/.test(n))
+    return[{muscle:'forearms',weight:1.0}];
+  // Olympic lifts — full posterior chain + legs + shoulders (clean / snatch / jerk)
+  if(/clean|snatch|\bjerk\b/.test(n)&&!/deadlift/.test(n))
+    return[{muscle:'quads',weight:0.8},{muscle:'glutes',weight:0.7},{muscle:'hamstrings',weight:0.6},{muscle:'back',weight:0.6},{muscle:'traps',weight:0.6},{muscle:'shoulders',weight:0.5}];
+  // Thruster — squat + overhead press
+  if(/thruster/.test(n))
+    return[{muscle:'quads',weight:1.0},{muscle:'shoulders',weight:0.6},{muscle:'glutes',weight:0.4}];
+  // Loaded carries — grip + traps
+  if(/farmer|suitcase carry|loaded carry/.test(n))
+    return[{muscle:'traps',weight:1.0},{muscle:'forearms',weight:0.8}];
+  // Sled push / prowler — quad-dominant
+  if(/sled push|sled press|prowler/.test(n))
+    return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.6}];
+  // Burpee — full-body conditioning
+  if(/burpee/.test(n))
+    return[{muscle:'quads',weight:0.6},{muscle:'chest',weight:0.5},{muscle:'abs',weight:0.4}];
   // Dips — triceps primary, chest secondary
   if(/\bdip\b|\bdips\b/.test(n))
     return[{muscle:'triceps',weight:1.0},{muscle:'chest',weight:0.5}];
-  // Triceps isolation (no chest involvement)
-  if(/tricep|skull.?crush|pushdown|close.?grip|overhead.*extension|tricep.*extension|french.?press/.test(n))
+  // Triceps isolation (no chest involvement). "close grip" alone is triceps (close-grip bench/pushup),
+  // but NOT when it's a close-grip pulldown/row/pull (those are back) — let those fall through.
+  if(/tricep|skull.?crush|pushdown|overhead.*extension|tricep.*extension|french.?press/.test(n)
+     || (/close.?grip/.test(n)&&!/pull|\brow\b/.test(n)))
     return[{muscle:'triceps',weight:1.0}];
   // Chin-up — back primary, biceps secondary (same as pull-up)
   if(/chin.?up/.test(n))
@@ -6687,11 +6708,11 @@ function exerciseToMuscles(name) {
   // Biceps isolation
   if(/bicep|hammer curl/.test(n))
     return[{muscle:'biceps',weight:1.0}];
-  if(/\bcurls?\b/.test(n)&&!/leg curl|hamstring|ham curl/.test(n))
+  if(/\bcurls?\b/.test(n)&&!/leg curl|hamstring|ham curl|nordic|wrist/.test(n))
     return[{muscle:'biceps',weight:1.0}];
-  // Chest fly / pec dec — isolation, no tricep involvement
+  // Chest fly / pec dec / cable crossover / svend — isolation, no tricep involvement
   // Exclude reverse/rear fly (rear delt) which also contains "fly"
-  if(!n.includes('reverse')&&!n.includes('rear')&&/chest.?fly|pec.?dec|pec.?deck|\bfly\b|\bflye\b/.test(n))
+  if(!n.includes('reverse')&&!n.includes('rear')&&/chest.?fly|pec.?dec|pec.?deck|crossover|svend|\bfly\b|\bflye\b/.test(n))
     return[{muscle:'chest',weight:1.0}];
   // Chest press — triceps secondary, shoulders (front delt) tertiary
   // Guard: "bench" alone must not grab hip thrusts / glute bridges / bench rows / bench step-ups
@@ -6704,8 +6725,8 @@ function exerciseToMuscles(name) {
   // Face pull — shoulders (rear delt) primary, traps secondary
   if(/face pull/.test(n))
     return[{muscle:'shoulders',weight:1.0},{muscle:'traps',weight:0.5}];
-  // Shoulders — rear delt isolation
-  if(/reverse.?fly|rear.?delt|pull.?apart/.test(n))
+  // Shoulders — rear delt isolation (reverse fly / rear delt / band pull-apart / reverse pec deck)
+  if(/reverse.?fly|rear.?delt|pull.?apart|reverse.?pec/.test(n))
     return[{muscle:'shoulders',weight:1.0}];
   // Shoulder isolation — lateral/front raise, no tricep involvement
   if(/lateral raise|front raise|arsenal.*lat/.test(n))
@@ -6729,7 +6750,7 @@ function exerciseToMuscles(name) {
   if(/\brow\b/.test(n)&&!/upright/.test(n))
     return[{muscle:'back',weight:1.0},{muscle:'traps',weight:0.6},{muscle:'biceps',weight:0.4},{muscle:'forearms',weight:0.25}];
   // Conventional deadlift — back primary, glutes + hamstrings secondary, traps + forearms tertiary
-  if(/\bdeadlift\b/.test(n)&&!/romanian|rdl|stiff/.test(n))
+  if((/\bdeadlift\b|rack.?pull/.test(n))&&!/romanian|rdl|stiff/.test(n))
     return[{muscle:'back',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5},{muscle:'traps',weight:0.25},{muscle:'forearms',weight:0.25}];
   // RDL — hamstrings primary, glutes + lower back secondary, forearms tertiary
   if(/romanian deadlift|rdl|stiff.?leg/.test(n))
@@ -6738,7 +6759,7 @@ function exerciseToMuscles(name) {
   if(/back extension|hyperextension|lower back|erector/.test(n))
     return[{muscle:'lower_back',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Abs
-  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|mountain climb|ab.?wheel|dead bug|pallof|v.?up|woodchop/.test(n))
+  if(/\bab\b|\babs\b|crunch|plank|sit.?up|core|russian twist|leg raise|knee raise|knee.?up|mountain climb|ab.?wheel|dead bug|pallof|v.?up|wood.?chop|flutter|hollow|\bslam\b|toe.?touch|bicycle/.test(n))
     return[{muscle:'abs',weight:1.0}];
   // Calves — BEFORE glutes so "donkey calf raise" doesn't hit glutes first
   if(/\bcalf\b|\bcalves\b/.test(n))
