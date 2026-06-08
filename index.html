@@ -1486,6 +1486,11 @@ function _exTokArr(s){
 }
 function _exSortKey(s){return _exTokArr(s).slice().sort().join(' ');}
 function _musColor(m){var g=_EXDB_MUS[(m||'').toLowerCase()];return g?(MUSCLE_COLORS[g]||'#7ec8ff'):'#7ec8ff';}
+// Map our heatmap muscle keys -> the coarse demo groups (Chest/Back/Arms/Legs/Glutes/Shoulders/Core)
+// so the audit can compare the matched demo's target muscles against our exerciseToMuscles() mapping.
+var _OUR_COARSE={chest:'Chest',back:'Back',traps:'Back',lower_back:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quads:'Legs',hamstrings:'Legs',calves:'Legs',adductors:'Legs',glute_med:'Glutes',glutes:'Glutes',shoulders:'Shoulders',abs:'Core'};
+function _ourMusList(name){try{return (typeof exerciseToMuscles==='function')?(exerciseToMuscles(name)||[]):[];}catch(e){return [];}}
+function _ourTopGroup(name){var a=_ourMusList(name);if(!a.length)return '';var t=a.slice().sort(function(x,y){return (y.weight||0)-(x.weight||0);})[0];return _OUR_COARSE[t.muscle]||'';}
 function _buildExIdx(){
   _exDbIdx={};_exById={};_exTokIdx={};_EX_ALIAS_TOK={};
   if(!_exDb)return;
@@ -1513,27 +1518,32 @@ function _loadExDb(){
   }).catch(function(){_exDbLoading=null;return null;});
   return _exDbLoading;
 }
+// _exMatchTier records HOW the last _exDbMatch resolved, so the audit can flag low-confidence
+// matches: 'alias'/'exact'/'token-curated' = trustworthy, 'token' = medium, 'fallback' = risky
+// (longest-contained-movement guess — most error-prone), 'none' = nothing matched.
+var _exMatchTier='';
 function _exDbMatch(name){
+  _exMatchTier='none';
   if(!_exDb||!_exDbIdx)return null;
   var n=_normExName(name);if(!n)return null;
   // 1) curated alias on the raw typed name (most specific — wins over canonExName collapsing)
-  if(_EX_ALIAS[n]&&_exById&&_exById[_EX_ALIAS[n]])return _exById[_EX_ALIAS[n]];
+  if(_EX_ALIAS[n]&&_exById&&_exById[_EX_ALIAS[n]]){_exMatchTier='alias';return _exById[_EX_ALIAS[n]];}
   // 1b) machine brand names (Arsenal, Prime, Hammer Strength, Hoist, ...) -> generic "machine ..."
   var nb=n.replace(/\b(arsenal|prime|hammer strength|hoist|nautilus|cybex|life ?fitness|technogym|atlantis|panatta|matrix|precor|gym ?80|watson|legend|body ?solid)\b/g,'machine').replace(/\bmachine( machine)+\b/g,'machine').replace(/\s+/g,' ').trim();
-  if(nb!==n&&_EX_ALIAS[nb]&&_exById&&_exById[_EX_ALIAS[nb]])return _exById[_EX_ALIAS[nb]];
+  if(nb!==n&&_EX_ALIAS[nb]&&_exById&&_exById[_EX_ALIAS[nb]]){_exMatchTier='alias';return _exById[_EX_ALIAS[nb]];}
   // 2) curated alias on the canonical name
   if(typeof canonExName==='function'){
     var ck=_normExName(canonExName(name));
-    if(ck&&_EX_ALIAS[ck]&&_exById&&_exById[_EX_ALIAS[ck]])return _exById[_EX_ALIAS[ck]];
+    if(ck&&_EX_ALIAS[ck]&&_exById&&_exById[_EX_ALIAS[ck]]){_exMatchTier='alias';return _exById[_EX_ALIAS[ck]];}
   }
   // 3) exact dataset-name match
-  if(_exDbIdx[n])return _exDbIdx[n];
+  if(_exDbIdx[n]){_exMatchTier='exact';return _exDbIdx[n];}
   // 4) order-independent token match (word order + db/bb/kb abbreviations + plurals,
   //    e.g. "Dumbbell Incline Press" == "Incline Dumbbell Press" == "DB Incline Press")
   var sk=_exSortKey(name);
   if(sk){
-    if(_EX_ALIAS_TOK&&_EX_ALIAS_TOK[sk]&&_exById[_EX_ALIAS_TOK[sk]])return _exById[_EX_ALIAS_TOK[sk]];
-    if(_exTokIdx&&_exTokIdx[sk]&&_exById[_exTokIdx[sk]])return _exById[_exTokIdx[sk]];
+    if(_EX_ALIAS_TOK&&_EX_ALIAS_TOK[sk]&&_exById[_EX_ALIAS_TOK[sk]]){_exMatchTier='token-curated';return _exById[_EX_ALIAS_TOK[sk]];}
+    if(_exTokIdx&&_exTokIdx[sk]&&_exById[_exTokIdx[sk]]){_exMatchTier='token';return _exById[_exTokIdx[sk]];}
   }
   // 5) last resort: name CONTAINS a known movement (handles modifier prefixes like
   //    "Close Grip Lat Pulldown" -> Lat Pulldown, "Wide Grip Seated Cable Row" -> Seated Cable Row).
@@ -1544,10 +1554,11 @@ function _exDbMatch(name){
     for(var i=0;i<_EX_ALIAS_TOKLIST.length;i++){
       var e=_EX_ALIAS_TOKLIST[i];if(e.t.length<2||e.t.length>ut.length)continue; // single-word movements are too broad (Pendulum Squat != Squat)
       var all=true;for(var j=0;j<e.t.length;j++){if(!us[e.t[j]]){all=false;break;}}
-      if(all&&_exById[e.id])return _exById[e.id];
+      if(all&&_exById[e.id]){_exMatchTier='fallback';return _exById[e.id];}
     }
   }
   // No fuzzy guessing beyond this — a wrong demo is worse than none.
+  _exMatchTier='none';
   return null;
 }
 // Strength math: estimated 1RM (Epley, best set in the session) + session volume.
@@ -3432,34 +3443,94 @@ function toggleLibReview(){
   if(!_libReview&&window._libRevTimer){clearInterval(window._libRevTimer);window._libRevTimer=null;}
   renderLibrary();
 }
+window._libRevToggleFlagged=function(){window._libRevOnlyFlagged=!window._libRevOnlyFlagged;if(_libReview)_renderLibReview();};
+function _libRevPill(txt,color,bg){return '<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:6px;color:'+color+';background:'+bg+';margin:0 5px 5px 0;white-space:nowrap;">'+txt+'</span>';}
+// Audit one library exercise: resolve demo + confidence tier, map OUR muscles, and detect problems.
+function _libRevAudit(e){
+  var linked=(e.demo_id&&_exById&&_exById[e.demo_id])?_exById[e.demo_id]:null;
+  var customImg=!linked&&!!e.image_url;
+  var dm,tier;
+  if(linked){dm=linked;tier='linked';}
+  else if(customImg){dm=null;tier='custom';}
+  else{dm=_exDbMatch(e.name);tier=_exMatchTier;}
+  var f0=e.image_url||(dm&&dm.images&&dm.images[0]?_EXDB_BASE+'exercises/'+dm.images[0]:'');
+  var f1=(!e.image_url&&dm&&dm.images&&dm.images[1])?_EXDB_BASE+'exercises/'+dm.images[1]:f0;
+  var demoGroup=dm?_demoMuscleGroup(dm):'';
+  var ourList=_ourMusList(e.name);
+  var ourTopG=_ourTopGroup(e.name);
+  var noDemo=!f0&&!customImg;
+  var untracked=ourList.length===0;
+  var mismatch=!!(demoGroup&&ourTopG&&demoGroup!==ourTopG);
+  var sev=0;
+  if(noDemo)sev=Math.max(sev,4);
+  if(mismatch||tier==='fallback')sev=Math.max(sev,3);
+  if(untracked)sev=Math.max(sev,2);
+  if(tier==='token')sev=Math.max(sev,1);
+  return {e:e,dm:dm,tier:tier,f0:f0,f1:f1,demoGroup:demoGroup,ourList:ourList,ourTopG:ourTopG,noDemo:noDemo,untracked:untracked,mismatch:mismatch,sev:sev};
+}
 function _renderLibReview(){
   var host=document.getElementById('libraryList');if(!host)return;
   if(window._libRevTimer){clearInterval(window._libRevTimer);window._libRevTimer=null;}
   if(!_exDb){host.innerHTML='<div style="text-align:center;padding:30px 0;color:rgba(180,200,230,0.4);font-size:13px;">Loading demos…</div>';_loadExDb().then(function(){if(_libReview)_renderLibReview();});return;}
   var q=(document.getElementById('libSearch')?.value||'').toLowerCase().trim();
-  var list=Array.isArray(library)?library.filter(function(e){return !q||e.name.toLowerCase().includes(q);}):[];
-  if(!list.length){host.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>'+(library.length===0?'No exercises in your library yet':'No exercises match your search')+'</p></div>';return;}
-  var rows=list.map(function(e){
-    var dm=(e.demo_id&&_exById&&_exById[e.demo_id])?_exById[e.demo_id]:_exDbMatch(e.name);
-    var f0=e.image_url||(dm&&dm.images&&dm.images[0]?_EXDB_BASE+'exercises/'+dm.images[0]:'');
-    var f1=(!e.image_url&&dm&&dm.images&&dm.images[1])?_EXDB_BASE+'exercises/'+dm.images[1]:f0;
-    var demoLabel=e.demo_id&&dm?('🔗 '+dm.name):(e.image_url?'🖼 custom image':(dm?dm.name:'⚠ no demo matched'));
-    var mus=dm&&dm.primaryMuscles&&dm.primaryMuscles.length?dm.primaryMuscles.join(', '):'';
-    var noDemo=!f0;
-    var imgHtml=noDemo
+  var base=Array.isArray(library)?library.filter(function(e){return !q||e.name.toLowerCase().includes(q);}):[];
+  if(!base.length){host.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>'+(library.length===0?'No exercises in your library yet':'No exercises match your search')+'</p></div>';return;}
+  var recs=base.map(_libRevAudit);
+  var nNoDemo=recs.filter(function(r){return r.noDemo;}).length;
+  var nGuess=recs.filter(function(r){return r.tier==='fallback';}).length;
+  var nFuzzy=recs.filter(function(r){return r.tier==='token';}).length;
+  var nMis=recs.filter(function(r){return r.mismatch;}).length;
+  var nUntr=recs.filter(function(r){return r.untracked;}).length;
+  var flagged=recs.filter(function(r){return r.sev>0;}).length;
+  var shown=recs.slice();
+  if(window._libRevOnlyFlagged)shown=shown.filter(function(r){return r.sev>0;});
+  shown.sort(function(a,b){return b.sev-a.sev||a.e.name.localeCompare(b.e.name);});
+  var rows=shown.map(function(r){
+    var e=r.e,dm=r.dm;
+    var borderCol=r.sev>=3?'rgba(255,92,106,0.4)':(r.sev>0?'rgba(255,179,71,0.3)':'rgba(100,160,255,0.1)');
+    var imgHtml=(!r.f0)
       ?'<span style="display:flex;width:74px;height:74px;border-radius:10px;background:#161b27;align-items:center;justify-content:center;font-size:30px;opacity:0.4;flex:0 0 auto;">🏋️</span>'
-      :'<img class="rev-demo-img" data-f0="'+_attr(f0)+'" data-f1="'+_attr(f1)+'" src="'+_attr(f0)+'" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';" style="width:74px;height:74px;object-fit:cover;border-radius:10px;background:#fff;flex:0 0 auto;display:block;">'
+      :'<img class="rev-demo-img" data-f0="'+_attr(r.f0)+'" data-f1="'+_attr(r.f1)+'" src="'+_attr(r.f0)+'" onerror="this.style.display=\'none\';if(this.nextElementSibling)this.nextElementSibling.style.display=\'flex\';" style="width:74px;height:74px;object-fit:cover;border-radius:10px;background:#fff;flex:0 0 auto;display:block;">'
         +'<span style="display:none;width:74px;height:74px;border-radius:10px;background:#161b27;align-items:center;justify-content:center;font-size:30px;opacity:0.4;flex:0 0 auto;">🏋️</span>';
-    return '<div style="display:flex;align-items:center;gap:14px;padding:12px;background:rgba(15,19,23,0.5);border:1px solid '+(noDemo?'rgba(255,170,70,0.25)':'rgba(100,160,255,0.1)')+';border-radius:12px;margin-bottom:10px;">'
+    // demo-confidence badge
+    var badges='';
+    if(r.noDemo)badges+=_libRevPill('no demo','#ff6a6a','rgba(255,92,106,0.14)');
+    else if(r.tier==='fallback')badges+=_libRevPill('guessed demo','#ffb347','rgba(255,179,71,0.16)');
+    else if(r.tier==='token')badges+=_libRevPill('fuzzy demo','#ffd47e','rgba(255,179,71,0.10)');
+    else if(r.tier==='linked')badges+=_libRevPill('🔗 linked','#43d9a2','rgba(67,217,162,0.12)');
+    else if(r.tier==='custom')badges+=_libRevPill('🖼 custom','#43d9a2','rgba(67,217,162,0.12)');
+    if(r.mismatch)badges+=_libRevPill('muscle mismatch','#ff6a6a','rgba(255,92,106,0.14)');
+    if(r.untracked)badges+=_libRevPill('untracked','#ffb347','rgba(255,179,71,0.16)');
+    var demoName=dm?dm.name:(r.tier==='custom'?'custom image':'no demo matched');
+    var ourTxt=r.ourList.length?r.ourList.slice(0,4).map(function(m){return m.muscle.replace(/_/g,' ');}).join(', '):'⚠ no muscle mapping (won\'t count in heatmap/PRs)';
+    var musLine='<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-top:4px;line-height:1.45;">'
+      +'<span style="color:rgba(126,200,255,0.55);">demo:</span> '+_attr(demoName)+(r.demoGroup?' <span style="opacity:.6">('+_attr(r.demoGroup)+')</span>':'')
+      +'<br><span style="color:rgba(126,200,255,0.55);">heatmap:</span> '+_attr(ourTxt)
+      +(r.mismatch?' <span style="color:#ff8a8a;font-weight:700;">→ demo says '+_attr(r.demoGroup)+', mapping says '+_attr(r.ourTopG)+'</span>':'')
+      +'</div>';
+    return '<div style="display:flex;align-items:flex-start;gap:14px;padding:12px;background:rgba(15,19,23,0.5);border:1px solid '+borderCol+';border-radius:12px;margin-bottom:10px;">'
       +'<div onclick="openExerciseDetail(\''+_jsq(e.name)+'\',\''+_jsq(e.name)+'\')" style="cursor:pointer;flex:0 0 auto;position:relative;">'+imgHtml+'</div>'
       +'<div style="flex:1;min-width:0;">'
-        +'<div style="font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_attr(e.name)+'</div>'
-        +'<div style="font-size:11px;color:'+(noDemo?'rgba(255,170,70,0.85)':'rgba(180,200,230,0.45)')+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+_attr(demoLabel)+(mus?' · '+_attr(mus):'')+'</div>'
+        +'<div style="font-size:15px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">'+_attr(e.name)+'</div>'
+        +'<div>'+badges+'</div>'
+        +musLine
       +'</div>'
       +'<button onclick="openEditLibEx(\''+e.id+'\')" style="flex:0 0 auto;background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);border-radius:8px;padding:9px 14px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Fix ✎</button>'
     +'</div>';
   }).join('');
-  host.innerHTML='<div style="font-size:12px;color:rgba(180,200,230,0.5);line-height:1.5;margin-bottom:14px;background:rgba(79,163,232,0.05);border:1px solid rgba(79,163,232,0.12);border-radius:10px;padding:11px 14px;">Check each demo against the exercise name. Tap an animation to view it large; tap <b style="color:#7ec8ff;">Fix ✎</b> to link the correct demo (or paste your own image/video).</div>'+rows;
+  var sumParts=[];
+  if(nNoDemo)sumParts.push('<b style="color:#ff8a8a;">'+nNoDemo+'</b> no demo');
+  if(nGuess)sumParts.push('<b style="color:#ffb347;">'+nGuess+'</b> guessed');
+  if(nFuzzy)sumParts.push('<b style="color:#ffd47e;">'+nFuzzy+'</b> fuzzy');
+  if(nMis)sumParts.push('<b style="color:#ff8a8a;">'+nMis+'</b> muscle mismatch');
+  if(nUntr)sumParts.push('<b style="color:#ffb347;">'+nUntr+'</b> untracked');
+  var summary='<div style="font-size:12px;color:rgba(180,200,230,0.6);line-height:1.55;margin-bottom:12px;background:rgba(79,163,232,0.05);border:1px solid rgba(79,163,232,0.12);border-radius:10px;padding:11px 14px;">'
+    +(flagged?('<b style="color:#fff;">'+flagged+'</b> of '+recs.length+' need a look'+(sumParts.length?' — '+sumParts.join(' · '):'')):('✓ All '+recs.length+' look consistent (demo + muscle mapping agree)'))
+    +'<div style="margin-top:7px;opacity:.8;">Tap a demo to view it large · <b style="color:#7ec8ff;">Fix ✎</b> to link the right demo or set muscles. Flags are hints, not certainties — niche lifts may be fine as-is.</div>'
+    +'</div>';
+  var toggle=flagged?('<button onclick="window._libRevToggleFlagged()" style="width:100%;margin-bottom:12px;background:'+(window._libRevOnlyFlagged?'rgba(79,163,232,0.18)':'rgba(255,255,255,0.04)')+';color:'+(window._libRevOnlyFlagged?'#7ec8ff':'rgba(180,200,230,0.7)')+';border:1px solid rgba(100,160,255,0.25);border-radius:9px;padding:10px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">'+(window._libRevOnlyFlagged?'Showing flagged only — show all':'Show only flagged ('+flagged+')')+'</button>'):'';
+  var emptyShown=(!shown.length)?'<div class="empty"><div class="empty-icon">✓</div><p>Nothing flagged.</p></div>':'';
+  host.innerHTML=summary+toggle+rows+emptyShown;
   // Animate all demos (alternate the start/end frame) so wrong movements are obvious at a glance.
   window._libRevTimer=setInterval(function(){
     var imgs=document.querySelectorAll('.rev-demo-img');
