@@ -2894,9 +2894,9 @@ function _setupBlockDrag(list){
     var ph=document.createElement('div');
     ph.style.cssText='height:'+block.offsetHeight+'px;margin-bottom:'+(getComputedStyle(block).marginBottom||'12px')+';border:2px dashed rgba(79,163,232,0.45);border-radius:12px;background:rgba(79,163,232,0.06);box-sizing:border-box;';
     container.insertBefore(ph,block);
-    block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='9999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';block.style.pointerEvents='none';
+    block.style.position='fixed';block.style.top=origTop+'px';block.style.left=rect.left+'px';block.style.width=rect.width+'px';block.style.zIndex='9999';block.style.boxShadow='0 12px 40px rgba(0,0,0,0.7)';block.style.margin='0';
     document.body.appendChild(block);
-    try{handle.setPointerCapture(e.pointerId);}catch(_){}
+    try{block.setPointerCapture(e.pointerId);}catch(_){}
     var siblings=function(){return Array.prototype.filter.call(container.children,function(c){return c.nodeType===1&&c.hasAttribute('data-dragitem')&&c!==block;});};
     var onMove=function(ev){
       block.style.top=(origTop+(ev.clientY-startY))+'px';
@@ -2905,11 +2905,11 @@ function _setupBlockDrag(list){
       if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
     };
     var onUp=function(){
-      handle.removeEventListener('pointermove',onMove);handle.removeEventListener('pointerup',onUp);handle.removeEventListener('pointercancel',onUp);
+      block.removeEventListener('pointermove',onMove);block.removeEventListener('pointerup',onUp);block.removeEventListener('pointercancel',onUp);
       block.setAttribute('style',origCss);
       container.insertBefore(block,ph);container.removeChild(ph);
     };
-    handle.addEventListener('pointermove',onMove);handle.addEventListener('pointerup',onUp);handle.addEventListener('pointercancel',onUp);
+    block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',onUp);block.addEventListener('pointercancel',onUp);
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
