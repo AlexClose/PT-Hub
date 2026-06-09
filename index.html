@@ -868,7 +868,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
       <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
     </div>
     <div style="display:flex;gap:8px;margin-top:6px">
-      <button class="btn btn-secondary btn-full" onclick="clearDraftCoach();closeModal('logModal')">Cancel</button>
+      <button class="btn btn-secondary btn-full" onclick="closeLogSession()">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="confirmLogSession()">✓ Mark Complete</button>
     </div>
   </div>
@@ -1427,7 +1427,7 @@ function closeModal(id){
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow='';
 }
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}o.classList.remove('open');}));
 
 // ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
 var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
@@ -3011,6 +3011,21 @@ function saveDraftCoach(){
 function clearDraftCoach(){
   try{localStorage.removeItem('bm_coach_draft');}catch(e){}
 }
+// True if the log modal has ANY entered data — program-day rows, ad-hoc/custom-workout rows, or a note.
+function _coachLogHasData(){
+  if((document.getElementById('logNote')?.value||'').trim())return true;
+  var i=0;while(document.getElementById('wr-'+i)||document.getElementById('wt-'+i)){if((document.getElementById('wr-'+i)?.value||'').trim()||(document.getElementById('wt-'+i)?.value||'').trim())return true;i++;}
+  var names=document.querySelectorAll('[id^="an-adhoc-"]');for(var k=0;k<names.length;k++){if((names[k].value||'').trim())return true;}
+  var adv=document.querySelectorAll('[id^="wr-adhoc-"],[id^="wt-adhoc-"]');for(var j=0;j<adv.length;j++){if((adv[j].value||'').trim())return true;}
+  return false;
+}
+// Guarded close for the log modal — confirm before discarding an in-progress session (the draft does
+// not capture ad-hoc/custom-workout rows, so an accidental close would lose them outright).
+function closeLogSession(force){
+  if(!force&&_coachLogHasData()){if(!confirm('Discard this in-progress session? Your entered sets will be lost.'))return;}
+  clearDraftCoach();
+  closeModal('logModal');
+}
 function restoreDraftCoach(){
   try{
     const raw=localStorage.getItem('bm_coach_draft');
@@ -3460,6 +3475,11 @@ function toggleLibReview(){
 }
 window._libRevToggleFlagged=function(){window._libRevOnlyFlagged=!window._libRevOnlyFlagged;if(_libReview)_renderLibReview();};
 function _libRevPill(txt,color,bg){return '<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:2px 7px;border-radius:6px;color:'+color+';background:'+bg+';margin:0 5px 5px 0;white-space:nowrap;">'+txt+'</span>';}
+// "Verified" checkoff (localStorage, keyed by normalized name) so the audit becomes a finite,
+// shrinking checklist — confirm an exercise once and it drops out of the flagged list.
+function _libVerifiedMap(){if(!window._libVerified){try{window._libVerified=JSON.parse(localStorage.getItem('bm_exverified')||'{}')||{};}catch(e){window._libVerified={};}}return window._libVerified;}
+function _isExVerified(name){return !!_libVerifiedMap()[_normExName(name)];}
+window._libRevToggleVerified=function(name){var m=_libVerifiedMap(),k=_normExName(name);if(m[k])delete m[k];else m[k]=1;try{localStorage.setItem('bm_exverified',JSON.stringify(m));}catch(e){}if(_libReview)_renderLibReview();};
 // Audit one library exercise: resolve demo + confidence tier, map OUR muscles, and detect problems.
 function _libRevAudit(e){
   var linked=(e.demo_id&&_exById&&_exById[e.demo_id])?_exById[e.demo_id]:null;
@@ -3481,7 +3501,9 @@ function _libRevAudit(e){
   if(mismatch||tier==='fallback')sev=Math.max(sev,3);
   if(untracked)sev=Math.max(sev,2);
   if(tier==='token')sev=Math.max(sev,1);
-  return {e:e,dm:dm,tier:tier,f0:f0,f1:f1,demoGroup:demoGroup,ourList:ourList,ourTopG:ourTopG,noDemo:noDemo,untracked:untracked,mismatch:mismatch,sev:sev};
+  var verified=_isExVerified(e.name);
+  if(verified)sev=0; // user has vouched for it — drops out of the flagged list
+  return {e:e,dm:dm,tier:tier,f0:f0,f1:f1,demoGroup:demoGroup,ourList:ourList,ourTopG:ourTopG,noDemo:noDemo,untracked:untracked,mismatch:mismatch,verified:verified,sev:sev};
 }
 function _renderLibReview(){
   var host=document.getElementById('libraryList');if(!host)return;
@@ -3491,11 +3513,14 @@ function _renderLibReview(){
   var base=Array.isArray(library)?library.filter(function(e){return !q||e.name.toLowerCase().includes(q);}):[];
   if(!base.length){host.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>'+(library.length===0?'No exercises in your library yet':'No exercises match your search')+'</p></div>';return;}
   var recs=base.map(_libRevAudit);
-  var nNoDemo=recs.filter(function(r){return r.noDemo;}).length;
-  var nGuess=recs.filter(function(r){return r.tier==='fallback';}).length;
-  var nFuzzy=recs.filter(function(r){return r.tier==='token';}).length;
-  var nMis=recs.filter(function(r){return r.mismatch;}).length;
-  var nUntr=recs.filter(function(r){return r.untracked;}).length;
+  // Category counts exclude verified rows (a verified item never "needs a look").
+  var unv=recs.filter(function(r){return !r.verified;});
+  var nNoDemo=unv.filter(function(r){return r.noDemo;}).length;
+  var nGuess=unv.filter(function(r){return r.tier==='fallback';}).length;
+  var nFuzzy=unv.filter(function(r){return r.tier==='token';}).length;
+  var nMis=unv.filter(function(r){return r.mismatch;}).length;
+  var nUntr=unv.filter(function(r){return r.untracked;}).length;
+  var nVerified=recs.filter(function(r){return r.verified;}).length;
   var flagged=recs.filter(function(r){return r.sev>0;}).length;
   var shown=recs.slice();
   if(window._libRevOnlyFlagged)shown=shown.filter(function(r){return r.sev>0;});
@@ -3509,6 +3534,7 @@ function _renderLibReview(){
         +'<span style="display:none;width:74px;height:74px;border-radius:10px;background:#161b27;align-items:center;justify-content:center;font-size:30px;opacity:0.4;flex:0 0 auto;">🏋️</span>';
     // demo-confidence badge
     var badges='';
+    if(r.verified)badges+=_libRevPill('✓ verified','#43d9a2','rgba(67,217,162,0.14)');
     if(r.noDemo)badges+=_libRevPill('no demo','#ff6a6a','rgba(255,92,106,0.14)');
     else if(r.tier==='fallback')badges+=_libRevPill('guessed demo','#ffb347','rgba(255,179,71,0.16)');
     else if(r.tier==='token')badges+=_libRevPill('fuzzy demo','#ffd47e','rgba(255,179,71,0.10)');
@@ -3530,7 +3556,10 @@ function _renderLibReview(){
         +'<div>'+badges+'</div>'
         +musLine
       +'</div>'
-      +'<button onclick="openEditLibEx(\''+e.id+'\')" style="flex:0 0 auto;background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);border-radius:8px;padding:9px 14px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">Fix ✎</button>'
+      +'<div style="flex:0 0 auto;display:flex;flex-direction:column;gap:6px;">'
+        +'<button onclick="openEditLibEx(\''+e.id+'\')" style="background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);border-radius:8px;padding:9px 14px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Fix ✎</button>'
+        +'<button onclick="window._libRevToggleVerified(\''+_jsq(e.name)+'\')" style="background:'+(r.verified?'rgba(255,255,255,0.05)':'rgba(67,217,162,0.12)')+';color:'+(r.verified?'rgba(180,200,230,0.6)':'#43d9a2')+';border:1px solid '+(r.verified?'rgba(100,160,255,0.18)':'rgba(67,217,162,0.3)')+';border-radius:8px;padding:9px 14px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">'+(r.verified?'Undo':'✓ OK')+'</button>'
+      +'</div>'
     +'</div>';
   }).join('');
   var sumParts=[];
@@ -3539,9 +3568,10 @@ function _renderLibReview(){
   if(nFuzzy)sumParts.push('<b style="color:#ffd47e;">'+nFuzzy+'</b> fuzzy');
   if(nMis)sumParts.push('<b style="color:#ff8a8a;">'+nMis+'</b> muscle mismatch');
   if(nUntr)sumParts.push('<b style="color:#ffb347;">'+nUntr+'</b> untracked');
+  var vTxt=nVerified?(' · <b style="color:#43d9a2;">'+nVerified+'</b> verified'):'';
   var summary='<div style="font-size:12px;color:rgba(180,200,230,0.6);line-height:1.55;margin-bottom:12px;background:rgba(79,163,232,0.05);border:1px solid rgba(79,163,232,0.12);border-radius:10px;padding:11px 14px;">'
-    +(flagged?('<b style="color:#fff;">'+flagged+'</b> of '+recs.length+' need a look'+(sumParts.length?' — '+sumParts.join(' · '):'')):('✓ All '+recs.length+' look consistent (demo + muscle mapping agree)'))
-    +'<div style="margin-top:7px;opacity:.8;">Tap a demo to view it large · <b style="color:#7ec8ff;">Fix ✎</b> to link the right demo or set muscles. Flags are hints, not certainties — niche lifts may be fine as-is.</div>'
+    +(flagged?('<b style="color:#fff;">'+flagged+'</b> of '+recs.length+' need a look'+(sumParts.length?' — '+sumParts.join(' · '):'')+vTxt):('✓ All '+recs.length+' look consistent (demo + muscle mapping agree)'+vTxt))
+    +'<div style="margin-top:7px;opacity:.8;">Tap a demo to view it large · <b style="color:#7ec8ff;">Fix ✎</b> to link the right demo or set muscles · <b style="color:#43d9a2;">✓ OK</b> marks an exercise verified so it drops off the list. Flags are hints — niche lifts may be fine as-is.</div>'
     +'</div>';
   var toggle=flagged?('<button onclick="window._libRevToggleFlagged()" style="width:100%;margin-bottom:12px;background:'+(window._libRevOnlyFlagged?'rgba(79,163,232,0.18)':'rgba(255,255,255,0.04)')+';color:'+(window._libRevOnlyFlagged?'#7ec8ff':'rgba(180,200,230,0.7)')+';border:1px solid rgba(100,160,255,0.25);border-radius:9px;padding:10px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">'+(window._libRevOnlyFlagged?'Showing flagged only — show all':'Show only flagged ('+flagged+')')+'</button>'):'';
   var emptyShown=(!shown.length)?'<div class="empty"><div class="empty-icon">✓</div><p>Nothing flagged.</p></div>':'';
