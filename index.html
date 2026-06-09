@@ -1036,7 +1036,7 @@ function _exAcShow(inputEl){
   var drop=document.getElementById('_ex-ac-drop');
   if(!drop){
     drop=document.createElement('div');drop.id='_ex-ac-drop';
-    drop.style.cssText='position:fixed;z-index:9999;background:#12161f;border:1px solid rgba(100,160,255,0.28);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.8);overflow:hidden;display:none;';
+    drop.style.cssText='position:fixed;z-index:9999;background:#12161f;border:1px solid rgba(100,160,255,0.28);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.8);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;display:none;';
     drop.addEventListener('pointerdown',function(e){e.preventDefault();});
     document.body.appendChild(drop);
   }
@@ -1048,13 +1048,28 @@ function _exAcShow(inputEl){
     return '<div class="_exac-opt" data-val="'+m.replace(/"/g,'&quot;')+'" style="padding:11px 14px;font-size:13px;font-weight:600;color:#e8edf5;cursor:pointer;border-bottom:1px solid rgba(100,160,255,0.07);font-family:Syne,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+inner+'</div>';
   }).join('');
   drop.style.display='block';
-  // Position after paint so layout is settled; use visualViewport offsets for iOS keyboard
+  // Position after paint so layout is settled; use visualViewport offsets for iOS keyboard.
+  // Cap the height to the available space (above the keyboard) and make it scrollable; flip
+  // above the input when there's more room up top (common on mobile with the keyboard open).
   requestAnimationFrame(function(){
     var r=inputEl.getBoundingClientRect();
     var vv=window.visualViewport;
-    var left=r.left+(vv?vv.offsetLeft:0);
-    var top=r.bottom+(vv?vv.offsetTop:0)+4;
-    drop.style.left=left+'px';drop.style.top=top+'px';drop.style.width=r.width+'px';
+    var voTop=vv?vv.offsetTop:0, voLeft=vv?vv.offsetLeft:0, vh=vv?vv.height:window.innerHeight;
+    var gap=4, margin=8;
+    drop.style.left=(r.left+voLeft)+'px';
+    drop.style.width=r.width+'px';
+    drop.style.maxHeight='none';
+    var natural=drop.scrollHeight;
+    var spaceBelow=vh-r.bottom-gap-margin;
+    var spaceAbove=r.top-gap-margin;
+    if(spaceBelow>=Math.min(natural,160)||spaceBelow>=spaceAbove){
+      drop.style.top=(r.bottom+voTop+gap)+'px';
+      drop.style.maxHeight=Math.max(120,spaceBelow)+'px';
+    }else{
+      var h=Math.min(natural,Math.max(120,spaceAbove));
+      drop.style.top=(r.top+voTop-gap-h)+'px';
+      drop.style.maxHeight=h+'px';
+    }
   });
   drop.querySelectorAll('._exac-opt').forEach(function(opt){
     opt.addEventListener('click',function(){
