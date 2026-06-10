@@ -1639,6 +1639,78 @@ function _applyTargetCoach(ei,wrVal,wtVal){
   if(wr)wr.value=wrVal;if(wt)wt.value=wtVal;
   try{checkExRowCoach(ei);}catch(e){}try{saveDraftCoach();}catch(e){}
 }
+// ── Progression guide (multi-session) ──
+// Build a per-exercise history series (oldest→newest) from a sessions array, so the suggestion can
+// tell "progressing" from "stalled" instead of reacting to a single last entry.
+function _buildExSeriesMap(sessions){
+  var map={};
+  (sessions||[]).forEach(function(s){
+    if(!s||!s.workout)return;
+    var ord=s.created_at||s.date||'';
+    s.workout.forEach(function(e){
+      if(!e||!(e.weight||e.reps))return;
+      var k=(e.name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');
+      if(!k)return;
+      var b=_bestSet(e.reps,e.weight);if(!b||!b.weight)return;
+      (map[k]||(map[k]=[])).push({date:s.date||'',ord:ord,best:b,reps:e.reps||'',weight:e.weight||''});
+    });
+  });
+  Object.keys(map).forEach(function(k){map[k].sort(function(a,b){return new Date(a.ord)-new Date(b.ord);});});
+  return map;
+}
+// Given a prescription + history series, return {last, sugg, status}. status: up | stall | first | new.
+function _progressionGuide(prescription, series){
+  series=series||[];var n=series.length;
+  if(!n)return {last:null,sugg:null,status:'new'};
+  var lastEntry=series[n-1],lastBest=lastEntry.best;
+  var t=_prescTarget(prescription);
+  var prevBest=n>=2?series[n-2].best:null;
+  var status='first';
+  if(prevBest&&prevBest.weight)status=(lastBest.e1rm>prevBest.e1rm+0.01)?'up':'stall';
+  var sugg=null;
+  if(t&&lastBest.weight){
+    if(status==='stall'){
+      if(lastBest.reps<t.lo)sugg={sets:t.sets,weight:lastBest.weight,reps:t.lo,note:'no gain last time — consolidate '+t.lo+' reps',dir:'stall'};
+      else if(lastBest.reps>=t.hi){var inc0=_loadIncrement(lastBest.weight);sugg={sets:t.sets,weight:Math.round((lastBest.weight+inc0)/2.5)*2.5,reps:t.lo,note:'stalled at top — small bump +'+inc0+' lb',dir:'stall'};}
+      else sugg={sets:t.sets,weight:lastBest.weight,reps:lastBest.reps+1,note:'stalled — grind +1 rep, or deload ~10%',dir:'stall'};
+    }else{
+      if(lastBest.reps>=t.hi){var inc=_loadIncrement(lastBest.weight);sugg={sets:t.sets,weight:Math.round((lastBest.weight+inc)/2.5)*2.5,reps:t.lo,note:'+'+inc+' lb · hit all reps',dir:'up'};}
+      else if(lastBest.reps>=t.lo)sugg={sets:t.sets,weight:lastBest.weight,reps:lastBest.reps+1,note:'+1 rep',dir:'rep'};
+      else sugg={sets:t.sets,weight:lastBest.weight,reps:t.lo,note:'aim for '+t.lo+' reps',dir:'hold'};
+    }
+  }
+  return {last:{reps:lastEntry.reps,weight:lastEntry.weight,date:lastEntry.date,e1rm:lastBest.e1rm},sugg:sugg,status:status};
+}
+// Resolve the guide for one exercise, falling back to a single exercise_history entry when the
+// sessions series has nothing (e.g. older clients whose history predates the sessions table).
+function _exGuideFor(serMap,key,prescription,histLast){
+  var series=(serMap&&serMap[key])?serMap[key].slice():[];
+  if(!series.length&&histLast&&(histLast.reps||histLast.weight)){
+    var b=_bestSet(histLast.reps,histLast.weight);
+    if(b&&b.weight)series=[{date:histLast.date||'',ord:histLast.date||'',best:b,reps:histLast.reps||'',weight:histLast.weight||''}];
+  }
+  return _progressionGuide(prescription,series);
+}
+// Unified "Last time → Do this today" card. applyOnclick fills the inputs; histOnclick opens history.
+function _progressionGuideHtml(g,applyOnclick,histOnclick){
+  if(!g||!g.last)return '';
+  var L=g.last,s=g.sugg;
+  var col=s?(s.dir==='up'?'67,217,162':(s.dir==='rep'?'126,200,255':(s.dir==='stall'?'255,179,71':'180,200,230'))):'126,200,255';
+  var trend=g.status==='up'?'<span style="font-size:9px;font-weight:800;letter-spacing:.5px;color:#43d9a2;">↗ PROGRESSING</span>':(g.status==='stall'?'<span style="font-size:9px;font-weight:800;letter-spacing:.5px;color:#ffb347;">→ STALLED</span>':'');
+  var h='<div style="border:1px solid rgba('+col+',0.28);background:rgba('+col+',0.06);border-radius:10px;padding:9px 12px;margin-bottom:11px;">';
+  h+='<div onclick="'+(histOnclick||'')+'" style="display:flex;align-items:center;gap:8px;cursor:pointer;">'
+    +'<span style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.45);font-weight:700;">Last time</span>'+trend
+    +'<span style="margin-left:auto;font-size:10px;color:rgba(180,200,230,0.4);white-space:nowrap;">'+(L.date||'')+' &nbsp;history ›</span></div>';
+  h+='<div style="font-size:15px;font-weight:700;color:#d7e4f5;margin-top:2px;">'+(L.reps||'—')+' &nbsp;·&nbsp; '+(L.weight||'—')+'</div>';
+  if(s){
+    h+='<div style="height:1px;background:rgba('+col+',0.18);margin:8px 0;"></div>'
+      +'<div onclick="'+(applyOnclick||'')+'" style="cursor:pointer;">'
+      +'<div style="display:flex;align-items:center;gap:6px;"><span style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:rgba('+col+',0.95);font-weight:800;">🎯 Do this today</span><span style="margin-left:auto;font-size:10px;font-weight:600;color:rgba('+col+',0.6);">tap to fill ›</span></div>'
+      +'<div style="font-size:16px;font-weight:800;color:rgba('+col+',0.97);margin-top:2px;">'+_suggestRepsStr(s)+(s.weight?' &nbsp;·&nbsp; '+s.weight+' lb':'')+'</div>'
+      +'<div style="font-size:11px;font-weight:600;color:rgba('+col+',0.6);margin-top:1px;">'+s.note+'</div></div>';
+  }
+  return h+'</div>';
+}
 function _sessionVolume(repsStr,weightStr){
   var ws=String(weightStr||'').split(/[,\/]+/).map(function(x){return parseFloat(x)||0;});
   var m=String(repsStr||'').trim().match(/^(\d+)\s*[xX×]\s*(\d+)/);
@@ -3120,6 +3192,7 @@ function updateLogWorkout(clientId){
     return;
   }
   const day=c.structured_program.days[di];const history=c.exercise_history||{};
+  const _serMap=_buildExSeriesMap(c._sessions||[]);
   document.getElementById('logExercises').innerHTML=
     (()=>{
     const exCount=day.exercises.length;
@@ -3149,8 +3222,7 @@ function updateLogWorkout(clientId){
       html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
         <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
-        ${last?`<div onclick="showExHistory('${clientId}','${ex.name.replace(/'/g,"\\'")}','${displayName.replace(/'/g,"\\'")}',${ei})" style="font-size:15px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:block;cursor:pointer;">📊 Last: ${last.reps||'—'} &nbsp;·&nbsp; ${last.weight||'—'} &nbsp;·&nbsp; <span style="font-size:12px;opacity:.7">${last.date}</span> &nbsp;<span style="font-size:11px;opacity:.5">▸ history</span></div>`:''}
-        ${(()=>{const sg=_suggestNext(ex.prescription,last&&last.reps,last&&last.weight);return sg?_suggestChipHtml(sg,`_applyTargetCoach(${ei},'${_suggestRepsStr(sg)}','${sg.weight}')`):'';})()}
+        ${(()=>{const gk=ex.name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);return _progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);})()}
         <div class="workout-inputs">
           <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
           <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
@@ -6105,6 +6177,7 @@ function startClientPortal(id) {
       return {lastWeight: ld ? maxWeight(ld.weight) : 0, lastE1RM: ld ? _bestE1RM(ld.reps, ld.weight) : 0};
     });
 
+    var _serMap = _buildExSeriesMap(window._portalRecentSessions || []);
     // Pre-compute superset group first/last indices
     var ssBounds = {};
     for (var si = 0; si < exercises.length; si++) {
@@ -6136,14 +6209,7 @@ function startClientPortal(id) {
         '<div id="ex-row-' + i + '"' + (isSuperset ? ' data-ss="1"' : '') + ' style="' + (isSuperset ? 'padding:16px;position:relative;transition:background 0.25s;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;transition:border-color 0.25s,background 0.25s;') + '">' +
           '<div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">' + _exThumbHTML(ex.name,name,44,'portal') + '<div onclick="window._openExDetailPortal(\'' + _jsq(ex.name) + '\',\'' + _jsq(name) + '\')" style="font-weight:700;font-size:16px;color:#fff;cursor:pointer;flex:1;">' + name + '</div></div>' +
           '<div style="font-size:12px;color:rgba(126,200,255,0.8);margin-bottom:10px;font-weight:500;">' + (ex.prescription || '') + (ex.load ? ' &nbsp;·&nbsp; ' + ex.load : '') + '</div>' +
-          (lastData ?
-            '<div onclick="window._openExDetailPortal(\'' + (ex.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\',\'' + name.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')" style="font-size:14px;font-weight:700;color:#7ec8ff;background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.25);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:block;cursor:pointer;">📊 Last: ' +
-              (lastData.reps||'—') + ' &nbsp;·&nbsp; ' + (lastData.weight||'—') +
-              (lastData.pb ? ' &nbsp;<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;font-weight:800;letter-spacing:0.5px;padding:3px 7px;border-radius:4px;border:1px solid rgba(245,158,11,0.3);">PB</span>' : '') +
-              (lastData.date ? ' &nbsp;·&nbsp; <span style="font-size:12px;opacity:0.7;font-weight:600;">' + lastData.date + '</span>' : '') +
-              ' <span style="font-size:11px;opacity:0.5;">▸ history</span>' +
-            '</div>' : '') +
-          (function(){var sg=_suggestNext(ex.prescription,lastData&&lastData.reps,lastData&&lastData.weight);return sg?_suggestChipHtml(sg,"window._applyTargetPortal("+i+",'"+_suggestRepsStr(sg)+"','"+sg.weight+"')"):'';})() +
+          (function(){var gk=(ex.name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');var g=_exGuideFor(_serMap,gk,ex.prescription,lastData);return _progressionGuideHtml(g,"window._applyTargetPortal("+i+",'"+(g.sugg?_suggestRepsStr(g.sugg):'')+"','"+(g.sugg?g.sugg.weight:'')+"')","window._openExDetailPortal('"+_jsq(ex.name)+"','"+_jsq(name)+"')");})() +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
             '<div>' +
               '<input id="wr-' + i + '" type="text" placeholder="' + (lastData&&lastData.reps?lastData.reps:'e.g. 3x10') + '" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
