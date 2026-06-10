@@ -2778,7 +2778,142 @@ function renderStructuredProgram(c){
     </div>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(100,160,255,0.55)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </div>`;
-  return startBanner + days + customCard;
+  const genBtn=`<button onclick="generateNextProgram('${c.id}')" style="width:100%;margin-top:12px;background:linear-gradient(135deg,rgba(124,92,255,0.16),rgba(67,217,162,0.12));border:1px solid rgba(124,92,255,0.32);border-radius:12px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#c4b5fd;cursor:pointer;letter-spacing:.4px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(124,92,255,0.24),rgba(67,217,162,0.18))';" onmouseout="this.style.background='linear-gradient(135deg,rgba(124,92,255,0.16),rgba(67,217,162,0.12))';">✨ Generate Next Program</button>
+    <div style="font-size:10px;color:rgba(180,200,230,0.32);text-align:center;margin-top:6px;line-height:1.4;">Same days &amp; rep schemes — fresh exercise variations.<br>Preview &amp; tweak before it goes live.</div>`;
+  return startBanner + days + customCard + genBtn;
+}
+
+// ── GENERATE NEXT PROGRAM ──
+// Clones the current program's structure (days, set/rep schemes, supersets) but swaps each exercise
+// for a fresh variation hitting the same primary muscle + mechanic, so the coach skips the blank-page
+// rebuild every cycle and just tweaks. Demo dataset drives the alternatives.
+var _OUR_TO_EXDB={chest:'chest',back:'lats',shoulders:'shoulders',quads:'quadriceps',hamstrings:'hamstrings',glutes:'glutes',biceps:'biceps',triceps:'triceps',calves:'calves',abs:'abdominals',traps:'traps',lower_back:'lower back',forearms:'forearms',glute_med:'abductors',adductors:'adductors'};
+// The dataset is full of strongman / mobility / olympic junk; keep candidates to real gym movements.
+var _GEN_OK_EQUIP={'barbell':1,'dumbbell':1,'cable':1,'machine':1,'kettlebells':1,'body only':1,'e-z curl bar':1,'bands':1,'exercise ball':1};
+var _GEN_PREF_EQUIP={'barbell':1,'dumbbell':1,'cable':1,'machine':1,'e-z curl bar':1};
+var _GEN_BAD_RE=/\b(clean|snatch|jerk|jump|clap|explosiv|plyo|broad|burpee|thruster|wall ball|muscle up|kipping)\b/i;
+function _genOkEx(e){return e.category==='strength'&&_GEN_OK_EQUIP[(e.equipment||'').toLowerCase()]&&!_GEN_BAD_RE.test(e.name||'');}
+function _altScore(e,mech,equip){
+  var s=0,em=(e.mechanic||'').toLowerCase(),eq=(e.equipment||'').toLowerCase();
+  if(mech&&em===mech)s+=3;                                   // keep compound/isolation character
+  if(_GEN_PREF_EQUIP[eq])s+=(equip&&eq!==equip)?2.5:2;       // gym-staple equipment; a fresh implement edges it
+  else s+=0.3;
+  if(e.level==='intermediate')s+=1; if(e.level==='beginner')s+=0.5;
+  return s;
+}
+// Pick a fresh exercise for the same muscle/mechanic, excluding anything in `used` (by demo identity).
+function _altExerciseFor(origName,used){
+  if(!_exDb)return null;
+  var clean=(origName||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return null;
+  var m=_exDbMatch(clean),primary='',mech='',equip='',origId=null;
+  if(m){primary=(m.primaryMuscles&&m.primaryMuscles[0]||'').toLowerCase();mech=(m.mechanic||'').toLowerCase();equip=(m.equipment||'').toLowerCase();origId=m.id;}
+  if(!primary){var ours=(typeof exerciseToMuscles==='function')?exerciseToMuscles(clean):null;if(ours&&ours.length)primary=_OUR_TO_EXDB[ours[0].muscle]||'';}
+  if(!primary)return null;
+  var pool=_exDb.filter(function(e){
+    var pm=(e.primaryMuscles&&e.primaryMuscles[0]||'').toLowerCase();
+    if(pm!==primary)return false;
+    if(origId&&e.id===origId)return false;
+    if(used&&used[_exIdentity(e.name)])return false;
+    if(!_genOkEx(e))return false;
+    return true;
+  });
+  if(!pool.length)return null;
+  pool.sort(function(a,b){return _altScore(b,mech,equip)-_altScore(a,mech,equip);});
+  var top=pool.slice(0,Math.min(5,pool.length));
+  var pick=top[Math.floor(Math.random()*top.length)];
+  return pick?pick.name:null;
+}
+function _buildGenProgram(clientId){
+  var c=clients.find(function(x){return x.id===clientId;});if(!c||!c.structured_program)return;
+  var prog=JSON.parse(JSON.stringify(c.structured_program));
+  var used={};
+  prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){var id=_exIdentity(ex.name);if(id)used[id]=1;});});
+  prog.days.forEach(function(d){
+    d.exercises=(d.exercises||[]).map(function(ex){
+      var ssm=(ex.name||'').match(/^SS\w+:\s*/i),pfx=ssm?ssm[0]:'';
+      var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+      var alt=_altExerciseFor(clean,used);
+      var out=Object.assign({},ex);
+      if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
+      else{out._from=clean;out._swapped=false;}
+      return out;
+    });
+  });
+  prog.started_at=null;
+  window._genProgram=prog;
+}
+function generateNextProgram(clientId){
+  var c=clients.find(function(x){return x.id===clientId;});if(!c||!c.structured_program)return;
+  window._genClientId=clientId;
+  toast('Generating…');
+  _loadExDb().then(function(){
+    if(!_exDb){alert('Exercise database isn\'t loaded yet (needs an internet connection). Try again in a moment.');return;}
+    _buildGenProgram(clientId);
+    _openGenPreview();
+  });
+}
+function _genPreviewBodyHtml(){
+  var prog=window._genProgram;if(!prog)return '';
+  var swapped=0,total=0;
+  var body=prog.days.map(function(d){
+    var rows=(d.exercises||[]).map(function(ex){
+      total++;if(ex._swapped)swapped++;
+      var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+      var isSS=/^SS/i.test(ex.name||'');
+      var sub=ex._swapped?('was: '+ex._from):'kept (no fresh variation found)';
+      var subCol=ex._swapped?'rgba(67,217,162,0.6)':'rgba(180,200,230,0.35)';
+      return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:9px;margin-bottom:6px;">'
+        +_exThumbHTML(ex.name,clean,36,'')
+        +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:13px;font-weight:700;color:#fff;line-height:1.25;">'+(isSS?'<span style="color:#ffb380;font-size:9px;font-weight:800;letter-spacing:1px;">SS </span>':'')+clean+'</div>'
+          +'<div style="font-size:10px;color:'+subCol+';margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+sub+' &nbsp;·&nbsp; '+(ex.prescription||'')+(ex.load?' · '+ex.load:'')+'</div>'
+        +'</div></div>';
+    }).join('');
+    return '<div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:'+(d.color||'#7ec8ff')+';margin-bottom:8px;">'+d.name+'</div>'+rows+'</div>';
+  }).join('');
+  return '<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:14px;">'+swapped+' of '+total+' exercises swapped for fresh variations · same days &amp; rep schemes</div>'+body;
+}
+function _openGenPreview(){
+  var c=clients.find(function(x){return x.id===window._genClientId;});if(!c)return;
+  var ex=document.getElementById('gen-program-sheet');if(ex)ex.remove();
+  var ov=document.createElement('div');ov.id='gen-program-sheet';
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0.72);display:flex;align-items:flex-end;justify-content:center;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+  ov.innerHTML='<div style="background:#0d1117;border:1px solid rgba(124,92,255,0.25);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -10px 50px rgba(0,0,0,0.6);">'
+    +'<div style="padding:18px 20px 12px;border-bottom:1px solid rgba(100,160,255,0.1);">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+        +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:20px;color:#fff;">✨ Next Program — '+c.first+'</div>'
+        +'<button onclick="document.getElementById(\'gen-program-sheet\').remove()" style="background:none;border:none;color:rgba(180,200,230,0.4);font-size:24px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>'
+      +'</div>'
+      +'<div style="font-size:11px;color:rgba(180,200,230,0.45);margin-top:3px;">A starting point — apply, then fine-tune any exercise with ✎ Edit. Logged history is untouched.</div>'
+    +'</div>'
+    +'<div id="gen-body" style="padding:16px 20px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;">'+_genPreviewBodyHtml()+'</div>'
+    +'<div style="padding:12px 20px 18px;border-top:1px solid rgba(100,160,255,0.1);display:flex;gap:8px;">'
+      +'<button onclick="_regenNextProgram()" style="flex:0 0 auto;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:10px;padding:13px 16px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:rgba(180,200,230,0.8);cursor:pointer;">🔄 Regenerate</button>'
+      +'<button onclick="_applyGenProgram()" style="flex:1;background:linear-gradient(135deg,#7c5cff,#43d9a2);border:none;border-radius:10px;padding:13px;font-family:Syne,sans-serif;font-size:13px;font-weight:800;color:#0a0d12;cursor:pointer;letter-spacing:.3px;">✓ Apply to '+c.first+'</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(ov);
+  try{_thumbsRefresh();}catch(e){}
+}
+function _regenNextProgram(){
+  _buildGenProgram(window._genClientId);
+  var b=document.getElementById('gen-body');if(b)b.innerHTML=_genPreviewBodyHtml();
+  try{_thumbsRefresh();}catch(e){}
+}
+function _applyGenProgram(){
+  var c=clients.find(function(x){return x.id===window._genClientId;});if(!c||!window._genProgram)return;
+  if(!confirm('Replace '+c.first+'\'s current program with this generated one? You can edit it after — logged history is kept.'))return;
+  var prog=JSON.parse(JSON.stringify(window._genProgram));
+  prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){delete ex._from;delete ex._swapped;});});
+  prog.started_at=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  db.updateClient(c.id,{structured_program:prog}).then(function(){
+    c.structured_program=prog;
+    var ov=document.getElementById('gen-program-sheet');if(ov)ov.remove();
+    try{_ensureLibraryHas([].concat.apply([],prog.days.map(function(d){return (d.exercises||[]).map(function(e){return e.name;});})));}catch(e){}
+    renderClientModal(c);openModal('clientModal');
+    toast('New program applied ✓ — tweak any exercise with ✎ Edit');
+  }).catch(function(){alert('Could not save the new program. Please try again.');});
 }
 
 // ── EDIT PROGRAM DAY ──
