@@ -3061,6 +3061,7 @@ function openLogSession(id, preselectedDay){
   const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
   if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
   window._adhocCount=0;
+  window._logRenderedDi=undefined;
   document.getElementById('logModalTitle').textContent=c.first;
   document.getElementById('logNote').value='';
   let workoutHtml='';
@@ -3068,7 +3069,7 @@ function openLogSession(id, preselectedDay){
     workoutHtml=`<div style="margin-bottom:16px;">
       <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Today's Workout</div>
       <div style="position:relative;">
-        <select id="logDaySelect" onchange="updateLogWorkout('${id}')" style="width:100%;padding:14px 40px 14px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;font-family:'Syne',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}<option value="-1" style="color:rgba(180,200,230,0.5);">↳ Custom Workout</option></select>
+        <select id="logDaySelect" onchange="_onLogDayChange('${id}',this)" style="width:100%;padding:14px 40px 14px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;font-family:'Syne',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}<option value="-1" style="color:rgba(180,200,230,0.5);">↳ Custom Workout</option></select>
         <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       </div>
     </div>
@@ -3088,9 +3089,22 @@ function openLogSession(id, preselectedDay){
   }
   openModal('logModal');
 }
+// Switching the day/Custom-Workout dropdown rebuilds the whole exercise list, wiping any sets already
+// typed in. Confirm first so a coach who picks "Custom Workout" mid-session doesn't silently lose the
+// program-day data they just entered (then revert the dropdown if they back out).
+function _onLogDayChange(id,sel){
+  if(_coachLogHasData()){
+    if(!confirm('Switch workout? The sets you\'ve already entered here will be cleared. (To add an extra exercise to this workout, use "+ Add Exercise" instead.)')){
+      if(window._logRenderedDi!==undefined&&window._logRenderedDi!==null)sel.value=String(window._logRenderedDi);
+      return;
+    }
+  }
+  updateLogWorkout(id);
+}
 function updateLogWorkout(clientId){
   const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
   const di=parseInt(document.getElementById('logDaySelect').value);
+  window._logRenderedDi=di;
   if(di===-1){
     window._coachExCount=0;window._coachExData=[];
     document.getElementById('logExercises').innerHTML=
@@ -3332,7 +3346,9 @@ async function confirmLogSession(){
   const coachPBs=[];
   let adhocDayName='Custom Workout';
   if(c.structured_program){
-    const di=parseInt(document.getElementById('logDaySelect')?.value);
+    // Use the day index that was actually RENDERED, not the live dropdown value, so the program rows
+    // can never be skipped due to dropdown drift.
+    const di=(window._logRenderedDi!==undefined&&window._logRenderedDi!==null&&!isNaN(window._logRenderedDi))?window._logRenderedDi:parseInt(document.getElementById('logDaySelect')?.value);
     if(di>=0){
       adhocDayName='Ad-hoc';
       const day=c.structured_program.days[di];
