@@ -1664,9 +1664,17 @@ function _progressionGuide(prescription, series){
   if(!n)return {last:null,sugg:null,status:'new'};
   var lastEntry=series[n-1],lastBest=lastEntry.best;
   var t=_prescTarget(prescription);
-  var prevBest=n>=2?series[n-2].best:null;
-  var status='first';
-  if(prevBest&&prevBest.weight)status=(lastBest.e1rm>prevBest.e1rm+0.01)?'up':'stall';
+  // STALL = no improvement (in e1RM, i.e. weight×reps) across the last THREE sessions. One flat
+  // session is fine (push for the next jump); only a 3-session plateau or decline is tagged stalled.
+  // 'up' = beat last session, 'hold' = flat-but-not-stalled, 'stall' = 3+ sessions no progress.
+  var status='first',tol=0.01;
+  if(n>=3){
+    var e1=series[n-1].best.e1rm,e2=series[n-2].best.e1rm,e3=series[n-3].best.e1rm;
+    if(e1<=e2+tol&&e2<=e3+tol)status='stall';
+    else status=(e1>e2+tol)?'up':'hold';
+  }else if(n>=2){
+    status=(series[n-1].best.e1rm>series[n-2].best.e1rm+tol)?'up':'hold';
+  }
   var sugg=null;
   if(t&&lastBest.weight){
     if(status==='stall'){
@@ -2852,29 +2860,68 @@ function generateNextProgram(clientId){
     _openGenPreview();
   });
 }
+function _genExRowView(ex){
+  var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+  var isSS=/^SS/i.test(ex.name||'');
+  var sub=ex._swapped?('was: '+ex._from):(ex._from===''?'new exercise':'kept (no fresh variation found)');
+  var subCol=ex._swapped?'rgba(67,217,162,0.6)':'rgba(180,200,230,0.35)';
+  return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:9px;margin-bottom:6px;">'
+    +_exThumbHTML(ex.name,clean,36,'')
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:13px;font-weight:700;color:#fff;line-height:1.25;">'+(isSS?'<span style="color:#ffb380;font-size:9px;font-weight:800;letter-spacing:1px;">SS </span>':'')+(clean||'<span style="opacity:.4">(empty)</span>')+'</div>'
+      +'<div style="font-size:10px;color:'+subCol+';margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+sub+' &nbsp;·&nbsp; '+(ex.prescription||'')+(ex.load?' · '+ex.load:'')+'</div>'
+    +'</div></div>';
+}
+function _genExRowEdit(di,ei,ex){
+  var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+  var isSS=/^SS/i.test(ex.name||'');
+  var inp='background:#1a1f28;border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;font-size:13px;font-weight:600;font-family:Syne,sans-serif;padding:9px 10px;outline:none;box-sizing:border-box;';
+  return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.12);border-radius:9px;padding:8px;margin-bottom:8px;">'
+    +(isSS?'<div style="font-size:8px;font-weight:800;letter-spacing:1.2px;color:#ffb380;margin:0 0 5px 2px;">⊕ SUPERSET</div>':'')
+    +'<div style="display:flex;align-items:center;gap:8px;">'
+      +_exThumbHTML(ex.name,clean,36,'')
+      +'<input id="gen-name-'+di+'-'+ei+'" value="'+_attr(clean)+'" placeholder="Exercise name…" autocomplete="off" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" style="flex:1;min-width:0;'+inp+'">'
+      +'<button onclick="_genDelEx('+di+','+ei+')" title="Remove" style="flex:0 0 auto;background:none;border:none;color:rgba(255,120,130,0.6);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:6px;">'
+      +'<input id="gen-presc-'+di+'-'+ei+'" value="'+_attr(ex.prescription||'')+'" placeholder="3×10" style="flex:1;'+inp+'">'
+      +'<input id="gen-load-'+di+'-'+ei+'" value="'+_attr(ex.load||'')+'" placeholder="load (optional)" style="flex:1;'+inp+'">'
+    +'</div>'
+  +'</div>';
+}
 function _genPreviewBodyHtml(){
   var prog=window._genProgram;if(!prog)return '';
-  var swapped=0,total=0;
-  var body=prog.days.map(function(d){
-    var rows=(d.exercises||[]).map(function(ex){
-      total++;if(ex._swapped)swapped++;
-      var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
-      var isSS=/^SS/i.test(ex.name||'');
-      var sub=ex._swapped?('was: '+ex._from):'kept (no fresh variation found)';
-      var subCol=ex._swapped?'rgba(67,217,162,0.6)':'rgba(180,200,230,0.35)';
-      return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:9px;margin-bottom:6px;">'
-        +_exThumbHTML(ex.name,clean,36,'')
-        +'<div style="flex:1;min-width:0;">'
-          +'<div style="font-size:13px;font-weight:700;color:#fff;line-height:1.25;">'+(isSS?'<span style="color:#ffb380;font-size:9px;font-weight:800;letter-spacing:1px;">SS </span>':'')+clean+'</div>'
-          +'<div style="font-size:10px;color:'+subCol+';margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+sub+' &nbsp;·&nbsp; '+(ex.prescription||'')+(ex.load?' · '+ex.load:'')+'</div>'
-        +'</div></div>';
-    }).join('');
-    return '<div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:'+(d.color||'#7ec8ff')+';margin-bottom:8px;">'+d.name+'</div>'+rows+'</div>';
+  var edit=!!window._genEditMode,swapped=0,total=0;
+  var body=prog.days.map(function(d,di){
+    var rows=(d.exercises||[]).map(function(ex,ei){total++;if(ex._swapped)swapped++;return edit?_genExRowEdit(di,ei,ex):_genExRowView(ex);}).join('');
+    var add=edit?('<button onclick="_genAddEx('+di+')" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:8px;padding:9px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:rgba(126,200,255,0.55);cursor:pointer;margin-top:2px;">+ Add exercise</button>'):'';
+    return '<div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:'+(d.color||'#7ec8ff')+';margin-bottom:8px;">'+d.name+'</div>'+rows+add+'</div>';
   }).join('');
-  return '<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:14px;">'+swapped+' of '+total+' exercises swapped for fresh variations · same days &amp; rep schemes</div>'+body;
+  var summary=edit
+    ?'<div style="font-size:11px;color:rgba(124,200,255,0.7);margin-bottom:12px;">✎ Editing — tweak names, sets/reps &amp; loads, add or remove. Tap “Done” to preview, then Apply.</div>'
+    :'<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+swapped+' of '+total+' exercises swapped for fresh variations · same days &amp; rep schemes</div>';
+  var toggle='<button onclick="_genToggleEdit()" style="width:100%;margin-bottom:14px;background:'+(edit?'linear-gradient(135deg,#43d9a2,#34c08a)':'rgba(124,92,255,0.16)')+';border:1px solid '+(edit?'rgba(67,217,162,0.4)':'rgba(124,92,255,0.4)')+';border-radius:11px;padding:14px;font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+(edit?'#0a0d12':'#c4b5fd')+';cursor:pointer;letter-spacing:.3px;">'+(edit?'✓ Done Editing':'✎ Edit Exercises')+'</button>';
+  return summary+toggle+body;
 }
+// Pull the current edit-mode input values back into the in-memory program (SS prefixes preserved).
+function _genReadEditInputs(){
+  var prog=window._genProgram;if(!prog||!window._genEditMode)return;
+  prog.days.forEach(function(d,di){(d.exercises||[]).forEach(function(ex,ei){
+    var ni=document.getElementById('gen-name-'+di+'-'+ei);
+    var pi=document.getElementById('gen-presc-'+di+'-'+ei);
+    var li=document.getElementById('gen-load-'+di+'-'+ei);
+    if(ni){var pfx=(ex.name||'').match(/^SS\w+:\s*/i);ex.name=(pfx?pfx[0]:'')+ni.value.trim();}
+    if(pi)ex.prescription=pi.value.trim();
+    if(li)ex.load=li.value.trim();
+  });});
+}
+function _genRerender(){var b=document.getElementById('gen-body');if(b)b.innerHTML=_genPreviewBodyHtml();try{_thumbsRefresh();}catch(e){}}
+function _genToggleEdit(){_genReadEditInputs();window._genEditMode=!window._genEditMode;_genRerender();}
+function _genDelEx(di,ei){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d&&d.exercises)d.exercises.splice(ei,1);_genRerender();}
+function _genAddEx(di){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d){d.exercises=d.exercises||[];d.exercises.push({name:'',prescription:'3x10',load:'',_from:'',_swapped:false});}_genRerender();}
 function _openGenPreview(){
   var c=clients.find(function(x){return x.id===window._genClientId;});if(!c)return;
+  window._genEditMode=false;
   var ex=document.getElementById('gen-program-sheet');if(ex)ex.remove();
   var ov=document.createElement('div');ov.id='gen-program-sheet';
   ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0.72);display:flex;align-items:flex-end;justify-content:center;';
@@ -2897,14 +2944,17 @@ function _openGenPreview(){
   try{_thumbsRefresh();}catch(e){}
 }
 function _regenNextProgram(){
+  window._genEditMode=false;
   _buildGenProgram(window._genClientId);
-  var b=document.getElementById('gen-body');if(b)b.innerHTML=_genPreviewBodyHtml();
-  try{_thumbsRefresh();}catch(e){}
+  _genRerender();
 }
 function _applyGenProgram(){
   var c=clients.find(function(x){return x.id===window._genClientId;});if(!c||!window._genProgram)return;
+  _genReadEditInputs();
   if(!confirm('Replace '+c.first+'\'s current program with this generated one? You can edit it after — logged history is kept.'))return;
   var prog=JSON.parse(JSON.stringify(window._genProgram));
+  // Drop any blank rows left from editing, then strip preview-only helper fields.
+  prog.days.forEach(function(d){d.exercises=(d.exercises||[]).filter(function(ex){return (ex.name||'').replace(/^SS\w+:\s*/i,'').trim();});});
   prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){delete ex._from;delete ex._swapped;});});
   prog.started_at=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   db.updateClient(c.id,{structured_program:prog}).then(function(){
