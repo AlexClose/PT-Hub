@@ -2800,17 +2800,32 @@ var _OUR_TO_EXDB={chest:'chest',back:'lats',shoulders:'shoulders',quads:'quadric
 var _GEN_OK_EQUIP={'barbell':1,'dumbbell':1,'cable':1,'machine':1,'kettlebells':1,'body only':1,'e-z curl bar':1,'bands':1,'exercise ball':1};
 var _GEN_PREF_EQUIP={'barbell':1,'dumbbell':1,'cable':1,'machine':1,'e-z curl bar':1};
 var _GEN_BAD_RE=/\b(clean|snatch|jerk|jump|clap|explosiv|plyo|broad|burpee|thruster|wall ball|muscle up|kipping)\b/i;
+// Soft penalty for genuinely odd phrasings (the "kneeling overhead extension" type) — down-ranked, not banned.
+var _GEN_ODD_RE=/\b(kneeling|guillotine|clock|around|drag|smr|bosu|towel|javelin|bradford|telle|spell|frog|sots|bottoms up|behind the neck)\b/i;
 function _genOkEx(e){return e.category==='strength'&&_GEN_OK_EQUIP[(e.equipment||'').toLowerCase()]&&!_GEN_BAD_RE.test(e.name||'');}
+// Dataset ids that the curated _EX_SUGGEST staples resolve to = "recognizable" exercises a coach reaches
+// for. Boosting these keeps swaps mostly normal (esp. main lifts) while still allowing some variety.
+function _genCommonIds(){
+  if(window._genCommonIdMap&&window._genCommonIdsReady)return window._genCommonIdMap;
+  var s={};
+  if(_exDb&&typeof _exDbMatch==='function'){for(var i=0;i<_EX_SUGGEST.length;i++){var m=_exDbMatch(_EX_SUGGEST[i]);if(m)s[m.id]=1;}window._genCommonIdsReady=true;}
+  window._genCommonIdMap=s;return s;
+}
 function _altScore(e,mech,equip){
   var s=0,em=(e.mechanic||'').toLowerCase(),eq=(e.equipment||'').toLowerCase();
   if(mech&&em===mech)s+=3;                                   // keep compound/isolation character
   if(_GEN_PREF_EQUIP[eq])s+=(equip&&eq!==equip)?2.5:2;       // gym-staple equipment; a fresh implement edges it
   else s+=0.3;
   if(e.level==='intermediate')s+=1; if(e.level==='beginner')s+=0.5;
+  if(_genCommonIds()[e.id])s+=3;                             // recognizable staple
+  if(_GEN_ODD_RE.test(e.name||''))s-=3;                      // odd phrasing
+  var w=(e.name||'').split(/\s+/).length;if(w>4)s-=(w-4)*0.5; // long names trend obscure
   return s;
 }
 // Pick a fresh exercise for the same muscle/mechanic, excluding anything in `used` (by demo identity).
-function _altExerciseFor(origName,used){
+// `first` = this is the day's lead (main) lift → keep it a recognizable compound; accessory slots get
+// a wider pick window so some interesting variety still comes through.
+function _altExerciseFor(origName,used,first){
   if(!_exDb)return null;
   var clean=(origName||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return null;
   var m=_exDbMatch(clean),primary='',mech='',equip='',origId=null;
@@ -2826,8 +2841,10 @@ function _altExerciseFor(origName,used){
     return true;
   });
   if(!pool.length)return null;
+  // Lead lift that was a compound → only offer compounds (no accessory as the main movement).
+  if(first&&mech==='compound'){var comp=pool.filter(function(e){return (e.mechanic||'').toLowerCase()==='compound';});if(comp.length)pool=comp;}
   pool.sort(function(a,b){return _altScore(b,mech,equip)-_altScore(a,mech,equip);});
-  var top=pool.slice(0,Math.min(5,pool.length));
+  var top=pool.slice(0,Math.min(first?2:6,pool.length));
   var pick=top[Math.floor(Math.random()*top.length)];
   return pick?pick.name:null;
 }
@@ -2837,10 +2854,10 @@ function _buildGenProgram(clientId){
   var used={};
   prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){var id=_exIdentity(ex.name);if(id)used[id]=1;});});
   prog.days.forEach(function(d){
-    d.exercises=(d.exercises||[]).map(function(ex){
+    d.exercises=(d.exercises||[]).map(function(ex,ei){
       var ssm=(ex.name||'').match(/^SS\w+:\s*/i),pfx=ssm?ssm[0]:'';
       var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
-      var alt=_altExerciseFor(clean,used);
+      var alt=_altExerciseFor(clean,used,ei===0);
       var out=Object.assign({},ex);
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
       else{out._from=clean;out._swapped=false;}
@@ -2924,7 +2941,7 @@ function _openGenPreview(){
   window._genEditMode=false;
   var ex=document.getElementById('gen-program-sheet');if(ex)ex.remove();
   var ov=document.createElement('div');ov.id='gen-program-sheet';
-  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0.72);display:flex;align-items:flex-end;justify-content:center;';
+  ov.style.cssText='position:fixed;inset:0;z-index:8800;background:rgba(0,0,0,0.72);display:flex;align-items:flex-end;justify-content:center;';/* below the demo sheet (9000) so tapping a thumbnail opens the demo on top */
   ov.onclick=function(e){if(e.target===ov)ov.remove();};
   ov.innerHTML='<div style="background:#0d1117;border:1px solid rgba(124,92,255,0.25);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -10px 50px rgba(0,0,0,0.6);">'
     +'<div style="padding:18px 20px 12px;border-bottom:1px solid rgba(100,160,255,0.1);">'
