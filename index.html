@@ -3272,7 +3272,8 @@ async function saveProgramDay(){
 function saveDraftCoach(){
   if(!pendingLogId)return;
   const sel=document.getElementById('logDaySelect');
-  const dayIndex=sel?parseInt(sel.value)||0:0;
+  // Prefer the day index actually rendered (so a Custom Workout, di=-1, is captured correctly).
+  const dayIndex=(window._logRenderedDi!==undefined&&window._logRenderedDi!==null&&!isNaN(window._logRenderedDi))?window._logRenderedDi:(sel?parseInt(sel.value)||0:0);
   const note=document.getElementById('logNote')?.value||'';
   const inputs={};
   let i=0;
@@ -3280,7 +3281,15 @@ function saveDraftCoach(){
     inputs[i]={reps:document.getElementById('wr-'+i)?.value||'',weight:document.getElementById('wt-'+i)?.value||''};
     i++;
   }
-  try{localStorage.setItem('bm_coach_draft',JSON.stringify({clientId:pendingLogId,dayIndex,note,inputs}));}catch(e){}
+  // Ad-hoc / custom-workout rows (in DOM order) so a crash/reload mid-custom-workout is recoverable.
+  const adhoc=[];
+  document.querySelectorAll('[id^="an-adhoc-"]').forEach(function(nameEl){
+    const n=nameEl.id.replace('an-adhoc-','');
+    const reps=document.getElementById('wr-adhoc-'+n)?.value||'';
+    const weight=document.getElementById('wt-adhoc-'+n)?.value||'';
+    if((nameEl.value||'').trim()||reps.trim()||weight.trim())adhoc.push({name:nameEl.value||'',reps:reps,weight:weight});
+  });
+  try{localStorage.setItem('bm_coach_draft',JSON.stringify({clientId:pendingLogId,dayIndex,note,inputs,adhoc}));}catch(e){}
 }
 function clearDraftCoach(){
   try{localStorage.removeItem('bm_coach_draft');}catch(e){}
@@ -3293,8 +3302,8 @@ function _coachLogHasData(){
   var adv=document.querySelectorAll('[id^="wr-adhoc-"],[id^="wt-adhoc-"]');for(var j=0;j<adv.length;j++){if((adv[j].value||'').trim())return true;}
   return false;
 }
-// Guarded close for the log modal — confirm before discarding an in-progress session (the draft does
-// not capture ad-hoc/custom-workout rows, so an accidental close would lose them outright).
+// Guarded close for the log modal — confirm before discarding an in-progress session. (Crash/reload is
+// now recoverable via the draft, which captures program + ad-hoc rows; this guard catches accidental taps.)
 function closeLogSession(force){
   if(!force&&_coachLogHasData()){if(!confirm('Discard this in-progress session? Your entered sets will be lost.'))return;}
   clearDraftCoach();
@@ -3308,7 +3317,8 @@ function restoreDraftCoach(){
     if(!draft.clientId)return;
     const c=clients.find(x=>x.id===draft.clientId);
     if(!c)return;
-    const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight)||(draft.note&&draft.note.trim());
+    const adhocDraft=Array.isArray(draft.adhoc)?draft.adhoc:[];
+    const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight)||(draft.note&&draft.note.trim())||adhocDraft.some(a=>(a.name||'').trim()||(a.reps||'').trim()||(a.weight||'').trim());
     if(!hasData)return;
     openLogSession(draft.clientId,draft.dayIndex);
     setTimeout(()=>{
@@ -3321,6 +3331,21 @@ function restoreDraftCoach(){
         if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
         if(draft.inputs[i].reps||draft.inputs[i].weight)checkExRowCoach(parseInt(i));
       });
+      // Rebuild ad-hoc / custom-workout rows from the draft (flat — matches how they're saved).
+      if(adhocDraft.length&&typeof addAdHocExercise==='function'){
+        const cont=document.getElementById('adhoc-exercises');
+        if(cont){cont.innerHTML='';window._adhocCount=0;}
+        adhocDraft.forEach(function(a){
+          const idx=window._adhocCount||0;
+          addAdHocExercise();
+          const nm=document.getElementById('an-adhoc-'+idx);
+          const wr=document.getElementById('wr-adhoc-'+idx);
+          const wt=document.getElementById('wt-adhoc-'+idx);
+          if(nm){nm.value=a.name||'';try{_syncRowThumb(nm);}catch(e){}}
+          if(wr)wr.value=a.reps||'';
+          if(wt)wt.value=a.weight||'';
+        });
+      }
       toast('Draft restored — pick up where you left off ✓');
     },200);
   }catch(e){}
@@ -3506,15 +3531,15 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
   const labelTag=inWrap?`<div style="font-size:10px;font-weight:700;color:rgba(126,200,255,0.45);letter-spacing:1.2px;margin-bottom:8px;">${supLabel}</div>`:'';
   row.innerHTML=`<div class="ex-drag-handle" title="Drag to reorder" style="align-self:stretch;display:flex;align-items:center;justify-content:center;padding:0 14px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(100,160,255,0.08);">⠿</div>`
     +`<div style="flex:1;min-width:0;padding:14px;position:relative;">`
-    +`<button onclick="document.getElementById('adhoc-row-${n}').remove()" style="position:absolute;top:6px;right:4px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
+    +`<button onclick="document.getElementById('adhoc-row-${n}').remove();saveDraftCoach()" style="position:absolute;top:6px;right:4px;background:none;border:none;color:rgba(180,200,230,0.3);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;z-index:1;">×</button>`
     +labelTag
     +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-right:22px;">`
     +_exThumbHTML('','',40,'coach:'+(pendingLogId||''))
-    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
+    +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);saveDraftCoach();" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
     +`<div class="workout-inputs">`
-    +`<div><input id="wr-adhoc-${n}" placeholder="3×10  ·  or 8,8,6"><div class="wi-label">Sets × Reps</div></div>`
-    +`<div><input id="wt-adhoc-${n}" placeholder="135  ·  or 135,145,155"><div class="wi-label">Weight / Load</div></div>`
+    +`<div><input id="wr-adhoc-${n}" placeholder="3×10  ·  or 8,8,6" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>`
+    +`<div><input id="wt-adhoc-${n}" placeholder="135  ·  or 135,145,155" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>`
     +`</div>`
     +`</div>`;
   container.appendChild(row);
