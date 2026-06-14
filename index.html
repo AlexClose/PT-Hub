@@ -709,6 +709,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
       <div class="form-group"><label class="form-label">Package Size</label><select id="ecPackage"><option value="0">TBD / Pay per session</option><option value="8">8</option><option value="12">12</option><option value="13">13</option><option value="16">16</option><option value="20">20</option><option value="24">24</option><option value="30">30</option></select></div>
       <div class="form-group"><label class="form-label">Remaining</label><input id="ecRemaining" type="number"></div>
     </div>
+    <div class="form-group"><label class="form-label">Package Start Date</label><input id="ecPkgStart" type="date"><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:4px;">Auto-set when you change the package — adjust here to backdate.</div></div>
     <div class="form-group"><label class="form-label">Schedule</label><input id="ecSchedule"></div>
     <div class="form-group"><label class="form-label">Session Length</label><select id="ecDuration"><option value="60">60 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="90">90 min</option></select></div>
     <button onclick="document.getElementById('ecMoreOpts').style.display=document.getElementById('ecMoreOpts').style.display==='none'?'block':'none'" style="width:100%;background:none;border:none;color:rgba(126,200,255,0.5);font-size:12px;font-weight:600;cursor:pointer;padding:8px 0;font-family:inherit;margin-bottom:8px">+ More options</button>
@@ -2198,9 +2199,24 @@ async function saveClient(){
     closeModal('addClientModal');renderClientList();renderDashboard();toast(`${first} added ✓`);
   }catch(e){toast('Error saving — check connection');}
 }
+// Format a package start date (stored ISO YYYY-MM-DD) for display; safe across browsers/timezones.
+function _fmtPkgStart(s){if(!s)return '';var d=/^\d{4}-\d{2}-\d{2}$/.test(s)?new Date(s+'T00:00:00'):new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+// Update a client; if the package_started_at column hasn't been migrated yet, retry without it so the
+// rest of the save still goes through (one-time grace until the ALTER TABLE is run).
+async function _updateClientSafe(id,data){
+  try{return await db.updateClient(id,data);}
+  catch(e){
+    if(data&&('package_started_at' in data)&&/package_started_at/i.test(String((e&&e.message)||e))){
+      var d2=Object.assign({},data);delete d2.package_started_at;
+      return await db.updateClient(id,d2);
+    }
+    throw e;
+  }
+}
 function openEditClient(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   document.getElementById('ecId').value=id;document.getElementById('ecFirst').value=c.first;document.getElementById('ecLast').value=c.last||'';document.getElementById('ecAge').value=c.age||'';document.getElementById('ecLevel').value=c.level||'Intermediate';document.getElementById('ecPackage').value=c.package_size||0;document.getElementById('ecRemaining').value=c.remaining||0;document.getElementById('ecSchedule').value=c.schedule||'';document.getElementById('ecDuration').value=c.duration||60;document.getElementById('ecGoals').value=c.goals||'';document.getElementById('ecInjuries').value=c.injuries||'';document.getElementById('ecNotes').value=c.notes||'';document.getElementById('ecEmail').value=c.email||'';document.getElementById('ecTier').value=c.tier||'';
+  document.getElementById('ecPkgStart').value=c.package_started_at||'';
   closeModal('clientModal');openModal('editClientModal');
 }
 async function saveEditClient(){
@@ -2214,8 +2230,16 @@ async function saveEditClient(){
   if(ecTierVal)tiers[id]=ecTierVal;else delete tiers[id];
   localStorage.setItem('bm_tiers',JSON.stringify(tiers));
   c.tier=ecTierVal;
-  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null};
-  try{await db.updateClient(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
+  // Package start date: a manual edit wins; otherwise stamp today when the package itself changed.
+  const pkgStartInput=document.getElementById('ecPkgStart').value;
+  const origStart=c.package_started_at||'';
+  const pkgChanged=(ePkg!==(c.package_size||0))||(eRem!==(c.remaining||0));
+  let pkgStart;
+  if(pkgStartInput&&pkgStartInput!==origStart)pkgStart=pkgStartInput;
+  else if(pkgChanged)pkgStart=new Date().toISOString().slice(0,10);
+  else pkgStart=origStart;
+  const data={first:document.getElementById('ecFirst').value.trim(),last:document.getElementById('ecLast').value.trim(),age:document.getElementById('ecAge').value,level:document.getElementById('ecLevel').value,package_size:parseInt(document.getElementById('ecPackage').value)||0,remaining:parseInt(document.getElementById('ecRemaining').value)||0,schedule:document.getElementById('ecSchedule').value.trim(),duration:parseInt(document.getElementById('ecDuration').value)||60,goals:document.getElementById('ecGoals').value.trim(),injuries:document.getElementById('ecInjuries').value.trim(),notes:document.getElementById('ecNotes').value.trim(),email:ecEmail||null,package_started_at:pkgStart||null};
+  try{await _updateClientSafe(id,data);Object.assign(c,data);closeModal('editClientModal');renderClientModal(c);openModal('clientModal');renderClientList();renderDashboard();toast('Updated ✓');}
   catch(e){toast('Error updating');}
 }
 
@@ -2517,6 +2541,7 @@ function renderClientModal(c){
               :c.remaining
               ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
               :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
+            ${(c.package_started_at&&!sharedPkg&&(c.package_size>0||c.remaining))?`<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:5px;">📅 Package started ${_fmtPkgStart(c.package_started_at)}</div>`:''}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
             <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
@@ -3766,7 +3791,8 @@ async function confirmRenew(){
       closeModal('renewModal');renderClientModal(c);renderDashboard();
       toast(`Shared package renewed — ${pkg} sessions ✓`);
     } else {
-      await db.updateClient(c.id,{package_size:pkg,remaining:pkg});c.package_size=pkg;c.remaining=pkg;
+      const startToday=new Date().toISOString().slice(0,10);
+      await _updateClientSafe(c.id,{package_size:pkg,remaining:pkg,package_started_at:startToday});c.package_size=pkg;c.remaining=pkg;c.package_started_at=startToday;
       closeModal('renewModal');renderClientModal(c);renderDashboard();
       toast(`${c.first} renewed — ${pkg} sessions ✓`);
     }
@@ -6501,6 +6527,11 @@ function startClientPortal(id) {
         }
       }
       window._newPBs = newPBs;
+      if (!workout.length) {
+        if(logBtn){logBtn.disabled=false;logBtn.innerHTML='LOG WORKOUT';}
+        alert('Log at least one set before finishing.');
+        return;
+      }
 
       // Let the spinner render for one frame before replacing the whole body
       var portalBody = document.getElementById('workout-sheet-inner') || document.getElementById('portal-body');
@@ -6545,34 +6576,43 @@ function startClientPortal(id) {
         '</div>';
 
       var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(/^SS\w+:\s*/i,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
-      fetch(SUPABASE_URL + '/rest/v1/sessions', {
-        method: 'POST',
-        headers: H,
-        body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: day.name, workout: workout})
-      })
-      .then(function(res) {
-        if (!res.ok) throw new Error('Failed to save session');
-        var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
-        window._clearDraft();
-        window._portalHistory = updatedHistory;
-        var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
-        window._portalRemaining = newRemaining;
-        var calls = [ fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
-          method: 'PATCH',
-          headers: H,
-          body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
-        }) ];
-        if (exLogs.length) calls.push(fetch(SUPABASE_URL + '/rest/v1/exercise_logs', {method:'POST', headers:H, body: JSON.stringify(exLogs)}).catch(function(){}));
-        return Promise.all(calls);
-      })
-      .then(function() {
-        var statusEl = document.getElementById('save-status');
-        if (statusEl) { statusEl.textContent = 'Saved!'; statusEl.style.color = 'rgba(67,217,162,0.5)'; }
-      })
-      .catch(function(err) {
-        var statusEl = document.getElementById('save-status');
-        if (statusEl) { statusEl.textContent = 'Save failed - check connection'; statusEl.style.color = '#ff5c6a'; }
-      });
+      var _portalSaveDone = false;
+      // Save the SESSION first and only report success once it actually persists. On failure show a
+      // loud, retryable message (data is held in this closure) so a flaky-network log is never lost silently.
+      function _doPortalSave(){
+        var ss = document.getElementById('save-status');
+        if (ss) { ss.innerHTML = 'Saving…'; ss.style.color = 'rgba(180,200,230,0.45)'; }
+        return fetch(SUPABASE_URL + '/rest/v1/sessions', {
+          method: 'POST', headers: H,
+          body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: day.name, workout: workout})
+        })
+        .then(function(res) {
+          if (!res.ok) throw new Error('Failed to save session');
+          if (_portalSaveDone) return; // guard against a double-tap retry after success
+          _portalSaveDone = true;
+          var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
+          window._clearDraft();
+          window._portalHistory = updatedHistory;
+          var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+          window._portalRemaining = newRemaining;
+          var calls = [ fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
+            method: 'PATCH', headers: H,
+            body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
+          }) ];
+          if (exLogs.length) calls.push(fetch(SUPABASE_URL + '/rest/v1/exercise_logs', {method:'POST', headers:H, body: JSON.stringify(exLogs)}).catch(function(){}));
+          return Promise.all(calls);
+        })
+        .then(function() {
+          var s2 = document.getElementById('save-status');
+          if (s2 && _portalSaveDone) { s2.innerHTML = '✓ Saved'; s2.style.color = 'rgba(67,217,162,0.7)'; }
+        })
+        .catch(function(err) {
+          var s2 = document.getElementById('save-status');
+          if (s2) { s2.style.color = '#ff5c6a'; s2.innerHTML = '⚠ Not saved — check your connection.<br><button onclick="window._retryPortalSave()" style="margin-top:8px;background:rgba(255,92,106,0.15);border:1px solid rgba(255,92,106,0.4);color:#ff8a8a;border-radius:8px;padding:8px 18px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">↻ Retry save</button>'; }
+        });
+      }
+      window._retryPortalSave = _doPortalSave;
+      _doPortalSave();
       }, 50);
     };
   }
