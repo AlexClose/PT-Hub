@@ -3383,9 +3383,10 @@ function openLogSession(id, preselectedDay){
   pendingLogId=id;
   // Always reset button in case a previous save errored and left it disabled
   const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
-  if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
+  if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';markBtn.style.background='';}
   window._adhocCount=0;
   window._logRenderedDi=undefined;
+  window._coachSessionSaved=false;window._coachClientUpdated=false;
   document.getElementById('logModalTitle').textContent=c.first;
   document.getElementById('logNote').value='';
   let workoutHtml='';
@@ -3712,22 +3713,34 @@ async function confirmLogSession(){
     }
   }
   try{_ensureLibraryHas(workout.map(function(w){return w.name;}));}catch(e){}
+  // Empty-session guard: never silently save (and charge) a session with no exercises entered.
+  if(!workout.length){
+    if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
+    if(!confirm('No exercises were entered for this session. Mark it complete anyway? (It will still use a session.)'))return;
+    if(markBtn){markBtn.disabled=true;markBtn.innerHTML='Saving…';}
+  }
   try{
-    await db.addSession({client_id:c.id,date:dateStr,note,workout});
-    for(const log of exLogs){try{await db.addExLog(log);}catch(e){}}
-    let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
-    await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
-    c.remaining=newRemaining;c.exercise_history=newHistory;
-    // Deduct from shared package if linked
-    if(c.remaining<0&&!c.shared_package_id){
-      setTimeout(()=>toast(`⚠️ ${c.first} is at ${c.remaining} sessions — balance owed`),300);
-    } else if(c.shared_package_id){
-      const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
-      if(sharedPkg&&sharedPkg.remaining_sessions>0){
-        const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
-        await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
-        sharedPkg.remaining_sessions=newShared;
+    // Each side-effect is guarded by a flag so a Retry after a mid-save failure can NEVER create a
+    // duplicate session or double-decrement the package. Flags reset when the log modal is opened.
+    if(!window._coachSessionSaved){
+      await db.addSession({client_id:c.id,date:dateStr,note,workout});
+      for(const log of exLogs){try{await db.addExLog(log);}catch(e){}}
+      window._coachSessionSaved=true;
+    }
+    if(!window._coachClientUpdated){
+      let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
+      await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
+      c.remaining=newRemaining;c.exercise_history=newHistory;
+      // Deduct from shared package if linked
+      if(c.shared_package_id){
+        const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
+        if(sharedPkg&&sharedPkg.remaining_sessions>0){
+          const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
+          await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
+          sharedPkg.remaining_sessions=newShared;
+        }
       }
+      window._coachClientUpdated=true;
     }
     c._sessions=await db.getSessions(c.id);
     clearDraftCoach();
@@ -3766,9 +3779,11 @@ async function confirmLogSession(){
       else toast(`Session logged ✓ — ${c.remaining} remaining`);
     }else toast('Session logged ✓');
   }catch(e){
-    toast('Error saving — check connection');
     console.error(e);
-    if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';}
+    toast('⚠️ Save failed — tap Retry');
+    // Loud, persistent failure: the modal stays open with the data intact and the button turns into a
+    // red Retry (retry is idempotent via the flags above — no dup session, no double charge).
+    if(markBtn){markBtn.disabled=false;markBtn.style.background='#b91c1c';markBtn.innerHTML='↻ Save failed — Retry';}
   }
 }
 
