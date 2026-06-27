@@ -2121,7 +2121,7 @@ function clientRowHtml(c){
       :c.remaining<=2?`<span class="badge badge-yellow">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`
       :`<span class="badge badge-green">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`;
   const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
-  const lastSessText = lastSess ? (() => { const d = new Date(lastSess.created_at || lastSess.date); const now = new Date(); const diff = Math.floor((now - d) / (1000*60*60*24)); return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? diff + 'd ago' : diff < 30 ? Math.floor(diff/7) + 'w ago' : Math.floor(diff/30) + 'mo ago'; })() : null;
+  const lastSessText = lastSess ? _relDayLabel(lastSess) : null;
   const _cardTier = (JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
   const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : 'rgba(180,200,230,0.18)';
   const sessionCount = (c._sessions||[]).length;
@@ -2154,7 +2154,7 @@ function clientCompactRowHtml(c){
   const badgeBg = !hasPkg?'rgba(79,163,232,0.1)':displayRemaining<=0?'rgba(255,92,106,0.1)':displayRemaining<=2?'rgba(255,179,71,0.1)':'rgba(67,217,162,0.1)';
   const badgeText = c.paused?'Paused':!hasPkg?'Pay/session':displayRemaining<=0?'Out':sharedPkg?(displayRemaining+' shared'):(c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left');
   const lastSess = c._sessions&&c._sessions.length>0?c._sessions[0]:null;
-  const lastText = lastSess?(()=>{const d=new Date(lastSess.created_at||lastSess.date);const diff=Math.floor((new Date()-d)/(1000*60*60*24));return diff===0?'Today':diff===1?'Yesterday':diff<7?diff+'d ago':Math.floor(diff/7)+'w ago';})():'—';
+  const lastText = lastSess?(_relDayLabel(lastSess)||'—'):'—';
   const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
   const dotCol=_ct==='gold'?'#FFD700':_ct==='silver'?'#C0C8D0':_ct==='bronze'?'#FF8C47':'rgba(180,200,230,0.15)';
   return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)';this.style.background='rgba(255,255,255,0.035)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)';this.style.background=''">
@@ -2201,6 +2201,27 @@ async function saveClient(){
 }
 // Format a package start date (stored ISO YYYY-MM-DD) for display; safe across browsers/timezones.
 function _fmtPkgStart(s){if(!s)return '';var d=/^\d{4}-\d{2}-\d{2}$/.test(s)?new Date(s+'T00:00:00'):new Date(s);return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+// Local-midnight Date for a session's CALENDAR day. Prefer the stored `date` ("Jun 14, 2026", the day
+// the coach assigned) over created_at (a UTC insert timestamp that can land on the wrong local day).
+function _sessDayDate(sess){
+  if(!sess)return null;
+  if(sess.date){var d=new Date(sess.date);if(!isNaN(d))return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+  if(sess.created_at){var c2=new Date(sess.created_at);if(!isNaN(c2))return new Date(c2.getFullYear(),c2.getMonth(),c2.getDate());}
+  return null;
+}
+// "Today / Yesterday / Nd ago" by CALENDAR DAY (not elapsed 24h windows — that mislabels an evening
+// session as "Today" the next morning). Accepts a Date or a session object.
+function _relDayLabel(x){
+  var day=(x&&x.getFullYear)?new Date(x.getFullYear(),x.getMonth(),x.getDate()):_sessDayDate(x);
+  if(!day||isNaN(day))return null;
+  var n=new Date();var today=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  var diff=Math.round((today-day)/86400000);
+  if(diff<=0)return 'Today';
+  if(diff===1)return 'Yesterday';
+  if(diff<7)return diff+'d ago';
+  if(diff<30)return Math.floor(diff/7)+'w ago';
+  return Math.floor(diff/30)+'mo ago';
+}
 // Update a client; if the package_started_at column hasn't been migrated yet, retry without it so the
 // rest of the save still goes through (one-time grace until the ALTER TABLE is run).
 async function _updateClientSafe(id,data){
@@ -5538,14 +5559,7 @@ function startClientPortal(id) {
           if (note && !dayLastDone[note]) dayLastDone[note] = new Date(s.created_at || s.date);
         });
       }
-      function fmtAgo(d) {
-        var diff = Math.floor((new Date() - d) / (1000*60*60*24));
-        if (diff === 0) return 'Today';
-        if (diff === 1) return 'Yesterday';
-        if (diff < 7) return diff + 'd ago';
-        if (diff < 30) return Math.floor(diff/7) + 'w ago';
-        return Math.floor(diff/30) + 'mo ago';
-      }
+      function fmtAgo(d) { return _relDayLabel(d) || ''; }  // calendar-day based (not elapsed 24h)
       var makeDayCard = function(entry) {
         var day = entry.day, idx = entry.idx;
         var col = day.color || ['#e05252','#4caf70','#c9a84c','#4fa3e8','#c084fc'][idx % 5];
