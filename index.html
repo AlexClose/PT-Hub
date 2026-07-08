@@ -4743,7 +4743,18 @@ function openAssignFromLibrary(clientId){
   document.getElementById('applyTemplateTitle').textContent=`Assign Program — ${c.first}`;
   const desc=document.getElementById('applyTemplateDesc');
   if(desc)desc.textContent=c.structured_program?'Choose a saved program. This will replace the current one.':'Choose a saved program from your library.';
-  renderAssignTemplateList();openModal('applyTemplateModal');
+  // Templates normally only load when the Programs tab is opened — coming straight from a client
+  // card the array is still empty, which used to show "No saved programs" even when they exist.
+  // Fetch on demand (loading state), and silently refresh when already loaded so it stays current.
+  if(!Array.isArray(templates)||!templates.length){
+    const el=document.getElementById('applyClientList');
+    if(el)el.innerHTML='<div class="skeleton" style="height:56px;border-radius:10px;margin-bottom:8px;"></div><div class="skeleton" style="height:56px;border-radius:10px;"></div>';
+    db.getTemplates().then(t=>{templates=Array.isArray(t)?t:[];renderAssignTemplateList();}).catch(()=>{renderAssignTemplateList();});
+  }else{
+    renderAssignTemplateList();
+    db.getTemplates().then(t=>{if(Array.isArray(t)){templates=t;renderAssignTemplateList();}}).catch(()=>{});
+  }
+  openModal('applyTemplateModal');
 }
 function renderAssignTemplateList(){
   const el=document.getElementById('applyClientList');if(!el)return;
