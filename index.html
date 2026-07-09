@@ -2902,6 +2902,23 @@ function _altScore(e,mech,equip){
   var w=(e.name||'').split(/\s+/).length;if(w>4)s-=(w-4)*0.5; // long names trend obscure
   return s;
 }
+// Name-based mechanic classification for when the dataset match misses (or has no mechanic).
+// Isolation cues are checked FIRST so "leg extension"/"face pull"/"lateral raise" don't false-match
+// the broad compound words they contain.
+var _GEN_ISO_RE=/\b(fly|flye?s?|crossover|cross over|raise|curl|extension|pushdown|push down|kickback|pullover|pec deck|shrug|calf|calves|adduction|abduction|face pull|pull.?apart|concentration|preacher|skull|crusher|wrist|woodchop|wood chop|crunch|sit.?up|plank|twist|rotation|leg raise|knee raise|hollow|dead bug)\b/i;
+var _GEN_COMP_RE=/\b(squat|deadlift|bench|press|row|pull.?up|chin.?up|pulldown|pull.?down|dip|lunge|split squat|leg press|hack|thrust|bridge|good morning|step.?up|rdl|carry|farmer)\b/i;
+function _exMechanic(name){
+  var clean=(name||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return '';
+  // Isolation name-cues override the dataset label — it tags some flyes/raises "compound".
+  if(_GEN_ISO_RE.test(clean))return 'isolation';
+  var m=(typeof _exDbMatch==='function'&&_exDb)?_exDbMatch(clean):null;
+  var mm=m?String(m.mechanic||'').toLowerCase():'';
+  if(mm==='compound'||mm==='isolation')return mm;
+  if(_GEN_COMP_RE.test(clean))return 'compound';
+  return '';
+}
+// Mechanic of a dataset CANDIDATE, with the same isolation-name override.
+function _genCandMech(e){return _GEN_ISO_RE.test(e.name||'')?'isolation':String(e.mechanic||'').toLowerCase();}
 // Pick a fresh exercise for the same muscle/mechanic, excluding anything in `used` (by demo identity).
 // `first` = this is the day's lead (main) lift → keep it a recognizable compound; accessory slots get
 // a wider pick window so some interesting variety still comes through.
@@ -2912,6 +2929,10 @@ function _altExerciseFor(origName,used,first){
   if(m){primary=(m.primaryMuscles&&m.primaryMuscles[0]||'').toLowerCase();mech=(m.mechanic||'').toLowerCase();equip=(m.equipment||'').toLowerCase();origId=m.id;}
   if(!primary){var ours=(typeof exerciseToMuscles==='function')?exerciseToMuscles(clean):null;if(ours&&ours.length)primary=_OUR_TO_EXDB[ours[0].muscle]||'';}
   if(!primary)return null;
+  // Mechanic from the dataset when matched; name-heuristic fallback so an unmatched original
+  // ("Machine Chest Press" variants etc.) still constrains the slot instead of going free-for-all —
+  // that's how a cable crossover once landed as a push day's lead lift.
+  if(mech!=='compound'&&mech!=='isolation')mech=_exMechanic(clean);
   var pool=_exDb.filter(function(e){
     var pm=(e.primaryMuscles&&e.primaryMuscles[0]||'').toLowerCase();
     if(pm!==primary)return false;
@@ -2921,12 +2942,41 @@ function _altExerciseFor(origName,used,first){
     return true;
   });
   if(!pool.length)return null;
-  // Lead lift that was a compound → only offer compounds (no accessory as the main movement).
-  if(first&&mech==='compound'){var comp=pool.filter(function(e){return (e.mechanic||'').toLowerCase()==='compound';});if(comp.length)pool=comp;}
+  if(first&&mech!=='isolation'){
+    // Lead slot: compounds only (unless the coach deliberately leads with an isolation).
+    var comp=pool.filter(function(e){return _genCandMech(e)==='compound';});
+    if(comp.length)pool=comp;
+  }else if(mech){
+    // Every other slot: same mechanic as the original — HARD filter, not just a score bonus
+    // (isolation must never replace a compound slot, and vice versa). Fall back to the full
+    // pool only when nothing of the right mechanic exists.
+    var same=pool.filter(function(e){return _genCandMech(e)===mech;});
+    if(same.length)pool=same;
+  }
   pool.sort(function(a,b){return _altScore(b,mech,equip)-_altScore(a,mech,equip);});
   var top=pool.slice(0,Math.min(first?2:6,pool.length));
   var pick=top[Math.floor(Math.random()*top.length)];
   return pick?pick.name:null;
+}
+// Order a generated day the way a coach would run it: compound lifts first, isolation/accessory
+// after — stable within each class (relative order preserved), superset groups move as ONE unit
+// (a group counts as compound if any member is).
+function _genOrderDay(exs){
+  var units=[],cur=null;
+  (exs||[]).forEach(function(ex){
+    var ssm=(ex.name||'').match(/^SS(\w*):/i);
+    if(ssm){
+      var g=ssm[1]||'';
+      if(cur&&cur.ss&&cur.g===g){cur.items.push(ex);return;}
+      cur={ss:true,g:g,items:[ex]};units.push(cur);
+    }else{cur=null;units.push({ss:false,items:[ex]});}
+  });
+  var comp=[],iso=[];
+  units.forEach(function(u){
+    var isComp=u.items.some(function(ex){return _exMechanic(ex.name)==='compound';});
+    (isComp?comp:iso).push(u);
+  });
+  return comp.concat(iso).reduce(function(acc,u){return acc.concat(u.items);},[]);
 }
 function _buildGenProgram(clientId){
   var c=clients.find(function(x){return x.id===clientId;});if(!c||!c.structured_program)return;
@@ -2943,6 +2993,9 @@ function _buildGenProgram(clientId){
       else{out._from=clean;out._swapped=false;}
       return out;
     });
+    // Final pass: compounds before isolation work so a day never leads with an accessory
+    // (regardless of how the source program happened to be ordered).
+    d.exercises=_genOrderDay(d.exercises);
   });
   prog.started_at=null;
   window._genProgram=prog;
