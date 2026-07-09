@@ -102,8 +102,8 @@ background:rgba(10,12,15,0.84);
 backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
 border-bottom:1px solid var(--border);
 /* viewport-fit=cover extends the page under the iOS status bar — pad the nav down past it */
-height:calc(56px + env(safe-area-inset-top,0px));
-display:flex;align-items:center;
+height:calc(60px + env(safe-area-inset-top,0px));
+display:flex;align-items:center;justify-content:center;
 padding:env(safe-area-inset-top,0px) 18px 0 18px;gap:6px;
 }
 /* Bottom tab bar (coach) — all 5 sections visible, no horizontal scrolling */
@@ -130,14 +130,14 @@ transition:color .18s;
 .ctab.active svg{transform:translateY(-1px);}
 .ctab:active svg{transform:scale(0.9);}
 .nav-logo{
-font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
-letter-spacing:-0.3px;
-margin-right:auto;
-line-height:1.1;
+font-family:'Syne',sans-serif;font-weight:800;font-size:18px;
+letter-spacing:0.2px;
+line-height:1.15;
+text-align:center;
 color:#ffffff !important;
 }
 .nav-logo span{color:#7ec8ff !important;font-family:'Syne',sans-serif;font-weight:800;}
-.nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;}
+.nav-logo small{display:block;font-size:9px;font-weight:600;letter-spacing:3.5px;text-transform:uppercase;color:rgba(180,200,230,0.45);margin-top:2px;}
 .nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.05);border-radius:13px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{
@@ -159,7 +159,7 @@ display:flex;align-items:center;gap:7px;
 /* ── MAIN ── */
 /* main sits in its own layer ABOVE the ambient canvas (z:0) — iOS culls fixed elements at negative
    z-index behind composited scroll layers, which made the particle background vanish after load */
-main{padding-top:calc(56px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;position:relative;z-index:1;}
+main{padding-top:calc(60px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;position:relative;z-index:1;}
 #view-scroll{position:relative;height:100%;overflow:hidden;}
 .view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;
 /* ambient light: a soft brand-blue wash bleeding down from the top — the dark gets an atmosphere
@@ -1482,6 +1482,7 @@ function openModal(id){
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow='';
+  if(id==='clientModal')window._mambGen=(window._mambGen||0)+1; // stop the header ambient loop
 }
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}o.classList.remove('open');}));
 
@@ -2222,6 +2223,69 @@ function _avatarStyle(c,size){
     +'display:flex;align-items:center;justify-content:center;flex-shrink:0;'
     +'font-family:Syne,sans-serif;font-weight:800;font-size:'+Math.round(size*0.33)+'px;color:hsl('+h+',60%,72%);letter-spacing:0.3px;';
 }
+// Client-modal header ambient: a small, per-client-colored variant of the dashboard's ambient
+// particles — motes gather inward instead of just rising, tinted to that client's own hue (the
+// same golden-angle hue the avatar uses) so each client's page feels personal, not copy-pasted.
+// Confined to the header zone; header content is z-index:1 above it (see renderClientModal).
+function _renderModalAmbient(hue){
+  var host=document.getElementById('clientModalBody');
+  if(!host)return;
+  var old=document.getElementById('modal-ambient');
+  if(old)old.remove();
+  var H=190;
+  var cv=document.createElement('canvas');
+  cv.id='modal-ambient';
+  cv.style.cssText='position:absolute;top:0;left:0;right:0;height:'+H+'px;z-index:0;pointer-events:none;'
+    +'background:radial-gradient(340px 220px at 50% -10px,hsla('+hue+',75%,58%,0.16),transparent 68%);';
+  host.insertBefore(cv,host.firstChild);
+  var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ctx=cv.getContext('2d'),W,DPR=Math.min(2,window.devicePixelRatio||1);
+  function size(){W=host.clientWidth||360;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+  size();
+  window._mambGen=(window._mambGen||0)+1;
+  var myGen=window._mambGen;
+  addEventListener('resize',function onResize(){if(myGen!==window._mambGen)return;size();});
+  var N=Math.max(14,Math.min(26,Math.round(W/16)));
+  var ps=[];
+  function spawn(p,initial){
+    p.x=Math.random()*W;
+    p.y=initial?Math.random()*H:H+6;
+    p.r=0.6+Math.random()*1.6;
+    p.vy=-(0.10+Math.random()*0.26);
+    p.vx=(Math.random()-0.5)*0.05;
+    p.tw=Math.random()*Math.PI*2;
+    p.tws=0.005+Math.random()*0.014;
+    p.a=0.14+Math.random()*0.30;
+    return p;
+  }
+  for(var i=0;i<N;i++)ps.push(spawn({},true));
+  function draw(animate){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<ps.length;i++){
+      var p=ps[i];
+      if(animate){
+        p.y+=p.vy;p.x+=p.vx+(W/2-p.x)*0.0006;p.tw+=p.tws; // gentle inward gather, not just rising
+        if(p.y<-8||p.x<-10||p.x>W+10)spawn(p,false);
+      }
+      var tw=0.55+0.45*Math.sin(p.tw);
+      var depth=0.3+0.7*(p.y/H);
+      var a=p.a*tw*depth;
+      if(p.r>1.3){
+        ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.6,0,6.2832);
+        ctx.fillStyle='hsla('+hue+',85%,68%,'+(a*0.16).toFixed(3)+')';ctx.fill();
+      }
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.2832);
+      ctx.fillStyle='hsla('+hue+',80%,76%,'+a.toFixed(3)+')';ctx.fill();
+    }
+  }
+  if(reduced){draw(false);return;}
+  function loop(){
+    if(myGen!==window._mambGen)return;
+    if(!document.hidden)draw(true);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
 function clientRowHtml(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
   const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
@@ -2535,7 +2599,7 @@ function renderClientModal(c){
 
   document.getElementById('clientModalBody').innerHTML=`
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px;margin-bottom:16px">
       <div class="client-avatar" style="${_avatarStyle(c,52)}">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2548,7 +2612,7 @@ function renderClientModal(c){
       <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
 
-    <div style="display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:12px;padding:3px;margin-bottom:18px;">
+    <div style="position:relative;z-index:1;display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:12px;padding:3px;margin-bottom:18px;">
       <button id="cmtb-${c.id}-overview" onclick="setClientModalTab('${c.id}','overview')" style="${tba('overview')}">Overview</button>
       <button id="cmtb-${c.id}-program" onclick="setClientModalTab('${c.id}','program')" style="${tba('program')}">Program</button>
       <button id="cmtb-${c.id}-progress" onclick="setClientModalTab('${c.id}','progress')" style="${tba('progress')}">Progress</button>
@@ -2795,6 +2859,7 @@ function renderClientModal(c){
       <div style="padding-bottom:24px;"></div>
     </div>`;
   setupModalSwipe(c.id);
+  _renderModalAmbient(_clientHue(c));
   // Async: enrich session history with workout day names from exercise_logs
   if(sessions.length>0){
     fetch(SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+c.id+'&select=session_date,day_name',{headers:H})
