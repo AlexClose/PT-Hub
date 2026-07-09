@@ -87,9 +87,10 @@ position:fixed;top:0;left:0;right:0;z-index:100;
 background:rgba(10,12,15,0.92);
 backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
 border-bottom:1px solid var(--border);
-height:56px;
+/* viewport-fit=cover extends the page under the iOS status bar — pad the nav down past it */
+height:calc(56px + env(safe-area-inset-top,0px));
 display:flex;align-items:center;
-padding:0 18px;gap:6px;
+padding:env(safe-area-inset-top,0px) 18px 0 18px;gap:6px;
 }
 /* Bottom tab bar (coach) — all 5 sections visible, no horizontal scrolling */
 #coach-tabbar{
@@ -142,7 +143,7 @@ display:flex;align-items:center;gap:7px;
 .nav-tab.active .tab-label{display:inline;}
 
 /* ── MAIN ── */
-main{padding-top:56px;height:100vh;overflow:hidden;box-sizing:border-box;}
+main{padding-top:calc(56px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;}
 #view-scroll{position:relative;height:100%;overflow:hidden;}
 .view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;}
 .view.active{transform:translateX(0%);}
@@ -391,15 +392,18 @@ margin:0 auto 14px;
 /* ── TOAST ── */
 .toast{
 position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));left:50%;
-transform:translateX(-50%) translateY(100px);
+/* hidden = faded + slightly dropped (NOT translated off-screen: with the raised resting position a
+   fixed 100px slide left the empty toast peeking out above the home indicator as a grey square) */
+transform:translateX(-50%) translateY(24px);
+opacity:0;pointer-events:none;
 background:var(--surface2);
 border:1px solid var(--border2);
 border-radius:12px;padding:13px 20px;font-size:13px;font-weight:500;
-z-index:300;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+z-index:300;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .22s ease;
 white-space:nowrap;
 box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(79,163,232,0.1);
 }
-.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 
 /* ── EMPTY ── */
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
@@ -5116,7 +5120,7 @@ function startClientPortal(id) {
     var icoStats='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
     var icoMuscles='<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M12 6v5"/><path d="M7 8.5C5.5 9.5 5 11 5 12l1 4h2l1 5h6l1-5h2l1-4c0-1-.5-2.5-2-3.5"/><path d="M9 8.5C9 8.5 10 9 12 9s3-.5 3-.5"/><path d="M5 16l-1 2M19 16l1 2"/></svg>';
     document.body.innerHTML =
-      '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.1);padding:14px 20px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);">' +
+      '<div style="background:rgba(10,12,15,0.98);border-bottom:1px solid rgba(100,160,255,0.1);padding:calc(14px + env(safe-area-inset-top,0px)) 20px 14px;position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);">' +
         '<div style="max-width:480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
             '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.3px;">' +
