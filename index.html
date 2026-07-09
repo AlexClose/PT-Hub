@@ -2669,7 +2669,7 @@ function renderClientModal(c){
   setupModalSwipe(c.id);
   // Async: enrich session history with workout day names from exercise_logs
   if(sessions.length>0){
-    fetch(SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+c.id+'&select=session_date,day_name&order=session_date.desc&limit=50',{headers:H})
+    fetch(SB_URL+'/rest/v1/exercise_logs?client_id=eq.'+c.id+'&select=session_date,day_name',{headers:H})
       .then(r=>r.json()).then(data=>{
         const dnm={};
         (data||[]).forEach(l=>{if(!dnm[l.session_date]&&l.day_name)dnm[l.session_date]=l.day_name;});
@@ -3407,7 +3407,7 @@ function openLogSession(id, preselectedDay){
   if(markBtn){markBtn.disabled=false;markBtn.innerHTML='✓ Mark Complete';markBtn.style.background='';}
   window._adhocCount=0;
   window._logRenderedDi=undefined;
-  window._coachSessionSaved=false;window._coachClientUpdated=false;
+  window._coachSessionSaved=false;window._coachClientUpdated=false;window._coachSharedUpdated=false;
   document.getElementById('logModalTitle').textContent=c.first;
   document.getElementById('logNote').value='';
   let workoutHtml='';
@@ -3752,16 +3752,19 @@ async function confirmLogSession(){
       let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
       await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
       c.remaining=newRemaining;c.exercise_history=newHistory;
-      // Deduct from shared package if linked
-      if(c.shared_package_id){
-        const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
-        if(sharedPkg&&sharedPkg.remaining_sessions>0){
-          const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
-          await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
-          sharedPkg.remaining_sessions=newShared;
-        }
-      }
+      // Flag flips as soon as the client PATCH lands — if the shared-package PATCH below fails, a
+      // Retry must NOT re-decrement the client (that was a double-charge bug for shared-pkg clients).
       window._coachClientUpdated=true;
+    }
+    // Deduct from shared package if linked (own idempotency flag, same reasoning)
+    if(c.shared_package_id&&!window._coachSharedUpdated){
+      const sharedPkg=sharedPackages.find(p=>p.id===c.shared_package_id);
+      if(sharedPkg&&sharedPkg.remaining_sessions>0){
+        const newShared=Math.max(0,sharedPkg.remaining_sessions-1);
+        await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:newShared});
+        sharedPkg.remaining_sessions=newShared;
+      }
+      window._coachSharedUpdated=true;
     }
     c._sessions=await db.getSessions(c.id);
     clearDraftCoach();
@@ -5509,7 +5512,7 @@ function startClientPortal(id) {
           dotEl.textContent = '✓';
         });
         // Fetch day names from exercise_logs then render Recent Workouts
-        fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&select=session_date,day_name&order=session_date.desc&limit=30', {
+        fetch(SUPABASE_URL + '/rest/v1/exercise_logs?client_id=eq.' + window._portalClientId + '&select=session_date,day_name', {
           headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
         }).then(function(r){ return r.json(); }).then(function(logs) {
           var dayNameMap = {};
@@ -5545,13 +5548,16 @@ function startClientPortal(id) {
         }).catch(function(){});
       }).catch(function(){});
 
-      // Async PR badge
-      var prMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-      Promise.all([
-        fetch(SUPABASE_URL+'/rest/v1/exercise_logs?client_id=eq.'+window._portalClientId+'&session_date=gte.'+prMonthStr, {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}).then(function(r){return r.json();}),
-        fetch(SUPABASE_URL+'/rest/v1/exercise_logs?client_id=eq.'+window._portalClientId+'&session_date=lt.'+prMonthStr, {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}).then(function(r){return r.json();})
-      ]).then(function(results) {
-        var mLogs=results[0]||[], pLogs=results[1]||[], prevBest={}, monthBest={};
+      // Async PR badge. session_date is US-locale TEXT ("Jul 3, 2026") — server-side gte/lt against
+      // an ISO string compares lexicographically and silently matches everything/nothing, so fetch
+      // all and split into this-month vs prior CLIENT-SIDE.
+      var prMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      fetch(SUPABASE_URL+'/rest/v1/exercise_logs?client_id=eq.'+window._portalClientId+'&select=exercise_name,reps,weight,session_date', {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}}).then(function(r){return r.json();})
+      .then(function(all) {
+        all = Array.isArray(all) ? all : [];
+        var mLogs=[], pLogs=[];
+        all.forEach(function(l){var d=new Date(l.session_date||'');if(!isNaN(d)&&d>=prMonthStart)mLogs.push(l);else pLogs.push(l);});
+        var prevBest={}, monthBest={};
         pLogs.forEach(function(l){var e=_bestE1RM(l.reps,l.weight);if(e>(prevBest[l.exercise_name]||0))prevBest[l.exercise_name]=e;});
         mLogs.forEach(function(l){var e=_bestE1RM(l.reps,l.weight);if(e>(monthBest[l.exercise_name]||0))monthBest[l.exercise_name]=e;});
         var prCount=0;
@@ -6215,45 +6221,50 @@ function startClientPortal(id) {
       var btn = document.querySelector('button[onclick*="_logRunSession"]');
       if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
 
-      fetch(SUPABASE_URL + '/rest/v1/sessions', {
+      // Idempotent two-stage save: a retry after a partial failure must not duplicate the session,
+      // double-decrement remaining, or double-advance the run week. In-memory state commits only
+      // after the PATCH actually persists (and r.ok is checked — fetch doesn't reject on HTTP errors).
+      if (!window._runSaveState || window._runSaveState.key !== name + dateStr) window._runSaveState = {key: name + dateStr, sess: false, patch: false, result: null};
+      var _rst = window._runSaveState;
+      (_rst.sess ? Promise.resolve() : fetch(SUPABASE_URL + '/rest/v1/sessions', {
         method: 'POST',
         headers: H,
         body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: name, workout: [{name: name, reps: '', weight: ''}]})
-      })
-      .then(function(res) {
-        if (!res.ok) throw new Error('Failed');
-
+      }).then(function(res) { if (!res.ok) throw new Error('Failed'); _rst.sess = true; }))
+      .then(function() {
+        if (_rst.patch) return _rst.result;
         var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
-        window._portalRemaining = newRemaining;
-
-        // Auto-progress run week
+        // Auto-progress run week (computed locally; window state commits after the PATCH lands)
         var clientPatch = {remaining: newRemaining};
-        var weekAdvanced = false;
+        var weekAdvanced = false, pendingWeek = null, pendingDone = null;
         var completedWeekNum = window._portalRunProgramWeek || 1;
-
         if (window._portalRunProgram) {
           var prog = window._portalRunProgram;
           var currentWeek = window._portalRunProgramWeek || 1;
           var weekRuns = (prog.weeks || [])[currentWeek - 1] || [];
           var newDone = (window._portalRunWeekDone || 0) + 1;
-
           if (newDone >= weekRuns.length && currentWeek < (prog.weeks || []).length) {
-            // Finished all runs for this week — advance
             clientPatch.run_program_week = currentWeek + 1;
             clientPatch.run_week_done = 0;
-            window._portalRunProgramWeek = currentWeek + 1;
-            window._portalRunWeekDone = 0;
+            pendingWeek = currentWeek + 1; pendingDone = 0;
             weekAdvanced = true;
           } else {
             clientPatch.run_week_done = newDone;
-            window._portalRunWeekDone = newDone;
+            pendingDone = newDone;
           }
         }
-
         return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
           method: 'PATCH', headers: H,
           body: JSON.stringify(clientPatch)
-        }).then(function() { return {weekAdvanced: weekAdvanced, completedWeekNum: completedWeekNum}; });
+        }).then(function(r) {
+          if (!r.ok) throw new Error('Failed to update');
+          _rst.patch = true;
+          window._portalRemaining = newRemaining;
+          if (pendingWeek !== null) window._portalRunProgramWeek = pendingWeek;
+          if (pendingDone !== null) window._portalRunWeekDone = pendingDone;
+          _rst.result = {weekAdvanced: weekAdvanced, completedWeekNum: completedWeekNum};
+          return _rst.result;
+        });
       })
       .then(function(result) {
         var weekBanner = '';
@@ -6345,16 +6356,18 @@ function startClientPortal(id) {
       var dateStr = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
       var btn = document.querySelector('button[onclick*="_logRunSession"]');
       if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
-      fetch(SUPABASE_URL + '/rest/v1/sessions', {
+      // Idempotent two-stage save (same pattern as the other _logRunSession copy — see comment there).
+      if (!window._runSaveState || window._runSaveState.key !== name + dateStr) window._runSaveState = {key: name + dateStr, sess: false, patch: false, result: null};
+      var _rst = window._runSaveState;
+      (_rst.sess ? Promise.resolve() : fetch(SUPABASE_URL + '/rest/v1/sessions', {
         method: 'POST', headers: H,
         body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: name, workout: [{name: name, reps: '', weight: ''}]})
-      })
-      .then(function(res) {
-        if (!res.ok) throw new Error('Failed');
+      }).then(function(res) { if (!res.ok) throw new Error('Failed'); _rst.sess = true; }))
+      .then(function() {
+        if (_rst.patch) return _rst.result;
         var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
-        window._portalRemaining = newRemaining;
         var clientPatch = {remaining: newRemaining};
-        var weekAdvanced = false;
+        var weekAdvanced = false, pendingWeek = null, pendingDone = null;
         var completedWeekNum = window._portalRunProgramWeek || 1;
         if (window._portalRunProgram) {
           var prog = window._portalRunProgram;
@@ -6364,18 +6377,25 @@ function startClientPortal(id) {
           if (newDone >= weekRuns.length && currentWeek < (prog.weeks || []).length) {
             clientPatch.run_program_week = currentWeek + 1;
             clientPatch.run_week_done = 0;
-            window._portalRunProgramWeek = currentWeek + 1;
-            window._portalRunWeekDone = 0;
+            pendingWeek = currentWeek + 1; pendingDone = 0;
             weekAdvanced = true;
           } else {
             clientPatch.run_week_done = newDone;
-            window._portalRunWeekDone = newDone;
+            pendingDone = newDone;
           }
         }
         return fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
           method: 'PATCH', headers: H,
           body: JSON.stringify(clientPatch)
-        }).then(function() { return {weekAdvanced: weekAdvanced, completedWeekNum: completedWeekNum}; });
+        }).then(function(r) {
+          if (!r.ok) throw new Error('Failed to update');
+          _rst.patch = true;
+          window._portalRemaining = newRemaining;
+          if (pendingWeek !== null) window._portalRunProgramWeek = pendingWeek;
+          if (pendingDone !== null) window._portalRunWeekDone = pendingDone;
+          _rst.result = {weekAdvanced: weekAdvanced, completedWeekNum: completedWeekNum};
+          return _rst.result;
+        });
       })
       .then(function(result) {
         var weekBanner = '';
@@ -6616,39 +6636,40 @@ function startClientPortal(id) {
         '</div>';
 
       var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(/^SS\w+:\s*/i,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
-      var _portalSaveDone = false;
-      // Save the SESSION first and only report success once it actually persists. On failure show a
-      // loud, retryable message (data is held in this closure) so a flaky-network log is never lost silently.
+      // Two-stage idempotent save: each stage is guarded by its own flag so a Retry after a partial
+      // failure NEVER duplicates the session and never skips the client update. In-memory state and
+      // the draft are only touched after the corresponding write actually persisted.
+      var _sessSaved = false, _patchDone = false;
       function _doPortalSave(){
         var ss = document.getElementById('save-status');
         if (ss) { ss.innerHTML = 'Saving…'; ss.style.color = 'rgba(180,200,230,0.45)'; }
-        return fetch(SUPABASE_URL + '/rest/v1/sessions', {
+        var step1 = _sessSaved ? Promise.resolve() : fetch(SUPABASE_URL + '/rest/v1/sessions', {
           method: 'POST', headers: H,
           body: JSON.stringify({client_id: window._portalClientId, date: dateStr, note: day.name, workout: workout})
-        })
-        .then(function(res) {
-          if (!res.ok) throw new Error('Failed to save session');
-          if (_portalSaveDone) return; // guard against a double-tap retry after success
-          _portalSaveDone = true;
+        }).then(function(res){ if (!res.ok) throw new Error('Failed to save session'); _sessSaved = true; });
+        return step1.then(function(){
+          if (_patchDone) return;
           var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
-          window._clearDraft();
-          window._portalHistory = updatedHistory;
           var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
-          window._portalRemaining = newRemaining;
           var calls = [ fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
             method: 'PATCH', headers: H,
             body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
-          }) ];
+          }).then(function(r){ if (!r.ok) throw new Error('Failed to update client'); }) ];
           if (exLogs.length) calls.push(fetch(SUPABASE_URL + '/rest/v1/exercise_logs', {method:'POST', headers:H, body: JSON.stringify(exLogs)}).catch(function(){}));
-          return Promise.all(calls);
+          return Promise.all(calls).then(function(){
+            _patchDone = true;
+            window._portalHistory = updatedHistory;
+            window._portalRemaining = newRemaining;
+            window._clearDraft();
+          });
         })
         .then(function() {
           var s2 = document.getElementById('save-status');
-          if (s2 && _portalSaveDone) { s2.innerHTML = '✓ Saved'; s2.style.color = 'rgba(67,217,162,0.7)'; }
+          if (s2) { s2.innerHTML = '✓ Saved'; s2.style.color = 'rgba(67,217,162,0.7)'; }
         })
         .catch(function(err) {
           var s2 = document.getElementById('save-status');
-          if (s2) { s2.style.color = '#ff5c6a'; s2.innerHTML = '⚠ Not saved — check your connection.<br><button onclick="window._retryPortalSave()" style="margin-top:8px;background:rgba(255,92,106,0.15);border:1px solid rgba(255,92,106,0.4);color:#ff8a8a;border-radius:8px;padding:8px 18px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">↻ Retry save</button>'; }
+          if (s2) { s2.style.color = '#ff5c6a'; s2.innerHTML = '⚠ Not fully saved — check your connection.<br><button onclick="window._retryPortalSave()" style="margin-top:8px;background:rgba(255,92,106,0.15);border:1px solid rgba(255,92,106,0.4);color:#ff8a8a;border-radius:8px;padding:8px 18px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">↻ Retry save</button>'; }
         });
       }
       window._retryPortalSave = _doPortalSave;
@@ -6898,17 +6919,17 @@ async function renderMonthlyReport(c, period) {
     periodLabel = now.toLocaleString('default', {month: 'long'});
   }
 
-  const periodStr = periodStart.toISOString().split('T')[0];
-  const prevStr = prevStart.toISOString().split('T')[0];
-  const prevEndStr = prevEnd.toISOString().split('T')[0];
-
+  // session_date is US-locale TEXT — server-side gte/lt/lte against ISO strings are lexicographic
+  // no-ops (matched everything or nothing), so fetch once and bucket by parsed date CLIENT-SIDE.
   let logs = [], lastMonthLogs = [], prevLogs = [];
   try {
-    [logs, lastMonthLogs, prevLogs] = await Promise.all([
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${periodStr}&order=session_date.desc`),
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${prevStr}&session_date=lte.${prevEndStr}`),
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${periodStr}`)
-    ]);
+    const allLogs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&select=exercise_name,reps,weight,session_date`);
+    (Array.isArray(allLogs)?allLogs:[]).forEach(l => {
+      const d = new Date(l.session_date||'');
+      if (isNaN(d)) return;
+      if (d >= periodStart) logs.push(l);
+      else { prevLogs.push(l); if (d >= prevStart && d <= prevEnd) lastMonthLogs.push(l); }
+    });
   } catch(e) { logs = []; lastMonthLogs = []; prevLogs = []; }
 
   const sessions = c._sessions || [];
@@ -6927,20 +6948,16 @@ async function renderMonthlyReport(c, period) {
   let totalVolume = 0, lastMonthVolume = 0;
   const exVolume = {}, exMaxWeight = {}, lastMonthMax = {};
   logs.forEach(l => {
-    const sets = parseInt((l.reps||'').split('x')[0]) || 0;
-    const reps = parseInt((l.reps||'').split('x')[1]) || 0;
     const weight = maxWeight(l.weight);
-    const vol = sets * reps * weight;
+    const vol = _sessionVolume(l.reps, l.weight);  // handles 3x10 / 3×10 / 3X10 / "8,8,6"
     totalVolume += vol;
     if (!exVolume[l.exercise_name]) exVolume[l.exercise_name] = 0;
     exVolume[l.exercise_name] += vol;
     if (!exMaxWeight[l.exercise_name] || weight > exMaxWeight[l.exercise_name]) exMaxWeight[l.exercise_name] = weight;
   });
   lastMonthLogs.forEach(l => {
-    const sets = parseInt((l.reps||'').split('x')[0]) || 0;
-    const reps = parseInt((l.reps||'').split('x')[1]) || 0;
     const weight = maxWeight(l.weight);
-    lastMonthVolume += sets * reps * weight;
+    lastMonthVolume += _sessionVolume(l.reps, l.weight);
     if (!lastMonthMax[l.exercise_name] || weight > lastMonthMax[l.exercise_name]) lastMonthMax[l.exercise_name] = weight;
   });
 
@@ -7032,16 +7049,25 @@ async function renderBusinessView() {
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthStr = monthStart.toISOString().split('T')[0];
-  const tenDaysAgoStr = new Date(now - 10*24*60*60*1000).toISOString().split('T')[0];
+  const tenDaysAgo = new Date(now - 10*24*60*60*1000);
+  const tenDaysAgoStr = tenDaysAgo.toISOString().split('T')[0];
 
+  // session_date is US-locale TEXT — ISO gte filters were lexicographic no-ops (returned ALL logs,
+  // so "Inactive 10+" never flagged anyone). Fetch once, bucket client-side by parsed date.
+  // (created_at on sessions IS a real timestamp, that filter is fine.)
   let recentLogs = [], monthLogs = [], recentSessions = [];
   try {
-    [recentLogs, monthLogs, recentSessions] = await Promise.all([
-      sb('GET','exercise_logs',null,`?session_date=gte.${tenDaysAgoStr}&select=client_id`),
-      sb('GET','exercise_logs',null,`?session_date=gte.${monthStr}&select=client_id,session_date`),
+    const [allLogs, sess] = await Promise.all([
+      sb('GET','exercise_logs',null,`?select=client_id,session_date`),
       sb('GET','sessions',null,`?created_at=gte.${tenDaysAgoStr}&select=client_id`)
     ]);
+    recentSessions = Array.isArray(sess)?sess:[];
+    (Array.isArray(allLogs)?allLogs:[]).forEach(function(l){
+      const d = new Date(l.session_date||'');
+      if (isNaN(d)) return;
+      if (d >= tenDaysAgo) recentLogs.push(l);
+      if (d >= monthStart) monthLogs.push(l);
+    });
   } catch(e) { recentLogs=[]; monthLogs=[]; recentSessions=[]; }
 
   // Union exercise_logs + sessions so note-only sessions don't show as inactive
@@ -7227,16 +7253,16 @@ async function openProgressReport(cid) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-  const monthStr = monthStart.toISOString().split('T')[0];
-  const lastStr = lastMonthStart.toISOString().split('T')[0];
-  const lastEndStr = lastMonthEnd.toISOString().split('T')[0];
-
+  // session_date is US-locale TEXT — ISO gte/lt filters were lexicographic no-ops (this report showed
+  // all-time volume and flagged everything as a PR). Fetch once, bucket client-side.
   let logs=[], prevLogs=[];
   try {
-    [logs, prevLogs] = await Promise.all([
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=gte.${monthStr}&order=session_date.desc`),
-      sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&session_date=lt.${monthStr}`)
-    ]);
+    const allLogs = await sb('GET','exercise_logs',null,`?client_id=eq.${c.id}&select=exercise_name,reps,weight,session_date`);
+    (Array.isArray(allLogs)?allLogs:[]).forEach(function(l){
+      const d = new Date(l.session_date||'');
+      if (isNaN(d)) return;
+      if (d >= monthStart) logs.push(l); else prevLogs.push(l);
+    });
   } catch(e) { logs=[]; prevLogs=[]; }
 
   const sessions = c._sessions || [];
@@ -7247,10 +7273,8 @@ async function openProgressReport(cid) {
   let totalVolume = 0;
   const exMaxWeight = {}, exVolume = {};
   logs.forEach(function(l) {
-    const sets = parseInt((l.reps||'').split('x')[0])||0;
-    const reps = parseInt((l.reps||'').split('x')[1])||0;
     const w = maxWeight(l.weight);
-    const vol = sets*reps*w;
+    const vol = _sessionVolume(l.reps, l.weight);  // handles 3x10 / 3×10 / "8,8,6"
     totalVolume += vol;
     if (!exVolume[l.exercise_name]) exVolume[l.exercise_name]=0;
     exVolume[l.exercise_name] += vol;
