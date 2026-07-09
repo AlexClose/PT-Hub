@@ -989,6 +989,7 @@ const db={
   delEquipment: (id)    => sb('DELETE','equipment',null,`?id=eq.${id}`),
   addExLog:     (d)     => sb('POST','exercise_logs',d),
   updateSession:(id,d)  => sb('PATCH','sessions',d,`?id=eq.${id}`),
+  deleteSession:(id)    => sb('DELETE','sessions',null,`?id=eq.${id}`),
   getLibrary:   ()      => sb('GET','exercise_library',null,'?order=muscle_group.asc,name.asc'),
   getSharedPkgs: ()     => sb('GET','shared_packages',null,'?order=name.asc'),
   updateSharedPkg:(id,d)=> sb('PATCH','shared_packages',d,`?id=eq.${id}`),
@@ -1483,6 +1484,11 @@ function closeModal(id){
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow='';
   if(id==='clientModal')window._mambGen=(window._mambGen||0)+1; // stop the header ambient loop
+  // The log form's inputs aren't wiped on close (only re-rendered on the next openLogSession), so
+  // without this a stale-but-truthy pendingLogId + leftover filled inputs let a LATER backgrounding
+  // event (saveDraftCoach via visibilitychange) resurrect an already-completed session as a "draft" —
+  // which then auto-reopens next launch, looking unfinished, and gets logged again as a duplicate.
+  if(id==='logModal')pendingLogId=null;
 }
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}o.classList.remove('open');}));
 
@@ -3563,6 +3569,8 @@ async function saveProgramDay(){
 // ── WORKOUT DRAFT (coach) ──
 function saveDraftCoach(){
   if(!pendingLogId)return;
+  const logModalEl=document.getElementById('logModal');
+  if(!logModalEl||!logModalEl.classList.contains('open'))return; // modal isn't open — nothing in-progress to persist
   const sel=document.getElementById('logDaySelect');
   // Prefer the day index actually rendered (so a Custom Workout, di=-1, is captured correctly).
   const dayIndex=(window._logRenderedDi!==undefined&&window._logRenderedDi!==null&&!isNaN(window._logRenderedDi))?window._logRenderedDi:(sel?parseInt(sel.value)||0:0);
@@ -4602,6 +4610,7 @@ function openEditSession(cid, sessionId) {
       <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Session Note</div>
       <input id="es-note" type="text" value="${(s.note||'').replace(/"/g,'&quot;')}" placeholder="Optional note..." style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:14px;font-family:Instrument Sans,sans-serif;outline:none;">
     </div>
+    <button id="es-del-btn" onclick="deleteEditSession()" style="width:100%;margin-top:24px;background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.18);border-radius:10px;color:rgba(255,100,115,0.75);font-size:12px;font-weight:600;padding:11px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Delete Session…</button>
   </div>`;
 }
 
@@ -4654,6 +4663,39 @@ async function saveEditSession() {
 function closeEditSession() {
   const ov = document.getElementById('edit-sess-ov');
   if (ov) ov.style.display='none';
+}
+// Removes a session row and its matching exercise_logs (scoped to this client+date+day, same
+// scoping saveEditSession uses, so a same-date session from the other logging path is untouched).
+// Does NOT touch package `remaining` — deleting a duplicate that over-decremented it is a separate,
+// deliberate correction the coach makes via Edit Client, not something to guess silently here.
+async function deleteEditSession() {
+  const d = window._editSessionData;
+  if (!d) return;
+  if (!confirm('Delete this session? This cannot be undone. If it wrongly used a package session, adjust the client\'s remaining count afterward via Edit.')) return;
+  const {cid, sessionId, workout, date} = d;
+  const dayName = workout.find(e=>e.day)?.day || workout[0]?.day || '';
+  const btn = document.getElementById('es-del-btn');
+  if (btn) { btn.disabled=true; btn.textContent='Deleting…'; }
+  try {
+    const existing = await sb('GET','exercise_logs',null,'?client_id=eq.'+cid+'&session_date=eq.'+encodeURIComponent(date)+'&select=id,day_name');
+    const oldIds = (Array.isArray(existing)?existing:[])
+      .filter(l => l.id != null && (dayName ? l.day_name === dayName : (l.day_name === 'Custom Workout' || l.day_name === 'Ad-hoc' || !l.day_name)))
+      .map(l => l.id);
+    if (oldIds.length) { try { await sb('DELETE','exercise_logs',null,'?id=in.('+oldIds.join(',')+')'); } catch(e){} }
+    await db.deleteSession(sessionId);
+    const c = clients.find(x=>x.id===cid);
+    if (c) {
+      c._sessions = await db.getSessions(cid);
+      window['_sessMap_'+cid] = {};
+      c._sessions.forEach(s=>{ if(s.id) window['_sessMap_'+cid][s.id]=s; });
+    }
+    closeEditSession();
+    toast('Session deleted');
+    if (c) { renderClientModal(c); renderDashboard(); }
+  } catch(e) {
+    if (btn) { btn.disabled=false; btn.textContent='Delete Session…'; }
+    toast('Failed to delete — try again');
+  }
 }
 
 async function saveBuildProgram(){
