@@ -54,6 +54,7 @@ if(link)link.href=dataURL;
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080a0d">
 
 <title>Baymade Training</title>
 <!-- v-fix-regen-2 -->
@@ -80,6 +81,19 @@ if(link)link.href=dataURL;
 *{margin:0;padding:0;box-sizing:border-box;}
 html{overflow-x:hidden;}
 body{background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;}
+
+/* ── NATIVE-APP TOUCH FEEL ──
+   The difference between "app" and "website" on iOS: no grey tap flash, no accidental text
+   selection on chrome, no double-tap zoom, no scroll chaining — and EVERY tappable thing responds. */
+body{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+nav,#coach-tabbar,.nav-logo,.ctab,.btn,.badge{-webkit-user-select:none;user-select:none;}
+button{-webkit-tap-highlight-color:transparent;}
+button:not(.ctab):active{transform:scale(0.965);}
+button{transition:transform .1s ease;}
+.view{overscroll-behavior-y:contain;}
+@media (hover:none){
+  div[onclick]:active{opacity:.72;transition:opacity .05s;}
+}
 
 /* ── NAV ── */
 nav{
@@ -209,7 +223,7 @@ border-radius:var(--radius);padding:18px;margin-bottom:14px;
 .alert{border-radius:12px;padding:12px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;font-size:13px;}
 .alert-warn{background:rgba(255,179,71,0.06);border-left:3px solid rgba(255,179,71,0.55);}
 .alert-danger{background:rgba(255,92,106,0.06);border-left:3px solid rgba(255,92,106,0.55);}
-.alert-icon{font-size:17px;flex-shrink:0;opacity:0.85;}
+.alert-icon{flex-shrink:0;display:inline-flex;align-items:center;margin-top:1px;opacity:0.9;}
 
 /* ── PROGRESS ── */
 .prog-wrap{background:var(--surface2);border-radius:20px;height:5px;overflow:hidden;margin-top:10px;}
@@ -1367,7 +1381,7 @@ async function init(){
             :/jwt|401|apikey|unauthorized/i.test(detail)?'API key / auth was rejected.'
             :/40[34]/.test(detail)?'Endpoint or table not found.'
             :/5\d\d/.test(detail)?'Supabase server error.':'';
-    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div>Could not connect to database.${hint?' '+hint:''}<br><button onclick="init()" style="margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">↻ Retry</button><div style="margin-top:10px;font-size:11px;color:rgba(255,150,150,0.65);font-family:monospace;word-break:break-word;max-height:80px;overflow:auto;">${(detail+'').replace(/</g,'&lt;').slice(0,300)}</div></div></div>`;
+    document.getElementById('dashClients').innerHTML=`<div class="alert alert-danger"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff5c6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div>Could not connect to database.${hint?' '+hint:''}<br><button onclick="init()" style="margin-top:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">↻ Retry</button><div style="margin-top:10px;font-size:11px;color:rgba(255,150,150,0.65);font-family:monospace;word-break:break-word;max-height:80px;overflow:auto;">${(detail+'').replace(/</g,'&lt;').slice(0,300)}</div></div></div>`;
     console.error('[init] DB connect failed:',e);
   }
 }
@@ -2108,20 +2122,36 @@ function renderDashboard(){
   }).length,0);
   // One calm surface per tile — color lives only in the number. (Old version stacked tinted
   // gradient + border + 4px stripe per tile: four loud boxes competing at the top of the app.)
-  const mkStat=(val,label,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
+  const mkStat=(val,label,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
   document.getElementById('dashStats').innerHTML=
     mkStat(clients.length,'Active Clients','#e8edf5')+
     mkStat(totalSess,'Sessions This Month','#7ec8ff')+
     mkStat(low.length,'Low Sessions',low.length?'#ffb347':'rgba(180,200,230,0.35)')+
     mkStat(out.length,'Invoice Needed',out.length?'#ff5c6a':'rgba(180,200,230,0.35)');
+  // Count-up on first load only (re-renders after logging etc. stay instant — motion is a greeting,
+  // not a constant).
+  if(!window._statsAnimated){
+    window._statsAnimated=true;
+    document.querySelectorAll('#dashStats .stat-val').forEach(function(el){
+      var target=parseInt(el.getAttribute('data-v'))||0;
+      if(target<=0)return;
+      var t0=performance.now(),dur=650;
+      function tick(t){
+        var p=Math.min(1,(t-t0)/dur);p=1-Math.pow(1-p,3);
+        el.textContent=Math.round(target*p);
+        if(p<1)requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
   let alerts='';
-  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
-  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
+  out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff5c6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
+  low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
   // Shared package alerts
   sharedPackages.forEach(pkg=>{
     const linked=clients.filter(c=>c.shared_package_id===pkg.id).map(c=>c.first).join(' & ');
-    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
-    else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff5c6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div><b>${linked}</b> shared package is out — invoice via Square</div></div>`;
+    else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
