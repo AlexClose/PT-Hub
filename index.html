@@ -218,7 +218,7 @@ textarea{resize:vertical;min-height:70px;}
 
 /* ── CARDS ── */
 .card{
-background:var(--surface);border:1px solid var(--border2);
+background:rgba(16,22,29,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);
 border-radius:var(--radius);padding:18px;margin-bottom:14px;
 }
 .card-glow{box-shadow:0 0 30px rgba(79,163,232,0.06);}
@@ -237,7 +237,7 @@ border-radius:var(--radius);padding:18px;margin-bottom:14px;
 /* ── STATS ── */
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
 .stat-card{
-background:var(--surface);border:1px solid var(--border2);
+background:rgba(16,22,29,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);
 border-radius:var(--radius);padding:16px 18px;
 position:relative;overflow:hidden;
 }
@@ -250,7 +250,7 @@ background:linear-gradient(90deg,var(--accent),transparent);
 
 /* ── CLIENT CARDS ── */
 .client-card{
-background:var(--surface);border:1px solid var(--border2);
+background:rgba(16,22,29,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);
 border-radius:var(--radius);padding:16px;margin-bottom:10px;
 cursor:pointer;transition:all .2s;position:relative;
 }
@@ -2098,7 +2098,7 @@ function renderTodaySessions(){
     <text x="32" y="31" text-anchor="middle" dominant-baseline="central" style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;fill:${allDone?'#43d9a2':'#fff'};">${loggedCount}</text>
     <text x="32" y="43" text-anchor="middle" style="font-family:Syne,sans-serif;font-weight:700;font-size:8px;fill:rgba(180,200,230,0.4);">of ${todayClients.length}</text>
   </svg>`;
-  el.innerHTML=`<div style="background:var(--surface);border:1px solid ${allDone?'rgba(67,217,162,0.22)':'rgba(79,163,232,0.16)'};border-radius:16px;margin-bottom:20px;overflow:hidden;">
+  el.innerHTML=`<div style="background:rgba(16,22,29,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid ${allDone?'rgba(67,217,162,0.22)':'rgba(79,163,232,0.16)'};border-radius:16px;margin-bottom:20px;overflow:hidden;">
     <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:13px 18px;display:flex;align-items:center;gap:15px;cursor:pointer;user-select:none;">
       ${ring}
       <div style="flex:1;min-width:0;">
@@ -2134,7 +2134,7 @@ function renderDashboard(){
   // gradient + border + 4px stripe per tile: four loud boxes competing at the top of the app.)
   const mkStat=(val,label,col)=>{
     const glow=col.charAt(0)==='#'?`text-shadow:0 0 26px ${col}55;`:'';  // hero numbers cast their color
-    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};${glow}">${val}</div></div>`;
+    return `<div style="background:rgba(16,22,29,0.55);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};${glow}">${val}</div></div>`;
   };
   document.getElementById('dashStats').innerHTML=
     mkStat(clients.length,'Active Clients','#e8edf5')+
@@ -2278,7 +2278,7 @@ function clientCompactRowHtml(c){
   const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
   const dotCol=_ct==='gold'?'#FFD700':_ct==='silver'?'#C0C8D0':_ct==='bronze'?'#FF8C47':'rgba(180,200,230,0.15)';
   const tierDot=dotCol!=='rgba(180,200,230,0.15)'?`<span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block;box-shadow:0 0 6px ${dotCol}60;"></span>`:'';
-  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface2);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)';this.style.background='rgba(255,255,255,0.035)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)';this.style.background=''">
+  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:rgba(23,29,38,0.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)'">
     <div style="${_avatarStyle(c,38)}">${c.first[0]}${c.last?c.last[0]:''}</div>
     <div style="flex:1;min-width:0;">
       <div style="font-weight:700;font-size:15px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;">${c.first} ${c.last||''}${tierDot}</div>
