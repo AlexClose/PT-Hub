@@ -64,8 +64,8 @@ if(link)link.href=dataURL;
   --surface:#0f1317;
   --surface2:#141820;
   --surface3:#1a1f28;
-  --border:rgba(100,160,255,0.12);
-  --border2:rgba(100,160,255,0.2);
+  --border:rgba(148,180,220,0.06);   /* neutral hairline — blue-tinted borders everywhere read as clutter */
+  --border2:rgba(148,180,220,0.11);
   --text:#e8edf5;
   --muted:rgba(180,200,230,0.45);
   --accent:#4fa3e8;
@@ -100,7 +100,7 @@ color:#ffffff !important;
 }
 .nav-logo span{color:#7ec8ff !important;font-family:'Syne',sans-serif;font-weight:800;}
 .nav-logo small{display:block;font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.5);margin-top:1px;}
-.nav-tabs{display:flex;gap:6px;background:rgba(20,24,32,0.9);border:1px solid rgba(37,99,235,0.35);border-radius:12px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;box-shadow:0 0 0 1px rgba(37,99,235,0.1),inset 0 1px 0 rgba(255,255,255,0.05);}
+.nav-tabs{display:flex;gap:4px;background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.05);border-radius:13px;padding:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .nav-tabs::-webkit-scrollbar{display:none;}
 .nav-tab{
 font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;
@@ -111,7 +111,7 @@ transition:all .2s;white-space:nowrap;
 display:flex;align-items:center;gap:7px;
 }
 .nav-tab:hover{color:#e8edf5;background:#1e232b;}
-.nav-tab.active{color:#ffffff !important;background:#2563eb !important;box-shadow:0 2px 14px rgba(37,99,235,0.6);}
+.nav-tab.active{color:#ffffff !important;background:#2563eb !important;box-shadow:0 2px 10px rgba(37,99,235,0.35);}
 .nav-tab.active span{color:#ffffff !important;}
 .nav-tab .tab-icon{font-size:14px;display:inline-flex;align-items:center;}
 .nav-tab .tab-icon svg{width:15px;height:15px;}
@@ -182,10 +182,10 @@ border-radius:var(--radius);padding:18px;margin-bottom:14px;
 .divider{height:1px;background:var(--border);margin:16px 0;}
 
 /* ── ALERTS ── */
-.alert{border-radius:12px;padding:13px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;}
-.alert-warn{background:linear-gradient(135deg,rgba(255,179,71,0.09),rgba(255,179,71,0.04));border:1px solid rgba(255,179,71,0.2);border-left:3px solid rgba(255,179,71,0.7);}
-.alert-danger{background:linear-gradient(135deg,rgba(255,92,106,0.09),rgba(255,92,106,0.04));border:1px solid rgba(255,92,106,0.2);border-left:3px solid rgba(255,92,106,0.7);}
-.alert-icon{font-size:20px;flex-shrink:0;}
+.alert{border-radius:12px;padding:12px 15px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;font-size:13px;}
+.alert-warn{background:rgba(255,179,71,0.06);border-left:3px solid rgba(255,179,71,0.55);}
+.alert-danger{background:rgba(255,92,106,0.06);border-left:3px solid rgba(255,92,106,0.55);}
+.alert-icon{font-size:17px;flex-shrink:0;opacity:0.85;}
 
 /* ── PROGRESS ── */
 .prog-wrap{background:var(--surface2);border-radius:20px;height:5px;overflow:hidden;margin-top:10px;}
@@ -2074,12 +2074,14 @@ function renderDashboard(){
     const d=new Date(s.date);
     return d.getMonth()===currentMonth && d.getFullYear()===currentYear;
   }).length,0);
-  const mkStat=(val,label,col,bg,border)=>`<div style="background:${bg};border:1px solid ${border};border-left:4px solid ${col};border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${col};opacity:0.8;margin-bottom:8px;">${label}</div><div style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
+  // One calm surface per tile — color lives only in the number. (Old version stacked tinted
+  // gradient + border + 4px stripe per tile: four loud boxes competing at the top of the app.)
+  const mkStat=(val,label,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
   document.getElementById('dashStats').innerHTML=
-    mkStat(clients.length,'Active Clients','#4fa3e8','linear-gradient(135deg,rgba(29,78,216,0.2),rgba(79,163,232,0.08))','rgba(79,163,232,0.3)')+
-    mkStat(totalSess,'Sessions This Month','#93c5fd','linear-gradient(135deg,rgba(96,165,250,0.18),rgba(147,197,253,0.07))','rgba(147,197,253,0.25)')+
-    mkStat(low.length,'Low Sessions','#ffb347','linear-gradient(135deg,rgba(255,179,71,0.14),rgba(255,179,71,0.06))','rgba(255,179,71,0.25)')+
-    mkStat(out.length,'Invoice Needed','#ff5c6a','linear-gradient(135deg,rgba(255,92,106,0.14),rgba(255,92,106,0.06))','rgba(255,92,106,0.25)');
+    mkStat(clients.length,'Active Clients','#e8edf5')+
+    mkStat(totalSess,'Sessions This Month','#7ec8ff')+
+    mkStat(low.length,'Low Sessions',low.length?'#ffb347':'rgba(180,200,230,0.35)')+
+    mkStat(out.length,'Invoice Needed',out.length?'#ff5c6a':'rgba(180,200,230,0.35)');
   let alerts='';
   out.forEach(c=>{alerts+=`<div class="alert alert-danger"><span class="alert-icon">⚠️</span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div></div>`;});
   low.forEach(c=>{alerts+=`<div class="alert alert-warn"><span class="alert-icon">🔔</span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div></div>`;});
