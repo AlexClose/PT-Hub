@@ -3392,6 +3392,9 @@ function restoreDraftCoach(){
           if(wt)wt.value=a.weight||'';
         });
       }
+      // Re-persist: openLogSession's deferred render ran saveDraftCoach() on EMPTY inputs, so
+      // without this a second crash before the coach types anything would lose the restored data.
+      try{saveDraftCoach();}catch(e){}
       toast('Draft restored — pick up where you left off ✓');
     },200);
   }catch(e){}
@@ -3749,7 +3752,7 @@ async function confirmLogSession(){
       window._coachSessionSaved=true;
     }
     if(!window._coachClientUpdated){
-      let newRemaining=(c.package_size>0||(c.remaining||0)>0)?c.remaining-1:c.remaining;
+      let newRemaining=(c.package_size>0||(c.remaining||0)>0)?(c.remaining||0)-1:(c.remaining||0);
       await db.updateClient(c.id,{remaining:newRemaining,exercise_history:newHistory});
       c.remaining=newRemaining;c.exercise_history=newHistory;
       // Flag flips as soon as the client PATCH lands — if the shared-package PATCH below fails, a
@@ -3816,12 +3819,18 @@ function openRenew(id){
   const c=clients.find(x=>x.id===id);if(!c)return;
   pendingRenewId=id;document.getElementById('renewTitle').textContent=`Renew Package — ${c.first}`;
   const sharedPkg=c.shared_package_id?sharedPackages.find(p=>p.id===c.shared_package_id):null;
-  document.getElementById('renewPkg').value=sharedPkg?(sharedPkg.total_sessions||24):(c.package_size||12);
+  const sel=document.getElementById('renewPkg');
+  const want=String(sharedPkg?(sharedPkg.total_sessions||24):(c.package_size||12));
+  sel.value=want;
+  // Package sizes are free-typed in the client form (e.g. 10) but this select has fixed options —
+  // a non-matching value leaves it blank, and parseInt('') → NaN would null the package on save.
+  if(sel.value!==want){const o=document.createElement('option');o.value=want;o.textContent=want+' sessions';sel.appendChild(o);sel.value=want;}
   openModal('renewModal');
 }
 async function confirmRenew(){
   const c=clients.find(x=>x.id===pendingRenewId);if(!c)return;
   const pkg=parseInt(document.getElementById('renewPkg').value);
+  if(!pkg||isNaN(pkg)||pkg<1){toast('Pick a package size first');return;}
   const sharedPkg=c.shared_package_id?sharedPackages.find(p=>p.id===c.shared_package_id):null;
   try{
     if(sharedPkg){
@@ -4294,11 +4303,11 @@ function openEditSession(cid, sessionId) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;">Reps</div>
-          <input id="es-reps-${i}" type="text" value="${ex.reps||''}" placeholder="e.g. 3x10" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
+          <input id="es-reps-${i}" type="text" value="${_attr(ex.reps||'')}" placeholder="e.g. 3x10" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
         </div>
         <div>
           <div style="font-size:9px;color:rgba(180,200,230,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;">Weight (lbs)</div>
-          <input id="es-wt-${i}" type="text" value="${ex.weight||''}" placeholder="e.g. 135" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
+          <input id="es-wt-${i}" type="text" value="${_attr(ex.weight||'')}" placeholder="e.g. 135" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;padding:10px 12px;font-size:15px;font-family:Syne,sans-serif;outline:none;">
         </div>
       </div>
     </div>`;
@@ -4333,14 +4342,22 @@ async function saveEditSession() {
   }));
   try {
     await db.updateSession(sessionId, {workout: updatedWorkout, note});
-    // Refresh exercise_logs: delete all for this date then re-insert
-    await sb('DELETE','exercise_logs',null,'?client_id=eq.'+cid+'&session_date=eq.'+encodeURIComponent(date));
+    // Refresh exercise_logs — but NOT the old "delete everything for this date, then re-insert":
+    // (a) that wiped logs belonging to OTHER sessions on the same date (program day + custom workout
+    //     is common), and (b) a failure between delete and insert lost the logs permanently.
+    // Instead: snapshot old row ids first, insert the new rows, and only then delete the old ids
+    // (scoped to this session's day_name). Worst case on failure = duplicates, never loss.
     const dayName = updatedWorkout.find(e=>e.day)?.day || updatedWorkout[0]?.day || '';
-    for (const ex of updatedWorkout) {
-      if (ex.reps || ex.weight) {
-        try { await db.addExLog({client_id:cid, session_date:date, exercise_name:ex.name.replace(/^SS\w+:\s*/i,''), reps:ex.reps||'', weight:ex.weight||'', day_name:dayName}); } catch(e){}
-      }
-    }
+    let oldIds = [];
+    try {
+      const existing = await sb('GET','exercise_logs',null,'?client_id=eq.'+cid+'&session_date=eq.'+encodeURIComponent(date)+'&select=id,day_name');
+      oldIds = (Array.isArray(existing)?existing:[])
+        .filter(l => l.id != null && (dayName ? l.day_name === dayName : (l.day_name === 'Custom Workout' || l.day_name === 'Ad-hoc' || !l.day_name)))
+        .map(l => l.id);
+    } catch(e) { oldIds = []; }
+    const newRows = updatedWorkout.filter(ex => ex.reps || ex.weight).map(ex => ({client_id:cid, session_date:date, exercise_name:ex.name.replace(/^SS\w+:\s*/i,''), reps:ex.reps||'', weight:ex.weight||'', day_name:dayName}));
+    if (newRows.length) await sb('POST','exercise_logs',newRows);
+    if (oldIds.length) { try { await sb('DELETE','exercise_logs',null,'?id=in.('+oldIds.join(',')+')'); } catch(e){} }
     // Refresh in-memory sessions
     const c = clients.find(x=>x.id===cid);
     if (c) {
@@ -4631,12 +4648,12 @@ function renderRdTypeAndFields(){
     const segs=run.segments||[];
     const segRows=segs.map((seg,si)=>`
       <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;">
-        <input value="${seg.reps||''}" onchange="window._rdRun.segments[${si}].reps=this.value" placeholder="Reps" type="number" min="1" style="width:48px;padding:8px 6px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;text-align:center;">
+        <input value="${_attr(seg.reps||'')}" onchange="window._rdRun.segments[${si}].reps=this.value" placeholder="Reps" type="number" min="1" style="width:48px;padding:8px 6px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;text-align:center;">
         <span style="color:rgba(180,200,230,0.35);font-size:12px;flex-shrink:0;">×</span>
-        <input value="${seg.distance||''}" onchange="window._rdRun.segments[${si}].distance=this.value" placeholder="400m" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <input value="${_attr(seg.distance||'')}" onchange="window._rdRun.segments[${si}].distance=this.value" placeholder="400m" style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
         <span style="color:rgba(180,200,230,0.35);font-size:12px;flex-shrink:0;">@</span>
-        <input value="${seg.pace||''}" onchange="window._rdRun.segments[${si}].pace=this.value" placeholder="5k pace" style="flex:1.2;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
-        <input value="${seg.rest||''}" onchange="window._rdRun.segments[${si}].rest=this.value" placeholder="90s rest" style="width:68px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <input value="${_attr(seg.pace||'')}" onchange="window._rdRun.segments[${si}].pace=this.value" placeholder="5k pace" style="flex:1.2;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
+        <input value="${_attr(seg.rest||'')}" onchange="window._rdRun.segments[${si}].rest=this.value" placeholder="90s rest" style="width:68px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);color:#e8edf5;font-family:inherit;font-size:12px;">
         <button onclick="rdRemoveSeg(${si})" style="background:rgba(255,92,106,0.1);border:1px solid rgba(255,92,106,0.2);border-radius:6px;color:#ff5c6a;padding:7px 8px;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0;">×</button>
       </div>`).join('');
     fEl.innerHTML=`
@@ -5231,7 +5248,7 @@ function startClientPortal(id) {
       pb.innerHTML =
         '<div onclick="window._calendarHome()" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,140,71,0.7);cursor:pointer;margin-bottom:22px;">&#8592; Back</div>' +
         '<div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:' + dayColor + 'bb;margin-bottom:18px;">' + label + '</div>' +
-        '<div onclick="renderWorkoutCard(window._portalDays[' + progIdx2 + '],window._portalDays[' + progIdx2 + '].name)" style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:20px 24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(100,160,255,0.3)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(100,160,255,0.15)\';">' +
+        '<div onclick="window._showPortalDay(' + progIdx2 + ')" style="background:rgba(15,19,23,0.5);border:1px solid rgba(100,160,255,0.15);border-radius:14px;padding:20px 24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .25s;" onmouseover="this.style.background=\'rgba(15,19,23,0.8)\';this.style.borderColor=\'rgba(100,160,255,0.3)\';" onmouseout="this.style.background=\'rgba(15,19,23,0.5)\';this.style.borderColor=\'rgba(100,160,255,0.15)\';">' +
           '<div style="display:flex;align-items:center;gap:14px;">' +
             '<div style="width:12px;height:12px;border-radius:50%;background:' + dayColor + ';flex-shrink:0;box-shadow:0 0 14px ' + dayColor + '50;"></div>' +
             '<div>' +
@@ -5573,7 +5590,7 @@ function startClientPortal(id) {
       if (window._portalRecentSessions) {
         window._portalRecentSessions.forEach(function(s) {
           var note = s.note || '';
-          if (note && !dayLastDone[note]) dayLastDone[note] = new Date(s.created_at || s.date);
+          if (note && !dayLastDone[note]) dayLastDone[note] = _sessDayDate(s) || new Date(s.created_at || s.date);
         });
       }
       function fmtAgo(d) { return _relDayLabel(d) || ''; }  // calendar-day based (not elapsed 24h)
@@ -5659,6 +5676,7 @@ function startClientPortal(id) {
 
     // -------- CUSTOM WORKOUT SHEET --------
     window.renderCustomWorkoutSheet = function() {
+      window._custSaveState = null; // fresh workout — reset the idempotent-save flags
       var sheet = document.getElementById('workout-sheet');
       if (!sheet) { sheet = document.createElement('div'); sheet.id = 'workout-sheet'; document.body.appendChild(sheet); }
       sheet.style.display = ''; sheet.style.transform = ''; sheet.style.transition = '';
@@ -5797,15 +5815,26 @@ function startClientPortal(id) {
         newHistory[key] = {reps:e.reps, weight:e.weight, date:dateStr, pb: isPB ? e.weight : (newHistory[key]&&newHistory[key].pb ? newHistory[key].pb : '')};
       });
       var inner = document.getElementById('workout-sheet-inner') || document.getElementById('portal-body');
-      fetch(SUPABASE_URL+'/rest/v1/sessions', {method:'POST',headers:H,body:JSON.stringify({client_id:window._portalClientId,date:dateStr,note:'',workout:workout})})
-      .then(function(r){ if(!r.ok) throw new Error('Failed to save session'); return r.json(); }).then(function() {
-        var exPromises = exercises.filter(function(e){return e.reps||e.weight;}).map(function(e){
-          return fetch(SUPABASE_URL+'/rest/v1/exercise_logs',{method:'POST',headers:H,body:JSON.stringify({client_id:window._portalClientId,session_date:dateStr,exercise_name:e.name,reps:e.reps,weight:e.weight,day_name:'Custom Workout'})});
+      // Idempotent stages: "Please try again" after a partial failure must not re-POST the session
+      // or the exercise_logs (was duplicating both). One log batch = one POST (array body) so it's
+      // all-or-nothing instead of N separate fetches that can partially land.
+      if (!window._custSaveState) window._custSaveState = {sess:false, logs:false};
+      var _cst = window._custSaveState;
+      (_cst.sess ? Promise.resolve() : fetch(SUPABASE_URL+'/rest/v1/sessions', {method:'POST',headers:H,body:JSON.stringify({client_id:window._portalClientId,date:dateStr,note:'',workout:workout})})
+        .then(function(r){ if(!r.ok) throw new Error('Failed to save session'); _cst.sess=true; }))
+      .then(function() {
+        if (_cst.logs) return;
+        var rows = exercises.filter(function(e){return e.reps||e.weight;}).map(function(e){
+          return {client_id:window._portalClientId,session_date:dateStr,exercise_name:e.name,reps:e.reps,weight:e.weight,day_name:'Custom Workout'};
         });
-        return Promise.all(exPromises);
+        if (!rows.length) { _cst.logs=true; return; }
+        return fetch(SUPABASE_URL+'/rest/v1/exercise_logs',{method:'POST',headers:H,body:JSON.stringify(rows)})
+          .then(function(r){ if(!r.ok) throw new Error('Failed to save exercise logs'); _cst.logs=true; });
       }).then(function() {
-        return fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+window._portalClientId, {method:'PATCH',headers:H,body:JSON.stringify({exercise_history:newHistory})});
+        return fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+window._portalClientId, {method:'PATCH',headers:H,body:JSON.stringify({exercise_history:newHistory})})
+          .then(function(r){ if(!r.ok) throw new Error('Failed to update history'); });
       }).then(function() {
+        window._custSaveState = null; // clean slate for the next workout
         window._portalHistory = newHistory;
         // Feed the coach exercise library (deduped by demo identity). The portal never runs
         // init(), so the `library` global is empty here — load it first or we'd POST duplicates.
@@ -6178,7 +6207,7 @@ function startClientPortal(id) {
         if(!r.ok)throw new Error();
         window._closeBodyStatSheet();
         setTimeout(function(){if(window._loadPortalBodyStats)window._loadPortalBodyStats();},420);
-      }).catch(function(){if(btn){btn.disabled=false;btn.textContent=editId?'Update Stats':'Save Stats';}});
+      }).catch(function(){if(btn){btn.disabled=false;btn.textContent=editId?'Update Stats':'Save Stats';}alert('Could not save your stats — check your connection and tap Save again.');});
     };
 
     window._showPortalTab('home');
@@ -6233,7 +6262,7 @@ function startClientPortal(id) {
       }).then(function(res) { if (!res.ok) throw new Error('Failed'); _rst.sess = true; }))
       .then(function() {
         if (_rst.patch) return _rst.result;
-        var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+        var newRemaining = (window._portalPackageSize > 0 || (window._portalRemaining||0) > 0) ? (window._portalRemaining||0) - 1 : (window._portalRemaining||0);
         // Auto-progress run week (computed locally; window state commits after the PATCH lands)
         var clientPatch = {remaining: newRemaining};
         var weekAdvanced = false, pendingWeek = null, pendingDone = null;
@@ -6365,7 +6394,7 @@ function startClientPortal(id) {
       }).then(function(res) { if (!res.ok) throw new Error('Failed'); _rst.sess = true; }))
       .then(function() {
         if (_rst.patch) return _rst.result;
-        var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+        var newRemaining = (window._portalPackageSize > 0 || (window._portalRemaining||0) > 0) ? (window._portalRemaining||0) - 1 : (window._portalRemaining||0);
         var clientPatch = {remaining: newRemaining};
         var weekAdvanced = false, pendingWeek = null, pendingDone = null;
         var completedWeekNum = window._portalRunProgramWeek || 1;
@@ -6650,7 +6679,7 @@ function startClientPortal(id) {
         return step1.then(function(){
           if (_patchDone) return;
           var updatedHistory = Object.assign({}, window._portalHistory, newHistory);
-          var newRemaining = window._portalPackageSize > 0 ? window._portalRemaining - 1 : window._portalRemaining;
+          var newRemaining = (window._portalPackageSize > 0 || (window._portalRemaining||0) > 0) ? (window._portalRemaining||0) - 1 : (window._portalRemaining||0);
           var calls = [ fetch(SUPABASE_URL + '/rest/v1/clients?id=eq.' + window._portalClientId, {
             method: 'PATCH', headers: H,
             body: JSON.stringify({exercise_history: updatedHistory, remaining: newRemaining})
@@ -8392,7 +8421,12 @@ async function loadMuscleHeatmap(clientId,containerId,period){
     var weeksInPeriod=1;
     if(period==='week')weeksInPeriod=1;
     else if(period==='14d')weeksInPeriod=2;
-    else if(period==='month')weeksInPeriod=4.33;
+    else if(period==='month'){
+      // "This Month" is month-TO-DATE — dividing by a fixed 4.33 weeks made early-month views read
+      // ~25% of the true weekly rate. Use elapsed weeks so colors always reflect the actual pace.
+      var _mNow=new Date();
+      weeksInPeriod=Math.max(1,(_mNow-new Date(_mNow.getFullYear(),_mNow.getMonth(),1))/(7*24*3600*1000));
+    }
     else if(period==='30d')weeksInPeriod=30/7;
     else{
       // 'all' — span from earliest log to today
@@ -8598,7 +8632,7 @@ function openCoachBodyStatForm(cid, entry) {
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
       <div>${lbl('Body Fat %')}${inp('bsBF-'+cid,'number',isEdit?entry.body_fat_pct:'','optional')}</div>
       <div>${lbl('Muscle Mass (lbs)')}${inp('bsMM-'+cid,'number',isEdit?entry.muscle_mass_lbs:'','optional')}</div>
-      <div>${lbl('Notes')}<input id="bsNotes-${cid}" type="text" value="${isEdit?entry.notes||'':''}" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
+      <div>${lbl('Notes')}<input id="bsNotes-${cid}" type="text" value="${_attr(isEdit?entry.notes||'':'')}" placeholder="optional" style="width:100%;box-sizing:border-box;padding:9px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;"></div>
     </div>
     <div style="margin-bottom:10px;">
       <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;margin-bottom:5px;">Scan / Photo <span style="text-transform:none;letter-spacing:0;font-size:9px;font-weight:400;color:rgba(180,200,230,0.2);">(optional)</span></div>
