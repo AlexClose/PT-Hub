@@ -62,9 +62,9 @@ if(link)link.href=dataURL;
 <style>
 :root{
   --bg:#080a0d;
-  --surface:#0f1317;
-  --surface2:#141820;
-  --surface3:#1a1f28;
+  --surface:#10161d;   /* one shade above the page — cards read as lifted material, not outlined boxes */
+  --surface2:#171d26;
+  --surface3:#1d242f;
   --border:rgba(148,180,220,0.06);   /* neutral hairline — blue-tinted borders everywhere read as clutter */
   --border2:rgba(148,180,220,0.11);
   --text:#e8edf5;
@@ -159,7 +159,10 @@ display:flex;align-items:center;gap:7px;
 /* ── MAIN ── */
 main{padding-top:calc(56px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;}
 #view-scroll{position:relative;height:100%;overflow:hidden;}
-.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;}
+.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;
+/* ambient light: a soft brand-blue wash bleeding down from the top — the dark gets an atmosphere
+   instead of being a void (background sticks to the container, so it stays put while content scrolls) */
+background:radial-gradient(620px 300px at 50% -110px,rgba(37,99,235,0.13),transparent 70%);}
 .view.active{transform:translateX(0%);}
 
 /* ── TYPOGRAPHY ── */
@@ -2058,12 +2061,6 @@ function renderTodaySessions(){
   const loggedCount=todayClients.filter(c=>(c._sessions||[]).some(s=>s.date===todayDate)).length;
   const allDone=loggedCount===todayClients.length;
 
-  // Build dots
-  const dots=todayClients.map(c=>{
-    const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
-    return `<div title="${c.first}" style="width:8px;height:8px;border-radius:50%;background:${isLogged?'#43d9a2':'#ff5c6a'};flex-shrink:0"></div>`;
-  }).join('');
-
   // Build expanded list
   const list=todayClients.map(c=>{
     const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
@@ -2083,22 +2080,29 @@ function renderTodaySessions(){
     </div>`;
   }).join('');
 
-  const progressPct = Math.round(loggedCount/todayClients.length*100);
-  el.innerHTML=`<div style="background:rgba(13,17,23,0.8);border:1px solid rgba(79,163,232,0.2);border-radius:16px;margin-bottom:20px;overflow:hidden;">
-    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;">
+  // The signature element: a gradient progress ring — today's coaching, filling as sessions log.
+  const frac=todayClients.length?loggedCount/todayClients.length:0;
+  const R=25,CIRC=2*Math.PI*R;
+  const ringStroke=allDone?'#43d9a2':'url(#todayRingGrad)';
+  const ring=`<svg width="64" height="64" viewBox="0 0 64 64" style="flex-shrink:0;${allDone?'filter:drop-shadow(0 0 10px rgba(67,217,162,0.45));':'filter:drop-shadow(0 0 8px rgba(37,99,235,0.3));'}">
+    <defs><linearGradient id="todayRingGrad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#43d9a2"/></linearGradient></defs>
+    <circle cx="32" cy="32" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="5"/>
+    <circle cx="32" cy="32" r="${R}" fill="none" stroke="${ringStroke}" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${(CIRC*(1-frac)).toFixed(1)}"
+      transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .7s cubic-bezier(0.22,1,0.36,1);"/>
+    <text x="32" y="31" text-anchor="middle" dominant-baseline="central" style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;fill:${allDone?'#43d9a2':'#fff'};">${loggedCount}</text>
+    <text x="32" y="43" text-anchor="middle" style="font-family:Syne,sans-serif;font-weight:700;font-size:8px;fill:rgba(180,200,230,0.4);">of ${todayClients.length}</text>
+  </svg>`;
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid ${allDone?'rgba(67,217,162,0.22)':'rgba(79,163,232,0.16)'};border-radius:16px;margin-bottom:20px;overflow:hidden;">
+    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:13px 18px;display:flex;align-items:center;gap:15px;cursor:pointer;user-select:none;">
+      ${ring}
       <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#4fa3e8;">Today</div>
-          <div style="display:flex;gap:5px;align-items:center;">${dots}</div>
-        </div>
-        <div style="font-size:12px;color:${allDone?'#43d9a2':'rgba(180,200,230,0.5)'};font-weight:600;">${allDone?'All sessions logged ✓':`${loggedCount} of ${todayClients.length} logged`}</div>
-      </div>
-      <div style="flex-shrink:0;text-align:right;">
-        <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:${allDone?'#43d9a2':'#fff'};line-height:1;">${loggedCount}<span style="font-size:13px;color:rgba(180,200,230,0.3);font-weight:400;">/${todayClients.length}</span></div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${allDone?'#43d9a2':'#4fa3e8'};margin-bottom:4px;">Today · ${todayName}</div>
+        <div style="font-size:14px;color:${allDone?'#43d9a2':'#e8edf5'};font-weight:700;font-family:Syne,sans-serif;">${allDone?'All sessions logged ✓':`${loggedCount} of ${todayClients.length} sessions logged`}</div>
+        ${!allDone?`<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${todayClients.length-loggedCount} still to log — tap to see who</div>`:''}
       </div>
       <div style="color:rgba(180,200,230,0.25);font-size:11px;flex-shrink:0;">▼</div>
     </div>
-    <div style="height:3px;background:rgba(255,255,255,0.05);"><div style="height:3px;width:${progressPct}%;background:${allDone?'#43d9a2':'#2563eb'};transition:width 0.4s;"></div></div>
     <div id="todayExpanded" style="display:none;padding:4px 18px 14px;">${list}</div>
   </div>`;
 }
@@ -2123,7 +2127,10 @@ function renderDashboard(){
   }).length,0);
   // One calm surface per tile — color lives only in the number. (Old version stacked tinted
   // gradient + border + 4px stripe per tile: four loud boxes competing at the top of the app.)
-  const mkStat=(val,label,col)=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};">${val}</div></div>`;
+  const mkStat=(val,label,col)=>{
+    const glow=col.charAt(0)==='#'?`text-shadow:0 0 26px ${col}55;`:'';  // hero numbers cast their color
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};${glow}">${val}</div></div>`;
+  };
   document.getElementById('dashStats').innerHTML=
     mkStat(clients.length,'Active Clients','#e8edf5')+
     mkStat(totalSess,'Sessions This Month','#7ec8ff')+
@@ -2173,6 +2180,23 @@ function renderDashboard(){
   renderTodaySessions();
 }
 
+// Deterministic per-client color from a curated set of hues that all read well on the dark UI
+// (skips muddy yellow-greens). Same client = same color everywhere, forever.
+var _AVATAR_HUES=[212,262,291,340,12,32,160,187,225,145];
+function _clientHue(c){
+  var s=String(c&&(c.id||c.first)||'');var h=0;
+  for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
+  return _AVATAR_HUES[Math.abs(h)%_AVATAR_HUES.length];
+}
+function _avatarStyle(c,size){
+  var h=_clientHue(c);size=size||46;
+  return 'width:'+size+'px;height:'+size+'px;border-radius:'+Math.round(size*0.3)+'px;'
+    +'background:linear-gradient(145deg,hsl('+h+',52%,46%),hsl('+h+',58%,34%));'
+    +'border:1px solid hsla('+h+',65%,65%,0.3);'
+    +'box-shadow:0 4px 14px hsla('+h+',60%,42%,0.35),inset 0 1px 0 rgba(255,255,255,0.12);'
+    +'display:flex;align-items:center;justify-content:center;flex-shrink:0;'
+    +'font-family:Syne,sans-serif;font-weight:800;font-size:'+Math.round(size*0.33)+'px;color:#fff;letter-spacing:0.3px;';
+}
 function clientRowHtml(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
   const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
@@ -2202,7 +2226,7 @@ function clientRowHtml(c){
     : `No sessions yet ${runTag}`;
   return `<div class="client-card" onclick="openClientDetail('${c.id}')">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
-      <div class="client-avatar">${c.first[0]}${c.last?c.last[0]:''}</div>
+      <div class="client-avatar" style="${_avatarStyle(c,46)}">${c.first[0]}${c.last?c.last[0]:''}</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
           <span style="width:7px;height:7px;border-radius:50%;background:${tierDotColor};flex-shrink:0;display:inline-block;"></span>
@@ -2228,10 +2252,11 @@ function clientCompactRowHtml(c){
   const lastText = lastSess?(_relDayLabel(lastSess)||'—'):'—';
   const _ct=(JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
   const dotCol=_ct==='gold'?'#FFD700':_ct==='silver'?'#C0C8D0':_ct==='bronze'?'#FF8C47':'rgba(180,200,230,0.15)';
-  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)';this.style.background='rgba(255,255,255,0.035)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)';this.style.background=''">
-    <div style="width:8px;height:8px;border-radius:50%;background:${dotCol};flex-shrink:0;box-shadow:${dotCol!=='rgba(180,200,230,0.15)'?'0 0 8px '+dotCol+'60':'none'};"></div>
+  const tierDot=dotCol!=='rgba(180,200,230,0.15)'?`<span style="width:6px;height:6px;border-radius:50%;background:${dotCol};flex-shrink:0;display:inline-block;box-shadow:0 0 6px ${dotCol}60;"></span>`:'';
+  return `<div onclick="openClientDetail('${c.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:var(--surface2);border:1px solid rgba(100,160,255,0.07);border-radius:13px;margin-bottom:8px;cursor:pointer;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.22)';this.style.background='rgba(255,255,255,0.035)'" onmouseout="this.style.borderColor='rgba(100,160,255,0.07)';this.style.background=''">
+    <div style="${_avatarStyle(c,38)}">${c.first[0]}${c.last?c.last[0]:''}</div>
     <div style="flex:1;min-width:0;">
-      <div style="font-weight:700;font-size:15px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.first} ${c.last||''}</div>
+      <div style="font-weight:700;font-size:15px;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;">${c.first} ${c.last||''}${tierDot}</div>
       <div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${c.level||''}${c.level&&lastText?' · ':''}${lastText}</div>
     </div>
     <span style="font-size:11px;font-weight:700;color:${badgeCol};background:${badgeBg};border:1px solid ${badgeCol}22;border-radius:20px;padding:4px 11px;white-space:nowrap;flex-shrink:0;">${badgeText}</span>
