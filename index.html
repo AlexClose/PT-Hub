@@ -53,7 +53,7 @@ var link=document.getElementById('appIcon');
 if(link)link.href=dataURL;
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <title>Baymade Training</title>
 <!-- v-fix-regen-2 -->
@@ -84,13 +84,36 @@ body{background:#0a0c0f;color:#e8edf5;font-family:'Instrument Sans',sans-serif;m
 /* ── NAV ── */
 nav{
 position:fixed;top:0;left:0;right:0;z-index:100;
-background:rgba(10,12,15,0.96);
-backdrop-filter:blur(20px);
-border-bottom:1px solid var(--border2);
-height:64px;
+background:rgba(10,12,15,0.92);
+backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+border-bottom:1px solid var(--border);
+height:56px;
 display:flex;align-items:center;
-padding:0 16px;gap:6px;
+padding:0 18px;gap:6px;
 }
+/* Bottom tab bar (coach) — all 5 sections visible, no horizontal scrolling */
+#coach-tabbar{
+position:fixed;left:0;right:0;bottom:0;z-index:100;
+display:flex;justify-content:center;gap:2px;
+background:rgba(10,12,15,0.92);
+backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+border-top:1px solid var(--border);
+padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px));
+}
+.ctab{
+flex:1;max-width:110px;
+display:flex;flex-direction:column;align-items:center;gap:4px;
+background:none;border:none;cursor:pointer;
+color:rgba(180,200,230,0.42);
+font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.4px;
+padding:8px 0 3px;border-radius:12px;
+transition:color .18s;
+-webkit-tap-highlight-color:transparent;
+}
+.ctab svg{width:21px;height:21px;transition:transform .18s;}
+.ctab.active{color:var(--accent-bright);}
+.ctab.active svg{transform:translateY(-1px);}
+.ctab:active svg{transform:scale(0.9);}
 .nav-logo{
 font-family:'Syne',sans-serif;font-weight:800;font-size:15px;
 letter-spacing:-0.3px;
@@ -119,9 +142,9 @@ display:flex;align-items:center;gap:7px;
 .nav-tab.active .tab-label{display:inline;}
 
 /* ── MAIN ── */
-main{padding-top:64px;height:100vh;overflow:hidden;box-sizing:border-box;}
+main{padding-top:56px;height:100vh;overflow:hidden;box-sizing:border-box;}
 #view-scroll{position:relative;height:100%;overflow:hidden;}
-.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) 100px;box-sizing:border-box;will-change:transform;}
+.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;}
 .view.active{transform:translateX(0%);}
 
 /* ── TYPOGRAPHY ── */
@@ -367,7 +390,7 @@ margin:0 auto 14px;
 
 /* ── TOAST ── */
 .toast{
-position:fixed;bottom:28px;left:50%;
+position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));left:50%;
 transform:translateX(-50%) translateY(100px);
 background:var(--surface2);
 border:1px solid var(--border2);
@@ -472,24 +495,27 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
       <button onclick="signOut()" style="width:100%;background:none;border:none;color:rgba(255,92,106,0.85);font-size:13px;font-family:'Instrument Sans',sans-serif;padding:10px 14px;text-align:left;cursor:pointer;border-radius:7px;" onmouseover="this.style.background='rgba(255,92,106,0.1)'" onmouseout="this.style.background='none'">Sign out</button>
     </div>
   </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showView('dashboard',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><span class="tab-label"> Dashboard</span>
-    </button>
-    <button class="nav-tab" onclick="showView('clients',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="tab-label"> Clients</span>
-    </button>
-    <button class="nav-tab" onclick="showView('library',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span><span class="tab-label"> Library</span>
-    </button>
-    <button class="nav-tab" onclick="showView('programs',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="tab-label"> Programs</span>
-    </button>
-    <button class="nav-tab" onclick="showView('business',this)">
-      <span class="tab-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="tab-label"> Business</span>
-    </button>
-  </div>
 </nav>
+
+<!-- Coach bottom tab bar — every section visible at once (the old top bar scrolled horizontally,
+     which hid tabs with no cue), thumb-reachable, and consistent with the client portal. -->
+<div id="coach-tabbar">
+  <button class="ctab active" onclick="showView('dashboard',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Home</span>
+  </button>
+  <button class="ctab" onclick="showView('clients',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Clients</span>
+  </button>
+  <button class="ctab" onclick="showView('library',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>Library</span>
+  </button>
+  <button class="ctab" onclick="showView('programs',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg><span>Programs</span>
+  </button>
+  <button class="ctab" onclick="showView('business',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Business</span>
+  </button>
+</div>
 
 <main style="display:none">
 <div id="view-scroll">
@@ -1112,12 +1138,14 @@ function getGreeting(){
 function showAuthScreen() {
   document.getElementById('auth-screen').style.display = 'flex';
   document.querySelector('nav').style.display = 'none';
+  var tb=document.getElementById('coach-tabbar'); if(tb)tb.style.display='none';
   document.querySelector('main').style.display = 'none';
 }
 
 function hideAuthScreen() {
   document.getElementById('auth-screen').style.display = 'none';
   document.querySelector('nav').style.display = 'flex';
+  var tb=document.getElementById('coach-tabbar'); if(tb)tb.style.display='flex';
   document.querySelector('main').style.display = 'block';
 }
 
@@ -1266,7 +1294,7 @@ function setupSwipeGestures(){
       var nidx=dx<0?cidx+1:cidx-1;
       nidx=Math.max(0,Math.min(TABS.length-1,nidx));
       if(nidx!==cidx){
-        var btn=document.querySelector('.nav-tab[onclick*="\''+TABS[nidx]+'\'"]');
+        var btn=document.querySelector('.ctab[onclick*="\''+TABS[nidx]+'\'"]');
         showView(TABS[nidx],btn);
       }
       _horizSwipe=false;
@@ -1389,8 +1417,8 @@ function showView(name,el){
   var idx=TABS.indexOf(name);if(idx<0)return;
   var currentName=window._activeView||'dashboard';
   var currentIdx=TABS.indexOf(currentName);
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  if(el){el.classList.add('active');el.scrollIntoView({inline:'nearest',block:'nearest',behavior:'smooth'});}
+  document.querySelectorAll('.nav-tab,.ctab').forEach(function(t){t.classList.remove('active');});
+  if(el)el.classList.add('active');
   window._activeView=name;
   if(name==='dashboard')renderDashboard();
   if(name==='clients')renderClientList();
