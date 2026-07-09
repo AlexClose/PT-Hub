@@ -3514,10 +3514,66 @@ function saveDraftCoach(){
     const weight=document.getElementById('wt-adhoc-'+n)?.value||'';
     if((nameEl.value||'').trim()||reps.trim()||weight.trim())adhoc.push({name:nameEl.value||'',reps:reps,weight:weight});
   });
+  // NEVER overwrite a stored draft with an EMPTY one. A freshly-rendered modal saves before the
+  // coach types anything — if they reopened the app after an iOS eviction and tapped into a client
+  // faster than the auto-restore fired, that empty save was wiping the recoverable session.
+  const hasData=(note||'').trim()||adhoc.length>0||Object.values(inputs).some(v=>(v.reps||'').trim()||(v.weight||'').trim());
+  if(!hasData)return;
   try{localStorage.setItem('bm_coach_draft',JSON.stringify({clientId:pendingLogId,dayIndex,note,inputs,adhoc}));}catch(e){}
 }
 function clearDraftCoach(){
   try{localStorage.removeItem('bm_coach_draft');}catch(e){}
+}
+// Insurance: persist the in-progress log the moment the app is backgrounded/locked (inputs already
+// save per keystroke; this catches anything pending at the instant iOS suspends the page).
+document.addEventListener('visibilitychange',function(){if(document.hidden){try{saveDraftCoach();}catch(e){}}});
+// If a saved draft belongs to THIS client and the just-rendered day, refill it. Called from
+// openLogSession's deferred render — so it doesn't matter whether the modal was opened by the
+// automatic restore, by tapping the client, or by "Up next": the in-progress session comes back.
+function _tryFillFromDraft(clientId){
+  try{
+    const raw=localStorage.getItem('bm_coach_draft');if(!raw)return;
+    const draft=JSON.parse(raw);
+    if(draft.clientId!==clientId)return;
+    if(_coachLogHasData())return; // coach already typed something — never clobber live input
+    const di=(window._logRenderedDi!==undefined&&window._logRenderedDi!==null&&!isNaN(window._logRenderedDi))?window._logRenderedDi:0;
+    if(draft.dayIndex!==undefined&&draft.dayIndex!==null&&draft.dayIndex!==di){
+      // Modal is untouched but shows a different day than the draft — switch to the draft's day.
+      const sel=document.getElementById('logDaySelect');
+      if(!sel)return;
+      sel.value=String(draft.dayIndex);
+      if(sel.value!==String(draft.dayIndex))return; // that day no longer exists in the program
+      updateLogWorkout(clientId);
+    }
+    const adhocDraft=Array.isArray(draft.adhoc)?draft.adhoc:[];
+    const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight)||(draft.note&&draft.note.trim())||adhocDraft.some(a=>(a.name||'').trim()||(a.reps||'').trim()||(a.weight||'').trim());
+    if(!hasData)return;
+    const note=document.getElementById('logNote');
+    if(note&&draft.note)note.value=draft.note;
+    Object.keys(draft.inputs||{}).forEach(i=>{
+      const wr=document.getElementById('wr-'+i);
+      const wt=document.getElementById('wt-'+i);
+      if(wr&&draft.inputs[i].reps)wr.value=draft.inputs[i].reps;
+      if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
+      if(draft.inputs[i].reps||draft.inputs[i].weight){try{checkExRowCoach(parseInt(i));}catch(e){}}
+    });
+    if(adhocDraft.length&&typeof addAdHocExercise==='function'){
+      const cont=document.getElementById('adhoc-exercises');
+      if(cont){cont.innerHTML='';window._adhocCount=0;}
+      adhocDraft.forEach(function(a){
+        const idx=window._adhocCount||0;
+        addAdHocExercise();
+        const nm=document.getElementById('an-adhoc-'+idx);
+        const wr=document.getElementById('wr-adhoc-'+idx);
+        const wt=document.getElementById('wt-adhoc-'+idx);
+        if(nm){nm.value=a.name||'';try{_syncRowThumb(nm);}catch(e){}}
+        if(wr)wr.value=a.reps||'';
+        if(wt)wt.value=a.weight||'';
+      });
+    }
+    try{saveDraftCoach();}catch(e){}
+    toast('In-progress session restored ✓');
+  }catch(e){}
 }
 // True if the log modal has ANY entered data — program-day rows, ad-hoc/custom-workout rows, or a note.
 function _coachLogHasData(){
@@ -3535,6 +3591,8 @@ function closeLogSession(force){
   closeModal('logModal');
 }
 function restoreDraftCoach(){
+  // Cold-start auto-restore: just open the right client/day — openLogSession's deferred render
+  // calls _tryFillFromDraft, which does the actual refill (same path as a manual reopen).
   try{
     const raw=localStorage.getItem('bm_coach_draft');
     if(!raw)return;
@@ -3546,36 +3604,6 @@ function restoreDraftCoach(){
     const hasData=Object.values(draft.inputs||{}).some(v=>v.reps||v.weight)||(draft.note&&draft.note.trim())||adhocDraft.some(a=>(a.name||'').trim()||(a.reps||'').trim()||(a.weight||'').trim());
     if(!hasData)return;
     openLogSession(draft.clientId,draft.dayIndex);
-    setTimeout(()=>{
-      const note=document.getElementById('logNote');
-      if(note&&draft.note)note.value=draft.note;
-      Object.keys(draft.inputs||{}).forEach(i=>{
-        const wr=document.getElementById('wr-'+i);
-        const wt=document.getElementById('wt-'+i);
-        if(wr&&draft.inputs[i].reps)wr.value=draft.inputs[i].reps;
-        if(wt&&draft.inputs[i].weight)wt.value=draft.inputs[i].weight;
-        if(draft.inputs[i].reps||draft.inputs[i].weight)checkExRowCoach(parseInt(i));
-      });
-      // Rebuild ad-hoc / custom-workout rows from the draft (flat — matches how they're saved).
-      if(adhocDraft.length&&typeof addAdHocExercise==='function'){
-        const cont=document.getElementById('adhoc-exercises');
-        if(cont){cont.innerHTML='';window._adhocCount=0;}
-        adhocDraft.forEach(function(a){
-          const idx=window._adhocCount||0;
-          addAdHocExercise();
-          const nm=document.getElementById('an-adhoc-'+idx);
-          const wr=document.getElementById('wr-adhoc-'+idx);
-          const wt=document.getElementById('wt-adhoc-'+idx);
-          if(nm){nm.value=a.name||'';try{_syncRowThumb(nm);}catch(e){}}
-          if(wr)wr.value=a.reps||'';
-          if(wt)wt.value=a.weight||'';
-        });
-      }
-      // Re-persist: openLogSession's deferred render ran saveDraftCoach() on EMPTY inputs, so
-      // without this a second crash before the coach types anything would lose the restored data.
-      try{saveDraftCoach();}catch(e){}
-      toast('Draft restored — pick up where you left off ✓');
-    },200);
   }catch(e){}
 }
 
@@ -3610,10 +3638,13 @@ function openLogSession(id, preselectedDay){
         const sel = document.getElementById('logDaySelect');
         if(sel){ sel.value = preselectedDay; }
         updateLogWorkout(id);
+        _tryFillFromDraft(id);
       },50);
     } else {
-      setTimeout(()=>updateLogWorkout(id),50);
+      setTimeout(()=>{updateLogWorkout(id);_tryFillFromDraft(id);},50);
     }
+  } else {
+    setTimeout(()=>_tryFillFromDraft(id),50); // no program: still recover a drafted note
   }
   openModal('logModal');
 }
