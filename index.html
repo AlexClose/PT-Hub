@@ -197,6 +197,7 @@ display:inline-flex;align-items:center;gap:6px;
 .btn-danger:hover{background:rgba(255,92,106,0.18);}
 .btn-sm{padding:7px 14px;font-size:11px;}
 .btn-full{width:100%;justify-content:center;}
+.btn:disabled{opacity:0.6;cursor:default;}
 
 /* ── INPUTS ── */
 input,select,textarea{
@@ -489,6 +490,38 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 /* ── VIEW ENTER ANIMATION ── */
 @keyframes viewIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .view-enter{animation:viewIn 0.22s cubic-bezier(0.4,0,0.2,1) both;}
+
+/* ── SMALL INLINE SPINNER (buttons) ── */
+.spinner-sm{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:7px;}
+
+/* ── SHARED SMALL-BUTTON COMPONENTS (icon-close / pill actions) ──
+   Consolidates the dozens of hand-styled one-off ✕/Edit/Remove buttons scattered through the file
+   into a few reusable classes — new UI should reach for these instead of inline styling from scratch. */
+.icon-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+.icon-btn:active{background:rgba(255,255,255,0.14);}
+.pill-btn{background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:7px;color:rgba(126,200,255,0.7);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'Instrument Sans',sans-serif;white-space:nowrap;transition:background .15s;}
+.pill-btn:active{background:rgba(100,160,255,0.16);}
+.pill-btn-danger{background:rgba(255,92,106,0.07);border-color:rgba(255,92,106,0.18);color:rgba(255,100,115,0.75);}
+.pill-btn-danger:active{background:rgba(255,92,106,0.15);}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{overflow:hidden;}
+.auth-glow{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(560px 420px at 50% 8%,rgba(37,99,235,0.16),transparent 65%),
+             radial-gradient(420px 320px at 85% 95%,rgba(67,217,162,0.08),transparent 70%);
+  animation:authGlowBreathe 7s ease-in-out infinite;
+}
+@keyframes authGlowBreathe{0%,100%{opacity:0.8;}50%{opacity:1;}}
+.auth-content{position:relative;z-index:1;animation:viewIn .5s cubic-bezier(0.4,0,0.2,1) both;}
+.auth-mark{width:64px;height:64px;margin:0 auto 18px;border-radius:20px;
+  background:linear-gradient(155deg,#193a63,#0d1f38);
+  border:1px solid rgba(126,200,255,0.22);
+  box-shadow:0 8px 32px rgba(37,99,235,0.25),inset 0 1px 0 rgba(255,255,255,0.08);
+  display:flex;align-items:center;justify-content:center;
+}
+.auth-card{background:rgba(16,22,29,0.55);border:1px solid var(--border2);border-radius:20px;padding:26px 22px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,0.35);}
+.auth-input{padding:15px 16px;font-size:15px;}
+.auth-input:focus{box-shadow:0 0 0 3px rgba(79,163,232,0.14);}
 </style>
 
 </head>
@@ -496,21 +529,27 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 
 <!-- AUTH SCREEN -->
 <div id="auth-screen" style="display:flex;position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:#0a0c0f;align-items:center;justify-content:center;padding:24px;">
-  <div style="width:100%;max-width:360px;">
-    <div style="text-align:center;margin-bottom:44px;">
-      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.3px;margin-bottom:6px;">
+  <div class="auth-glow"></div>
+  <div class="auth-content" style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div class="auth-mark">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#7ec8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M2 10v4M22 10v4M6.5 12h11"/></svg>
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:23px;letter-spacing:-0.3px;margin-bottom:7px;">
         <span style="color:#7ec8ff;">BAYMADE</span><span style="color:#fff;"> TRAINING</span>
       </div>
       <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Sign in to continue</div>
     </div>
-    <div class="form-group" style="margin-bottom:12px;">
-      <input id="authEmail" type="email" placeholder="Email" autocomplete="username" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;">
+    <div class="auth-card">
+      <div class="form-group" style="margin-bottom:12px;">
+        <input class="auth-input" id="authEmail" type="email" placeholder="Email" autocomplete="username">
+      </div>
+      <div class="form-group" style="margin-bottom:18px;">
+        <input class="auth-input" id="authPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+      </div>
+      <button id="signInBtn" class="btn btn-primary btn-full" onclick="signIn()" style="padding:16px;font-size:14px;">Sign In</button>
+      <div id="auth-error" style="display:none;color:#ff5c6a;font-size:13px;text-align:center;margin-top:14px;padding:12px 16px;background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.2);border-radius:10px;"></div>
     </div>
-    <div class="form-group" style="margin-bottom:16px;">
-      <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" style="background:#141820;border:1px solid rgba(100,160,255,0.2);border-radius:10px;color:#e8edf5;font-size:15px;padding:14px 16px;width:100%;box-sizing:border-box;outline:none;" onkeydown="if(event.key==='Enter')signIn()">
-    </div>
-    <button id="signInBtn" onclick="signIn()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:12px;padding:16px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,0.35);">Sign In</button>
-    <div id="auth-error" style="display:none;color:#ff5c6a;font-size:13px;text-align:center;margin-top:14px;padding:12px 16px;background:rgba(255,92,106,0.07);border:1px solid rgba(255,92,106,0.2);border-radius:10px;"></div>
   </div>
 </div>
 
@@ -909,14 +948,16 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 <div class="modal-overlay" id="logModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <div>
         <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:5px;">Log Session</div>
         <div id="logModalTitle" style="font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.4px;line-height:1.1;"></div>
       </div>
-      <div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,rgba(29,78,216,0.7),rgba(67,217,162,0.7));border:1px solid rgba(67,217,162,0.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 20px rgba(67,217,162,0.15);">⚡</div>
+      <div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,rgba(29,78,216,0.7),rgba(67,217,162,0.7));border:1px solid rgba(67,217,162,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 20px rgba(67,217,162,0.15);">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
     </div>
-    <div id="logWorkoutSection"></div>
+    <div style="position:relative;z-index:1;" id="logWorkoutSection"></div>
     <div class="form-group" style="margin-top:10px">
       <label class="form-label">Session Note (optional)</label>
       <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
@@ -1210,7 +1251,7 @@ async function signIn() {
     return;
   }
   const btn = document.getElementById('signInBtn');
-  if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '<span class="spinner-sm"></span>Signing in...'; btn.disabled = true; }
   try {
     const res = await fetch(`${AUTH_URL}/token?grant_type=password`, {
       method:'POST', headers:AUTH_H,
@@ -1488,7 +1529,7 @@ function closeModal(id){
   // without this a stale-but-truthy pendingLogId + leftover filled inputs let a LATER backgrounding
   // event (saveDraftCoach via visibilitychange) resurrect an already-completed session as a "draft" —
   // which then auto-reopens next launch, looking unfinished, and gets logged again as a duplicate.
-  if(id==='logModal')pendingLogId=null;
+  if(id==='logModal'){pendingLogId=null;window._logmambGen=(window._logmambGen||0)+1;}
 }
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}o.classList.remove('open');}));
 
@@ -2292,6 +2333,71 @@ function _renderModalAmbient(hue){
   }
   requestAnimationFrame(loop);
 }
+// Log-session-modal header ambient: rising energy STREAKS (thin blue→green gradient lines), not the
+// dots used on the dashboard/client-modal — a different shape so this screen reads as its own moment
+// rather than a reskin, while still using the app's signature progress gradient (Today ring / progress bar).
+function _renderLogModalAmbient(){
+  var host=document.querySelector('#logModal .modal');
+  if(!host)return;
+  var old=document.getElementById('logmodal-ambient');
+  if(old)old.remove();
+  var H=150;
+  var cv=document.createElement('canvas');
+  cv.id='logmodal-ambient';
+  cv.style.cssText='position:absolute;top:0;left:0;right:0;height:'+H+'px;z-index:0;pointer-events:none;'
+    +'background:radial-gradient(280px 180px at 85% -10px,rgba(67,217,162,0.10),transparent 68%);';
+  host.insertBefore(cv,host.firstChild);
+  var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ctx=cv.getContext('2d'),W,DPR=Math.min(2,window.devicePixelRatio||1);
+  function size(){W=host.clientWidth||360;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+  size();
+  window._logmambGen=(window._logmambGen||0)+1;
+  var myGen=window._logmambGen;
+  addEventListener('resize',function onResize(){if(myGen!==window._logmambGen)return;size();});
+  var N=Math.max(10,Math.min(20,Math.round(W/22)));
+  var ps=[];
+  function spawn(p,initial){
+    p.x=Math.random()*W;
+    p.y=initial?Math.random()*H:H+14;
+    p.len=8+Math.random()*15;
+    p.vy=-(0.14+Math.random()*0.30);
+    p.vx=(Math.random()-0.5)*0.03;
+    p.tw=Math.random()*Math.PI*2;
+    p.tws=0.006+Math.random()*0.016;
+    p.a=0.16+Math.random()*0.26;
+    p.w=0.8+Math.random()*0.9;
+    return p;
+  }
+  for(var i=0;i<N;i++)ps.push(spawn({},true));
+  function draw(animate){
+    ctx.clearRect(0,0,W,H);
+    for(var i=0;i<ps.length;i++){
+      var p=ps[i];
+      if(animate){
+        p.y+=p.vy;p.x+=p.vx;p.tw+=p.tws;
+        if(p.y+p.len<-10||p.x<-10||p.x>W+10)spawn(p,false);
+      }
+      var tw=0.55+0.45*Math.sin(p.tw);
+      var depth=0.3+0.7*(p.y/H);
+      var a=p.a*tw*depth;
+      var y0=p.y,y1=p.y-p.len;
+      var grad=ctx.createLinearGradient(p.x,y0,p.x,y1);
+      grad.addColorStop(0,'rgba(29,78,216,'+a.toFixed(3)+')');
+      grad.addColorStop(1,'rgba(67,217,162,'+(a*0.85).toFixed(3)+')');
+      ctx.strokeStyle=grad;
+      ctx.lineWidth=p.w;
+      ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(p.x,y0);ctx.lineTo(p.x,y1);ctx.stroke();
+    }
+  }
+  if(reduced){draw(false);return;}
+  function loop(){
+    if(myGen!==window._logmambGen)return;
+    if(!document.hidden)draw(true);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
 function clientRowHtml(c){
   const sharedPkg = c.shared_package_id ? sharedPackages.find(p=>p.id===c.shared_package_id) : null;
   const hasPkg = c.package_size>0 || !!c.remaining || !!sharedPkg;
@@ -2558,7 +2664,7 @@ function renderClientModal(c){
   // Cache sessions by ID so Edit buttons can look them up by ID
   window['_sessMap_'+c.id]={};
   sessions.forEach(s=>{if(s.id)window['_sessMap_'+c.id][s.id]=s;});
-  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div ${s.id?`onclick="window._coachShowSession('${c.id}','${s.id}')" `:''}style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06);cursor:${s.id?'pointer':'default'}"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div>${s.id?`<button onclick="event.stopPropagation();openEditSession('${c.id}','${s.id}')" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 9px;cursor:pointer;font-family:Syne,sans-serif;flex-shrink:0;">Edit</button>`:''}</div>`;};
+  const sessionRowHtml=(s,dayName)=>{const lbl=dayName||s.workout?.[0]?.day||s.note||'';return `<div ${s.id?`onclick="window._coachShowSession('${c.id}','${s.id}')" `:''}style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.06);cursor:${s.id?'pointer':'default'}"><div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:rgba(67,217,162,0.5);flex-shrink:0"></div><div><div style="font-size:13px;font-weight:500;color:rgba(232,237,245,0.8)">${s.date}</div>${lbl?`<div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:1px">${lbl}</div>`:''}</div></div>${s.id?`<button onclick="event.stopPropagation();openEditSession('${c.id}','${s.id}')" class="pill-btn" style="flex-shrink:0;">Edit</button>`:''}</div>`;};
   const buildSessHtml=dnm=>sessions.length===0
     ?'<div style="padding:10px 0;font-size:13px;color:rgba(180,200,230,0.3)">No sessions logged yet.</div>'
     :sessions.slice(0,3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')+(sessions.length>3?`<div id="sm-${c.id}" style="display:none">${sessions.slice(3).map(s=>sessionRowHtml(s,dnm&&dnm[s.date])).join('')}</div><div onclick="var e=document.getElementById('sm-${c.id}');var b=document.getElementById('sb-${c.id}');if(e.style.display==='none'){e.style.display='block';b.textContent='Show less';}else{e.style.display='none';b.textContent='View all ${sessions.length} sessions';}" id="sb-${c.id}" style="font-size:12px;color:rgba(126,200,255,0.6);cursor:pointer;padding:8px 0;font-weight:600;">View all ${sessions.length} sessions</div>`:'');
@@ -2587,7 +2693,7 @@ function renderClientModal(c){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;">Run Program</div>
         <div style="font-size:11px;color:rgba(255,140,71,0.5);margin-top:2px;">${assignedRp.name} · ${rpMaxWeek} week${rpMaxWeek!==1?'s':''}</div></div>
-        <button onclick="unassignRunProgram('${c.id}')" style="background:rgba(255,92,106,0.08);border:1px solid rgba(255,92,106,0.2);border-radius:7px;color:rgba(255,92,106,0.7);font-size:11px;font-weight:600;cursor:pointer;padding:5px 10px;font-family:'Instrument Sans',sans-serif;">Remove</button>
+        <button onclick="unassignRunProgram('${c.id}')" class="pill-btn pill-btn-danger">Remove</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <button onclick="changeRunWeek('${c.id}',-1)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.12);border-radius:7px;color:rgba(180,200,230,0.6);font-size:18px;line-height:1;cursor:pointer;padding:4px 10px;font-family:inherit;">&#8249;</button>
@@ -2615,7 +2721,7 @@ function renderClientModal(c){
         </div>
         <div class="muted" style="font-size:12px;margin-top:2px">${c.level}${c.age?' · Age '+c.age:''} · ${c.duration||60} min sessions</div>
       </div>
-      <button onclick="closeModal('clientModal')" style="flex-shrink:0;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:50%;width:34px;height:34px;color:rgba(232,237,245,0.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="closeModal('clientModal')" class="icon-btn">✕</button>
     </div>
 
     <div style="position:relative;z-index:1;display:flex;gap:2px;background:rgba(255,255,255,0.04);border-radius:12px;padding:3px;margin-bottom:18px;">
@@ -3721,6 +3827,7 @@ function openLogSession(id, preselectedDay){
   } else {
     setTimeout(()=>_tryFillFromDraft(id),50); // no program: still recover a drafted note
   }
+  _renderLogModalAmbient();
   openModal('logModal');
 }
 // Switching the day/Custom-Workout dropdown rebuilds the whole exercise list, wiping any sets already
@@ -3801,6 +3908,7 @@ function updateLogWorkout(clientId){
   + `</div>`;
   try{_thumbsRefresh();}catch(e){}
   try{_setupBlockDrag(document.getElementById('adhoc-exercises'));}catch(e){}
+  try{_staggerIn(document.getElementById('logExercises'),14);}catch(e){}
   saveDraftCoach();
 }
 
@@ -6362,7 +6470,7 @@ function startClientPortal(id) {
             histHtml+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(100,160,255,0.05);">' +
               '<div style="font-size:12px;color:rgba(180,200,230,0.4);">'+fmtD(e.date)+'</div>' +
               '<div style="display:flex;align-items:center;gap:10px;font-size:12px;">'+vals+
-                '<button onclick="window._openBodyStatSheet(window[\'_portalBsEntries\'].find(function(x){return x.id===\''+e.id+'\';}))" style="background:rgba(100,160,255,0.08);border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;padding:3px 8px;cursor:pointer;font-family:Syne,sans-serif;">Edit</button>' +
+                '<button onclick="window._openBodyStatSheet(window[\'_portalBsEntries\'].find(function(x){return x.id===\''+e.id+'\';}))" class="pill-btn">Edit</button>' +
               '</div>' +
             '</div>';
           });
