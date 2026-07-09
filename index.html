@@ -2857,7 +2857,7 @@ function renderClientModal(c){
           <span style="font-size:11px;color:rgba(180,200,230,0.25)">${sessions.length} total</span>
         </div>
         <div id="sess-hist-${c.id}">${sessHtml}</div>
-        <div style="margin-top:10px;padding:8px 10px;background:var(--surface2);border:1px solid rgba(100,160,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
+        <div style="margin-top:10px;padding:8px 10px;background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:11px;color:rgba(180,200,230,0.35)">Portal link</span>
           <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
         </div>
@@ -2872,7 +2872,7 @@ function renderClientModal(c){
     </div>
 
     <div id="cmt-${c.id}-program" style="display:${tbc('program')}">
-      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <div style="flex:1">
             <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:#fff;letter-spacing:.3px">Training Program</div>
@@ -2892,7 +2892,7 @@ function renderClientModal(c){
     </div>
 
     <div id="cmt-${c.id}-progress" style="display:${tbc('progress')}">
-      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="display:flex;gap:3px;background:rgba(0,0,0,0.25);border-radius:9px;padding:3px;flex:1;margin-right:10px;">
             <button id="rpt-tab-${c.id}-week" onclick="setReportPeriod('${c.id}','week')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">Week</button>
@@ -2904,7 +2904,7 @@ function renderClientModal(c){
         <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
       </div>
 
-      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Body Stats</div>
           <button onclick="openCoachBodyStatForm('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.25);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;">+ Log</button>
@@ -2913,7 +2913,7 @@ function renderClientModal(c){
         <div id="bodystats-coach-${c.id}"><div class="skeleton" style="height:80px;border-radius:10px;"></div></div>
       </div>
 
-      <div style="background:var(--surface2);border:1px solid rgba(100,160,255,0.12);border-radius:16px;padding:16px;margin-bottom:16px">
+      <div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">Muscle Groups</div>
