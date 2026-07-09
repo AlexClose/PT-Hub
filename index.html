@@ -98,7 +98,7 @@ button{transition:transform .1s ease;}
 /* ── NAV ── */
 nav{
 position:fixed;top:0;left:0;right:0;z-index:100;
-background:rgba(10,12,15,0.92);
+background:rgba(10,12,15,0.84);
 backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
 border-bottom:1px solid var(--border);
 /* viewport-fit=cover extends the page under the iOS status bar — pad the nav down past it */
@@ -110,7 +110,7 @@ padding:env(safe-area-inset-top,0px) 18px 0 18px;gap:6px;
 #coach-tabbar{
 position:fixed;left:0;right:0;bottom:0;z-index:100;
 display:flex;justify-content:center;gap:2px;
-background:rgba(10,12,15,0.92);
+background:rgba(10,12,15,0.84);
 backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
 border-top:1px solid var(--border);
 padding:6px 10px calc(8px + env(safe-area-inset-bottom,0px));
@@ -157,7 +157,9 @@ display:flex;align-items:center;gap:7px;
 .nav-tab.active .tab-label{display:inline;}
 
 /* ── MAIN ── */
-main{padding-top:calc(56px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;}
+/* main sits in its own layer ABOVE the ambient canvas (z:0) — iOS culls fixed elements at negative
+   z-index behind composited scroll layers, which made the particle background vanish after load */
+main{padding-top:calc(56px + env(safe-area-inset-top,0px));height:100vh;overflow:hidden;box-sizing:border-box;position:relative;z-index:1;}
 #view-scroll{position:relative;height:100%;overflow:hidden;}
 .view{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;transform:translateX(100%);transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);padding:24px max(16px,calc((100vw - 720px) / 2)) calc(112px + env(safe-area-inset-bottom,0px));box-sizing:border-box;will-change:transform;
 /* ambient light: a soft brand-blue wash bleeding down from the top — the dark gets an atmosphere
@@ -8937,24 +8939,26 @@ async function saveCoachBodyStat(cid) {
   var reduced=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   var cv=document.createElement('canvas');
   cv.id='ambient-bg';
-  cv.style.cssText='position:fixed;inset:0;z-index:-1;pointer-events:none;'
-    +'background:radial-gradient(900px 460px at 50% 108%,rgba(37,99,235,0.10),transparent 65%);';
-  document.body.appendChild(cv);
+  // z-index:0 with content layered above (main is z:1) — NOT negative z-index, which iOS culls
+  // behind composited scroll layers (the background "vanished" once the app finished loading).
+  cv.style.cssText='position:fixed;inset:0;z-index:0;pointer-events:none;'
+    +'background:radial-gradient(950px 500px at 50% 108%,rgba(37,99,235,0.17),transparent 65%);';
+  document.body.insertBefore(cv,document.body.firstChild);
   var ctx=cv.getContext('2d'),W,H,DPR=Math.min(2,window.devicePixelRatio||1);
   function size(){W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
   size();addEventListener('resize',size);
-  var N=Math.max(26,Math.min(54,Math.round(W*H/26000)));
+  var N=Math.max(40,Math.min(85,Math.round(W*H/16000)));
   var ps=[];
   function spawn(p,initial){
     p.x=Math.random()*W;
     p.y=initial?Math.random()*H:H+8;
-    p.r=0.6+Math.random()*1.6;
-    p.vy=-(0.06+Math.random()*0.22);      // slow upward drift
+    p.r=0.7+Math.random()*1.9;
+    p.vy=-(0.07+Math.random()*0.24);      // slow upward drift
     p.vx=(Math.random()-0.5)*0.09;        // gentle sideways wander
     p.tw=Math.random()*Math.PI*2;         // twinkle phase
     p.tws=0.004+Math.random()*0.012;
     p.hue=Math.random()<0.82?208:160;     // mostly blue, occasional teal
-    p.a=0.05+Math.random()*0.17;
+    p.a=0.12+Math.random()*0.26;
     return p;
   }
   for(var i=0;i<N;i++)ps.push(spawn({},true));
@@ -8968,20 +8972,33 @@ async function saveCoachBodyStat(cid) {
       }
       var tw=0.55+0.45*Math.sin(p.tw);
       var depth=0.35+0.65*(p.y/H);        // brighter near the bottom light source, fading as they rise
+      var a=p.a*tw*depth;
+      if(p.r>1.7){                        // the larger motes get a soft halo — reads as glow, stays cheap
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r*3,0,6.2832);
+        ctx.fillStyle='hsla('+p.hue+',80%,66%,'+(a*0.18).toFixed(3)+')';
+        ctx.fill();
+      }
       ctx.beginPath();
       ctx.arc(p.x,p.y,p.r,0,6.2832);
-      ctx.fillStyle='hsla('+p.hue+',75%,72%,'+(p.a*tw*depth).toFixed(3)+')';
+      ctx.fillStyle='hsla('+p.hue+',75%,74%,'+a.toFixed(3)+')';
       ctx.fill();
     }
   }
   if(reduced){draw(false);addEventListener('resize',function(){draw(false);});return;}
-  var running=!document.hidden;
-  function frame(){if(!running)return;draw(true);requestAnimationFrame(frame);}
-  document.addEventListener('visibilitychange',function(){
-    var was=running;running=!document.hidden;
-    if(running&&!was)requestAnimationFrame(frame);
-  });
-  requestAnimationFrame(frame);
+  // Loop management: single active loop, restarted by BOTH visibilitychange and pageshow
+  // (bfcache restores don't fire visibilitychange — another way the animation could die).
+  var running=!document.hidden,loopActive=false;
+  function frame(){
+    if(!running||document.hidden){loopActive=false;return;}
+    draw(true);
+    requestAnimationFrame(frame);
+  }
+  function ensure(){running=!document.hidden;if(running&&!loopActive){loopActive=true;requestAnimationFrame(frame);}}
+  document.addEventListener('visibilitychange',ensure);
+  addEventListener('pageshow',ensure);
+  addEventListener('focus',ensure);
+  ensure();
 })();
 
 startApp();
