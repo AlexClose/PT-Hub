@@ -2180,13 +2180,31 @@ function renderDashboard(){
   renderTodaySessions();
 }
 
-// Deterministic per-client color from a curated set of hues that all read well on the dark UI
-// (skips muddy yellow-greens). Same client = same color everywhere, forever.
-var _AVATAR_HUES=[212,262,291,340,12,32,160,187,225,145];
+// Per-client color: hues spread by GOLDEN ANGLE across the roster in join order — neighbors are
+// maximally different (hash-bucket version gave Allie/Allison/Amanda/Beth near-identical oranges),
+// new clients append to the sequence so existing colors never shift, and the muddy olive band
+// (~48-98°) is skipped. Same client = same color everywhere.
+var _clientHueMap=null,_clientHueKey='';
 function _clientHue(c){
-  var s=String(c&&(c.id||c.first)||'');var h=0;
-  for(var i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}
-  return _AVATAR_HUES[Math.abs(h)%_AVATAR_HUES.length];
+  var key=(typeof clients!=='undefined'&&Array.isArray(clients))?clients.length+':'+(clients[0]?clients[0].id:''):'';
+  if(!_clientHueMap||_clientHueKey!==key){
+    _clientHueKey=key;_clientHueMap={};
+    if(typeof clients!=='undefined'&&Array.isArray(clients)){
+      var order=clients.slice().sort(function(a,b){
+        var ka=(a.created_at||'')+a.id,kb=(b.created_at||'')+b.id;
+        return ka<kb?-1:ka>kb?1:0;
+      });
+      order.forEach(function(cl,i){
+        var h=(i*137.508)%360;h=h*310/360;if(h>=48)h+=50; // compress out the olive band
+        _clientHueMap[cl.id]=Math.round(h);
+      });
+    }
+  }
+  if(c&&c.id&&_clientHueMap&&_clientHueMap[c.id]!=null)return _clientHueMap[c.id];
+  // Fallback (client not in the roster array): hash into the same non-muddy wheel.
+  var s=String(c&&(c.id||c.first)||'');var h2=0;
+  for(var i=0;i<s.length;i++){h2=((h2<<5)-h2+s.charCodeAt(i))|0;}
+  h2=Math.abs(h2)%310;if(h2>=48)h2+=50;return h2;
 }
 function _avatarStyle(c,size){
   var h=_clientHue(c);size=size||46;
