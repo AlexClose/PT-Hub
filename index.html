@@ -2616,25 +2616,20 @@ function renderClientModal(c){
       })()}
 
       <div class="card card-glow" style="margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPkg?'12':'0'}px">
-          <div>
-            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:600;margin-bottom:6px">Sessions Remaining</div>
-            ${sharedPkg
-              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:3px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
-              :c.package_size>0
-              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
-              :c.remaining
-              ?`<div style="font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
-              :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
-            ${(c.package_started_at&&!sharedPkg&&(c.package_size>0||c.remaining))?`<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:5px;">📅 Package started ${_fmtPkgStart(c.package_started_at)}</div>`:''}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-            <button onclick="openLogSession('${c.id}')" style="background:#2563eb;color:#fff;border:none;border-radius:9px;padding:11px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(37,99,235,0.3)">+ Log Session</button>
-            ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid rgba(100,160,255,0.1);border-radius:9px;padding:8px 16px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Renew</button>`:''}
-            <button onclick="(function(){var url='https://pt-hub.vercel.app/api/export?id=${c.id}&key=pthub_9r4xw2m8k6j3';if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){toast('Export URL copied ✓');});}else{var inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);inp.select();document.execCommand('copy');document.body.removeChild(inp);toast('Export URL copied ✓');}})();" style="background:rgba(255,255,255,0.03);color:rgba(180,200,230,0.3);border:1px solid rgba(255,255,255,0.05);border-radius:9px;padding:6px 12px;font-family:'Syne',sans-serif;font-size:10px;font-weight:600;cursor:pointer">⬡ Export</button>
-          </div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:600;margin-bottom:6px">Sessions Remaining</div>
+          ${hasPkg?`<button onclick="openRenew('${c.id}')" style="background:none;border:none;color:rgba(126,200,255,0.55);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;padding:0 0 4px 8px;">Renew ↻</button>`:''}
         </div>
-        ${hasPkg?`<div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
+        ${sharedPkg
+          ?`<div style="font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:${col};line-height:1;-webkit-font-smoothing:antialiased">${sharedPkg.remaining_sessions}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${sharedPkg.total_sessions}</span></div><div style="font-size:11px;color:rgba(180,200,230,0.35);margin-top:4px">Shared with ${clients.filter(x=>x.shared_package_id===c.shared_package_id&&x.id!==c.id).map(x=>x.first).join(' & ')}</div>`
+          :c.package_size>0
+          ?`<div style="font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> / ${c.package_size}</span></div>`
+          :c.remaining
+          ?`<div style="font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:${col};line-height:1">${c.remaining}<span style="font-size:15px;color:rgba(180,200,230,0.35);font-weight:400"> remaining</span></div>`
+          :`<div style="font-size:13px;color:rgba(180,200,230,0.35);padding-top:4px">Pay per session</div>`}
+        ${(c.package_started_at&&!sharedPkg&&(c.package_size>0||c.remaining))?`<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:5px;">Package started ${_fmtPkgStart(c.package_started_at)}</div>`:''}
+        ${hasPkg?`<div class="prog-wrap" style="margin-top:12px;"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>`:''}
+        <button onclick="openLogSession('${c.id}')" style="width:100%;margin-top:14px;background:#2563eb;color:#fff;border:none;border-radius:11px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.4px;cursor:pointer;box-shadow:0 2px 14px rgba(37,99,235,0.3)">+ Log Session</button>
       </div>
 
       ${c.goals||c.injuries?(()=>{
@@ -2661,11 +2656,12 @@ function renderClientModal(c){
           <button onclick="navigator.clipboard.writeText('${location.origin}/#client-${c.id}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy link',1500)})" style="background:none;border:1px solid rgba(100,160,255,0.15);border-radius:6px;color:rgba(126,200,255,0.6);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;font-family:'Instrument Sans',sans-serif;">Copy link</button>
         </div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="btn btn-secondary btn-full btn-sm" onclick="openEditClient('${c.id}')">✎ Edit</button>
-        <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.4)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'rgba(100,160,255,0.08)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
+        <button onclick="togglePause('${c.id}')" style="flex:1;background:${c.paused?'rgba(71,255,176,0.08)':'rgba(255,255,255,0.04)'};color:${c.paused?'var(--success)':'rgba(180,200,230,0.45)'};border:1px solid ${c.paused?'rgba(71,255,176,0.2)':'var(--border2)'};border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">${c.paused?'▶ Resume':'⏸ Pause'}</button>
+        <button onclick="(function(){var url='https://pt-hub.vercel.app/api/export?id=${c.id}&key=pthub_9r4xw2m8k6j3';if(navigator.clipboard){navigator.clipboard.writeText(url).then(function(){toast('Export URL copied ✓');});}else{var inp=document.createElement('input');inp.value=url;document.body.appendChild(inp);inp.select();document.execCommand('copy');document.body.removeChild(inp);toast('Export URL copied ✓');}})();" style="flex:1;background:rgba(255,255,255,0.04);color:rgba(180,200,230,0.45);border:1px solid var(--border2);border-radius:9px;padding:7px 12px;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer">Export</button>
       </div>
-      <button class="btn btn-danger btn-full btn-sm" onclick="deleteClient('${c.id}')">Remove Client</button>
+      <div style="text-align:center;margin-bottom:8px;"><button onclick="deleteClient('${c.id}')" style="background:none;border:none;color:rgba(255,92,106,0.4);font-size:12px;font-family:'Instrument Sans',sans-serif;cursor:pointer;padding:6px 12px;">Remove client…</button></div>
       <div style="padding-bottom:24px;"></div>
     </div>
 
