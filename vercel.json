@@ -5,6 +5,8 @@
     { "src": "/kathryn", "dest": "/kathryn.html" },
     { "src": "/portal.js", "dest": "/portal.js" },
     { "src": "/test", "dest": "/test.html" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/icons/(.*)", "dest": "/icons/$1" },
     { "src": "/", "dest": "/index.html" }
   ]
 }

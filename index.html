@@ -8,51 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Baymade Training">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="apple-touch-icon" id="appIcon" href="">
-<script>
-(function(){
-  var c=document.createElement('canvas');
-  c.width=512;c.height=512;
-  var ctx=c.getContext('2d');
-
-// Background
-var grad=ctx.createLinearGradient(0,0,512,512);
-grad.addColorStop(0,'#0a1628');
-grad.addColorStop(1,'#0f2044');
-ctx.fillStyle=grad;
-ctx.beginPath();
-ctx.roundRect(0,0,512,512,80);
-ctx.fill();
-
-// Dumbbell color
-ctx.fillStyle='#4fa3e8';
-ctx.shadowColor='rgba(79,163,232,0.6)';
-ctx.shadowBlur=20;
-
-// Left plate outer
-ctx.beginPath();ctx.roundRect(40,180,100,152,18);ctx.fill();
-// Left plate inner
-ctx.beginPath();ctx.roundRect(80,200,60,112,12);ctx.fill();
-
-// Right plate outer
-ctx.beginPath();ctx.roundRect(372,180,100,152,18);ctx.fill();
-// Right plate inner
-ctx.beginPath();ctx.roundRect(372,200,60,112,12);ctx.fill();
-
-// Bar
-ctx.beginPath();ctx.roundRect(140,228,232,56,10);ctx.fill();
-
-// Center knurl lines
-ctx.fillStyle='rgba(10,22,40,0.4)';
-for(var i=0;i<5;i++){
-ctx.fillRect(200+i*24,228,10,56);
-}
-
-var dataURL=c.toDataURL('image/png');
-var link=document.getElementById('appIcon');
-if(link)link.href=dataURL;
-})();
-</script>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-167.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-120.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#080a0d">
 
