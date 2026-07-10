@@ -3316,12 +3316,33 @@ function _altExerciseFor(origName,used,first){
   var pick=top[Math.floor(Math.random()*top.length)];
   return pick?pick.name:null;
 }
+// Regroup SS-tagged exercises so members of the same tag are adjacent, regardless of how they
+// were ordered in storage. Self-heals data left behind by two historical bugs (the program
+// editor's row-level drag-reorder splitting a superset pair apart while both members kept the
+// same tag, and removeEx() not cleaning up a partner) — without this, adjacency-based grouping
+// below would see two orphaned solo groups and silently drop a pairing that's actually still
+// intact, just scattered. Each group is placed at the position of its first occurrence.
+function _coalesceSsGroups(exs){
+  var groups={},order=[],standalones=[];
+  (exs||[]).forEach(function(ex,i){
+    var m=(ex.name||'').match(/^SS(\w+):\s*/i);
+    if(m){
+      var g=m[1];
+      if(!groups[g]){groups[g]=[];order.push({type:'group',g:g,pos:i});}
+      groups[g].push(ex);
+    } else standalones.push({type:'ex',ex:ex,pos:i});
+  });
+  var units=order.concat(standalones).sort(function(a,b){return a.pos-b.pos;});
+  var out=[];
+  units.forEach(function(u){out=out.concat(u.type==='group'?groups[u.g]:[u.ex]);});
+  return out;
+}
 // Order a generated day the way a coach would run it: compound lifts first, isolation/accessory
 // after — stable within each class (relative order preserved), superset groups move as ONE unit
 // (a group counts as compound if any member is).
 function _genOrderDay(exs){
   var units=[],cur=null;
-  (exs||[]).forEach(function(ex){
+  _coalesceSsGroups(exs).forEach(function(ex){
     var ssm=(ex.name||'').match(/^SS(\w*):/i);
     if(ssm){
       var g=ssm[1]||'';
@@ -3562,8 +3583,11 @@ function renderEditExerciseList(){
     if(editingExercises[i].ss){
       var g=editingExercises[i].ss,rows='';
       while(i<editingExercises.length&&editingExercises[i].ss===g){rows+=_editExRowHtml(i);i++;}
-      html+='<div style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:8px;background:rgba(255,140,71,0.03);overflow:hidden;">'+
-        '<div style="padding:7px 12px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);border-bottom:1px solid rgba(255,140,71,0.15);">⊕ Superset</div>'+
+      html+='<div data-ss-wrap="'+g+'" style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:8px;background:rgba(255,140,71,0.03);overflow:hidden;">'+
+        '<div style="padding:7px 12px;display:flex;align-items:center;gap:8px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);border-bottom:1px solid rgba(255,140,71,0.15);">'+
+          '<span class="ex-drag-handle ex-drag-handle-group" title="Drag whole superset to reorder" style="cursor:grab;font-size:12px;">⠿</span>'+
+          '<span>⊕ Superset</span>'+
+        '</div>'+
         rows+
         '<div style="padding:8px 10px;"><button class="lib-btn" onclick="addToSuperset('+g+')" style="width:100%;color:#7ec8ff;">+ Add to superset</button></div>'+
       '</div>';
@@ -3861,19 +3885,24 @@ function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++)
 // Encode superset groups back into SS-prefixed names (renumbered sequentially) for storage.
 function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var nm=(e.name||'').trim();if(e.ss){if(!map[e.ss])map[e.ss]=next++;return {name:'SS'+map[e.ss]+': '+nm,prescription:e.prescription||'',load:e.load||''};}return {name:nm,prescription:e.prescription||'',load:e.load||''};});}
 // Parse stored exercises (SS-prefixed names) into the editor model with an .ss group marker.
-// Groups a stored program's SS-prefixed names back into .ss-tagged edit rows. Guards against a
-// "superset" that only has one member left (stale group tag from some earlier edit/generate cycle)
-// by treating it as a plain exercise — self-heals wherever it's opened rather than showing a
-// confusing single-exercise superset box in the editor.
+// Groups a stored program's SS-prefixed names back into .ss-tagged edit rows. Coalesces scattered
+// same-tag members back together first (see _coalesceSsGroups) so a pairing that got separated by
+// the drag-reorder or removeEx() bugs is rescued rather than silently dropped, then demotes any
+// group that still only has one member (a genuinely stale tag) to a plain exercise. Group ids are
+// reassigned as fresh small sequential integers (1,2,3…) — matches the convention every other
+// editor helper (_nextSsGroup, _encodeEx) already uses; the raw stored tag value doesn't need to
+// survive past this parse.
 function _parseExForEdit(arr){
-  var list=arr||[];
+  var list=_coalesceSsGroups(arr||[]);
   var counts={};
-  list.forEach(function(ex){var m=(ex.name||'').match(/^SS(\d+):\s*/i);if(m)counts[m[1]]=(counts[m[1]]||0)+1;});
+  list.forEach(function(ex){var m=(ex.name||'').match(/^SS(\w+):\s*/i);if(m)counts[m[1]]=(counts[m[1]]||0)+1;});
+  var map={},next=1;
   return list.map(function(ex){
-    var m=(ex.name||'').match(/^SS(\d+):\s*/i);
+    var m=(ex.name||'').match(/^SS(\w+):\s*/i);
     var g=m?m[1]:null;
     var realGroup=g&&counts[g]>1;
-    return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:realGroup?parseInt(g,10):null};
+    if(realGroup&&!map[g])map[g]=next++;
+    return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:realGroup?map[g]:null};
   });
 }
 function _updateEditThumb(i){
@@ -3956,56 +3985,98 @@ function _pickerAdd(){
     toast('Added '+names.length+' exercise'+(names.length>1?'s':''));
   } else _closeExPicker();
 }
+// Reconstruct the current top-level block partition of editingExercises (mirrors the grouping
+// renderEditExerciseList uses): each block is a contiguous run of indices — either a single
+// standalone exercise or a whole superset group. Blocks are what move as a unit on a top-level
+// drag, so a superset can never be split apart that way again.
+function _exBlocks(){
+  var blocks=[],i=0;
+  while(i<editingExercises.length){
+    if(editingExercises[i].ss){
+      var g=editingExercises[i].ss,idxs=[];
+      while(i<editingExercises.length&&editingExercises[i].ss===g){idxs.push(i);i++;}
+      blocks.push(idxs);
+    } else { blocks.push([i]); i++; }
+  }
+  return blocks;
+}
+// Drag-to-reorder for the program-day editor. Two modes, chosen by which handle is grabbed:
+//  - the superset header's handle (.ex-drag-handle-group) moves the WHOLE group as one block
+//    among other top-level blocks (standalone exercises / other supersets) — this is also what
+//    happens when a standalone row's own handle is dragged (it IS a one-item top-level block).
+//  - an individual row's handle, when that row lives inside a superset wrapper, only reorders
+//    members WITHIN that same group — it can no longer escape the group and desync its tag from
+//    its partner, which is what used to silently corrupt stored programs (see _coalesceSsGroups).
 function setupExDrag(){
   var list=document.getElementById('editExerciseList');
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
   list.addEventListener('pointerdown',function(e){
-    if(!e.target.closest('.ex-drag-handle'))return;
+    var handle=e.target.closest('.ex-drag-handle');
+    if(!handle)return;
     e.preventDefault();
-    var row=e.target.closest('.edit-ex-row');
-    if(!row)return;
-    var allRows=Array.from(list.querySelectorAll('.edit-ex-row'));
-    var fromIdx=allRows.indexOf(row);
-    var rect=row.getBoundingClientRect();
+    var isGroupHandle=handle.classList.contains('ex-drag-handle-group');
+    var row=handle.closest('.edit-ex-row');
+    var wrap=handle.closest('[data-ss-wrap]');
+    var within=!isGroupHandle&&!!wrap;
+    var container=within?wrap:list;
+    var block=within?row:(wrap||row);
+    if(!block||!container)return;
+    var allBlocks=within?Array.from(wrap.querySelectorAll(':scope > .edit-ex-row')):Array.from(list.children);
+    var fromIdx=allBlocks.indexOf(block);
+    if(fromIdx<0)return;
+    var rect=block.getBoundingClientRect();
     var startY=e.clientY,origTop=rect.top;
-    var origCss=row.getAttribute('style')||'';
+    var origCss=block.getAttribute('style')||'';
     var ph=document.createElement('div');
-    ph.style.cssText='height:'+row.offsetHeight+'px;margin-bottom:8px;border:2px dashed rgba(37,99,235,0.4);border-radius:8px;background:rgba(37,99,235,0.05);box-sizing:border-box;';
-    list.insertBefore(ph,row);
-    row.style.position='fixed';
-    row.style.top=origTop+'px';
-    row.style.left=rect.left+'px';
-    row.style.width=rect.width+'px';
-    row.style.zIndex='9999';
-    row.style.boxShadow='0 10px 40px rgba(0,0,0,0.7)';
-    row.style.margin='0';
-    document.body.appendChild(row);
-    row.setPointerCapture(e.pointerId);
+    ph.style.cssText='height:'+block.offsetHeight+'px;margin-bottom:8px;border:2px dashed rgba(37,99,235,0.4);border-radius:8px;background:rgba(37,99,235,0.05);box-sizing:border-box;';
+    container.insertBefore(ph,block);
+    block.style.position='fixed';
+    block.style.top=origTop+'px';
+    block.style.left=rect.left+'px';
+    block.style.width=rect.width+'px';
+    block.style.zIndex='9999';
+    block.style.boxShadow='0 10px 40px rgba(0,0,0,0.7)';
+    block.style.margin='0';
+    document.body.appendChild(block);
+    block.setPointerCapture(e.pointerId);
     var onMove=function(ev){
-      row.style.top=(origTop+(ev.clientY-startY))+'px';
-      var rows=Array.from(list.querySelectorAll('.edit-ex-row'));
+      block.style.top=(origTop+(ev.clientY-startY))+'px';
+      var rows=(within?Array.from(wrap.querySelectorAll(':scope > .edit-ex-row')):Array.from(list.children)).filter(function(r){return r!==ph;});
       var ins=null;
       for(var i=0;i<rows.length;i++){if(ev.clientY<rows[i].getBoundingClientRect().top+rows[i].offsetHeight/2){ins=rows[i];break;}}
-      if(ins)list.insertBefore(ph,ins);else list.appendChild(ph);
+      if(ins)container.insertBefore(ph,ins);else container.appendChild(ph);
     };
     var onUp=function(){
-      row.removeEventListener('pointermove',onMove);
-      row.removeEventListener('pointerup',onUp);
-      row.removeEventListener('pointercancel',onUp);
-      var phIdx=Array.from(list.children).indexOf(ph);
-      row.setAttribute('style',origCss);
-      list.insertBefore(row,ph);
-      list.removeChild(ph);
+      block.removeEventListener('pointermove',onMove);
+      block.removeEventListener('pointerup',onUp);
+      block.removeEventListener('pointercancel',onUp);
+      var siblingsNow=within?Array.from(wrap.querySelectorAll(':scope > .edit-ex-row')):Array.from(list.children);
+      var phIdx=siblingsNow.indexOf(ph);
+      block.setAttribute('style',origCss);
+      container.insertBefore(block,ph);
+      container.removeChild(ph);
       if(phIdx!==fromIdx&&phIdx>=0){
-        var item=editingExercises.splice(fromIdx,1)[0];
-        editingExercises.splice(phIdx,0,item);
+        if(within){
+          var gid=editingExercises[parseInt(row.getAttribute('data-idx'),10)].ss;
+          var idxs=[];editingExercises.forEach(function(ex,ix){if(ex.ss===gid)idxs.push(ix);});
+          var items=idxs.map(function(ix){return editingExercises[ix];});
+          var moved=items.splice(fromIdx,1)[0];
+          items.splice(phIdx,0,moved);
+          idxs.forEach(function(ix,k){editingExercises[ix]=items[k];});
+        } else {
+          var blocks=_exBlocks();
+          var blockItems=blocks.map(function(idxs){return idxs.map(function(ix){return editingExercises[ix];});});
+          var dragged=blockItems.splice(fromIdx,1)[0];
+          blockItems.splice(phIdx,0,dragged);
+          editingExercises=blockItems.reduce(function(acc,items){return acc.concat(items);},[]);
+        }
         renderEditExerciseList();
       }
     };
-    row.addEventListener('pointermove',onMove);
-    row.addEventListener('pointerup',onUp);
-    row.addEventListener('pointercancel',onUp);
+    block.addEventListener('pointermove',onMove);
+    block.addEventListener('pointerup',onUp);
+    block.addEventListener('pointercancel',onUp);
   });
 }
 // Shared drag-to-reorder for DOM-order builders (custom-workout sheet + coach ad-hoc log).
@@ -4054,7 +4125,19 @@ function _setupBlockDrag(list){
     block.addEventListener('pointermove',onMove);block.addEventListener('pointerup',cleanup);block.addEventListener('pointercancel',cleanup);
   });
 }
-function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
+// Removing one member of a superset used to leave the partner tagged with a group id that no
+// longer has a match — invisible until something (generate, or a future edit) tried to group by
+// that tag and found only one member. Demote the partner back to a plain exercise right away
+// instead of leaving a stale tag for something else to trip over later.
+function removeEx(i){
+  var removed=editingExercises[i];
+  editingExercises.splice(i,1);
+  if(removed&&removed.ss){
+    var remaining=editingExercises.filter(function(e){return e.ss===removed.ss;});
+    if(remaining.length===1)remaining[0].ss=null;
+  }
+  renderEditExerciseList();
+}
 function addExerciseToDay(){editingExercises.push({name:'',prescription:'',load:'',ss:null});renderEditExerciseList();}
 // Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
 function _demoMuscleGroup(m){
