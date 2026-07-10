@@ -588,16 +588,14 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
   <!-- LIBRARY -->
 
   <div class="view" id="view-library">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div class="page-header" style="margin:0">
-        <div class="page-label">Exercise & Equipment</div>
-        <h2>Library</h2>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-sm" onclick="openProtocolPicker(null,null)" style="background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);">💡 Protocols</button>
-        <button id="libReviewBtn" class="btn btn-sm" onclick="toggleLibReview()" style="background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);">Review Demos</button>
-        <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
-      </div>
+    <div class="page-header" style="margin-bottom:14px">
+      <div class="page-label">Exercise & Equipment</div>
+      <h2>Library</h2>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <button class="btn btn-sm" onclick="openProtocolPicker(null,null)" style="flex:1;white-space:nowrap;background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);">💡 Protocols</button>
+      <button id="libReviewBtn" class="btn btn-sm" onclick="toggleLibReview()" style="flex:1;white-space:nowrap;background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);">Review Demos</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddExercise()" style="flex:1;white-space:nowrap;">+ Exercise</button>
     </div>
     <div class="search-wrap"><input type="text" placeholder="Search exercises..." id="libSearch" oninput="renderLibrary()"></div>
     <div id="libraryList"></div>
@@ -2264,9 +2262,10 @@ function renderDashboard(){
   const insightsEl=document.getElementById('dashInsights');
   if(insightsEl){
     const insights=computeCoachInsights();
-    insightsEl.innerHTML=!insights.length?'':'<div onclick="openCoachInsightsDetail()" style="cursor:pointer;background:rgba(255,179,71,0.05);border:1px solid rgba(255,179,71,0.16);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.6);">💡 Coaching Insights</div><div style="font-size:11px;color:rgba(255,179,71,0.5);font-weight:600;">Details ›</div></div>'
-      +insights.map(function(ins){return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;margin-bottom:8px;"><span style="flex-shrink:0;">'+ins.icon+'</span><span>'+ins.text+'</span></div>';}).join('')
+    const insightCol={'exercise-repeat':'#c084fc','rep-scheme':'#4fa3e8','deload':'#ffb347'};
+    insightsEl.innerHTML=!insights.length?'':'<div onclick="openCoachInsightsDetail()" style="cursor:pointer;background:rgba(16,22,29,0.4);border:1px solid var(--border2);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">💡 Coaching Insights</div><div style="font-size:11px;color:rgba(126,200,255,0.6);font-weight:600;">Details ›</div></div>'
+      +insights.map(function(ins){const col=insightCol[ins.type]||'#7ec8ff';return '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="flex-shrink:0;width:24px;height:24px;border-radius:7px;background:'+col+'20;display:flex;align-items:center;justify-content:center;font-size:12px;">'+ins.icon+'</div><span style="font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;padding-top:3px;">'+ins.text+'</span></div>';}).join('')
       +'</div>';
   }
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
@@ -3492,49 +3491,66 @@ function renderEditExerciseList(){
 // always reach for mid-program-build. `ex` is the illustrative long-form shown in the library;
 // `apply` is the short value actually dropped into the prescription field (parseSets-compatible
 // where the scheme has a real "sets" concept — leading "NxN" or comma-separated reps).
+const _PROTOCOL_CATS=[
+  {key:'Strength',color:'#4fa3e8'},
+  {key:'Hypertrophy',color:'#43d9a2'},
+  {key:'Power',color:'#c084fc'},
+  {key:'Conditioning',color:'#ff8c47'},
+  {key:'Recovery & Testing',color:'#2dd4bf'},
+];
 const _PROTOCOL_LIBRARY=[
   {id:'straight',cat:'Hypertrophy',name:'Straight Sets',ex:'3×10, same reps every set',apply:'3x10',blurb:'The default. Reliable, but if every client on every exercise is here, it\'s happening by accident, not by design.'},
-  {id:'strength5x5',cat:'Strength',name:'5×5 Strength',ex:'5 sets of 5, heavier load, 2-3 min rest',apply:'5x5',blurb:'Builds max strength on main lifts without the fatigue cost of high-volume hypertrophy work. Good main-lift swap when a client\'s been stuck in the 8-12 range for months.'},
-  {id:'pyramid',cat:'Strength / Hypertrophy',name:'Pyramid Sets',ex:'12, 10, 8, 6 reps — weight goes up each set',apply:'12,10,8,6',blurb:'Warms up naturally into a heavy top set. Reverse pyramid (heaviest first) front-loads intensity while the client is freshest.'},
-  {id:'wave',cat:'Strength',name:'Wave Loading',ex:'Week 1: 5×5 · Week 2: 4×4 heavier · Week 3: 3×3 heaviest, then reset',apply:'5x5',blurb:'Undulate intensity across weeks instead of adding weight every single week forever. Classic 5/3/1-style structure — prevents the "add 5lb weekly" plateau. Applies this week\'s starting point; adjust by hand as the wave progresses.'},
+  {id:'strength5x5',cat:'Strength',name:'5×5 Strength',ex:'5 sets of 5, heavier load, 2-3 min rest',apply:'5x5',blurb:'Builds max strength on main lifts without the fatigue cost of high-volume hypertrophy work. Good swap when a client\'s been stuck in the 8-12 range for months.'},
+  {id:'pyramid',cat:'Strength',name:'Pyramid Sets',ex:'12, 10, 8, 6 reps — weight goes up each set',apply:'12,10,8,6',blurb:'Warms up naturally into a heavy top set. Reverse pyramid (heaviest first) front-loads intensity while the client is freshest.'},
+  {id:'wave',cat:'Strength',name:'Wave Loading',ex:'Wk1: 5×5 · Wk2: 4×4 heavier · Wk3: 3×3 heaviest, reset',apply:'5x5',blurb:'Undulate intensity across weeks instead of adding weight forever. Classic 5/3/1-style structure — prevents the "add 5lb weekly" plateau.'},
   {id:'cluster',cat:'Strength',name:'Cluster Sets',ex:'3 sets of 3 mini-sets of 3, ~15-20s rest between minis',apply:'3x3',blurb:'Breaking a set into rest-pause mini-sets lets a client handle heavier loads with better bar speed than one long set to failure.'},
-  {id:'density',cat:'Metabolic / Conditioning',name:'Density Block (AMRAP)',ex:'As many quality reps as possible in 10-12 minutes',apply:'AMRAP 10min',blurb:'Time-capped instead of set-capped. Good for conditioning days or breaking up a program that\'s gotten too spreadsheet-y.'},
-  {id:'tempo',cat:'Hypertrophy / Technique',name:'Tempo Training',ex:'3 sets of 8 at a 3-1-1 tempo (3s down, 1s pause, 1s up)',apply:'3x8 tempo 3-1-1',blurb:'Prescribing the eccentric/pause/concentric speed increases time under tension — a great fix for a client with sloppy form who needs to slow down.'},
-  {id:'dropset',cat:'Hypertrophy',name:'Drop Sets',ex:'3×10 to near-failure, drop weight 20-30%, continue to failure',apply:'3x10 + dropset',blurb:'Extends a set past failure by immediately reducing the load. High fatigue cost — usually just the last set of an exercise, not every set.'},
-  {id:'emom',cat:'Metabolic / Conditioning',name:'EMOM',ex:'6-8 reps at the top of every minute, for 10-15 minutes',apply:'EMOM 10min x6-8',blurb:'Every Minute On the Minute — do the reps, rest whatever\'s left of the minute. Built-in pacing for skill work or conditioning.'},
-  {id:'giant',cat:'Metabolic / Conditioning',name:'Giant Sets / Circuit',ex:'4+ exercises back-to-back, minimal rest, repeat for 3-4 rounds',apply:'3 rounds',blurb:'Time-efficient and keeps heart rate up — good for a client who wants a "workout" feel rather than a strength-session feel that day.'},
-  {id:'deload',cat:'Recovery',name:'Deload Week',ex:'Same exercises, ~40-50% less volume or intensity for the week',apply:'2x10 (deload)',blurb:'A planned lighter week. Not optional long-term — fatigue that never dissipates eventually shows up as a plateau or an injury. If it\'s been 6+ weeks since the last one for a client, it\'s probably due.'},
-  {id:'testing',cat:'Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of your max" quietly becomes wrong for months.'},
-  {id:'restpause',cat:'Hypertrophy',name:'Rest-Pause',ex:'Set to near-failure, rest 15-20s, squeeze out a few more reps — repeat 2-3x',apply:'3x10 rest-pause',blurb:'One working set stretched further instead of several full sets. Time-efficient hypertrophy tool when a client is short on session time but not on effort.'},
-  {id:'myoreps',cat:'Hypertrophy',name:'Myo-Reps',ex:'One activation set of ~12-15 reps, then mini-sets of 3-5 reps with ~10s rest',apply:'12,3,3,3 myo-reps',blurb:'Modern, well-studied hypertrophy technique — most of the growth stimulus with a fraction of the total reps of straight sets. Good for accessory work when volume needs to stay high but time doesn\'t.'},
-  {id:'dup',cat:'Strength',name:'Daily Undulating Periodization (DUP)',ex:'Same lift, different rep range each session: Mon 5×5 · Wed 4×8 · Fri 3×12',apply:'5x5 (Day A)',blurb:'Instead of one rep range for weeks at a time, rotate rep ranges within the same week. Research-backed alternative to block periodization — keeps a lift feeling fresh three times a week instead of stale for a month.'},
-  {id:'contrast',cat:'Power',name:'Contrast / Post-Activation Potentiation',ex:'Heavy compound (e.g. 3×3 squat) immediately followed by an explosive movement (e.g. jumps)',apply:'3x3',blurb:'Pairs a heavy lift with an explosive movement (as a superset — use ⊕ Superset) to train rate of force development, not just max force. The one training quality most general programming never touches: power.'},
-  {id:'isometric',cat:'Strength / Rehab',name:'Isometric Holds',ex:'3 sets of 20-45 second holds at a fixed joint angle',apply:'3x20s hold',blurb:'Timed holds instead of reps. Builds tendon resilience and strength at a specific joint angle — genuinely useful around a nagging joint issue or sticking point, not just a filler exercise.'},
+  {id:'dup',cat:'Strength',name:'Daily Undulating Periodization',ex:'Same lift, different range each session: Mon 5×5 · Wed 4×8 · Fri 3×12',apply:'5x5 (Day A)',blurb:'Rotate rep ranges within the same week instead of weeks at a time. Keeps a lift feeling fresh 3x/week instead of stale for a month.'},
+  {id:'tempo',cat:'Hypertrophy',name:'Tempo Training',ex:'3 sets of 8 at a 3-1-1 tempo (3s down, 1s pause, 1s up)',apply:'3x8 tempo 3-1-1',blurb:'Prescribing the eccentric/pause/concentric speed increases time under tension — a great fix for a client with sloppy form.'},
+  {id:'dropset',cat:'Hypertrophy',name:'Drop Sets',ex:'3×10 to near-failure, drop weight 20-30%, continue to failure',apply:'3x10 + dropset',blurb:'Extends a set past failure by immediately reducing the load. High fatigue cost — usually just the last set, not every set.'},
+  {id:'restpause',cat:'Hypertrophy',name:'Rest-Pause',ex:'Near-failure, rest 15-20s, squeeze out a few more reps — repeat 2-3x',apply:'3x10 rest-pause',blurb:'One working set stretched further instead of several full sets. Time-efficient when a client is short on session time, not on effort.'},
+  {id:'myoreps',cat:'Hypertrophy',name:'Myo-Reps',ex:'One ~12-15 rep activation set, then mini-sets of 3-5 with ~10s rest',apply:'12,3,3,3 myo-reps',blurb:'Modern, well-studied technique — most of the growth stimulus with a fraction of the total reps of straight sets.'},
+  {id:'contrast',cat:'Power',name:'Contrast / Post-Activation Potentiation',ex:'Heavy compound (3×3 squat) immediately followed by an explosive move (jumps)',apply:'3x3',blurb:'Pair a heavy lift with an explosive movement as a superset (⊕ Superset). Trains rate of force development — the one quality most programming never touches.'},
+  {id:'density',cat:'Conditioning',name:'Density Block (AMRAP)',ex:'As many quality reps as possible in 10-12 minutes',apply:'AMRAP 10min',blurb:'Time-capped instead of set-capped. Good for conditioning days or breaking up a program that\'s gotten too spreadsheet-y.'},
+  {id:'emom',cat:'Conditioning',name:'EMOM',ex:'6-8 reps at the top of every minute, for 10-15 minutes',apply:'EMOM 10min x6-8',blurb:'Every Minute On the Minute — do the reps, rest whatever\'s left. Built-in pacing for skill work or conditioning.'},
+  {id:'giant',cat:'Conditioning',name:'Giant Sets / Circuit',ex:'4+ exercises back-to-back, minimal rest, repeat for 3-4 rounds',apply:'3 rounds',blurb:'Time-efficient and keeps heart rate up — good for a client who wants a "workout" feel that day.'},
+  {id:'deload',cat:'Recovery & Testing',name:'Deload Week',ex:'Same exercises, ~40-50% less volume or intensity for the week',apply:'2x10 (deload)',blurb:'A planned lighter week. Fatigue that never dissipates eventually shows up as a plateau or injury. 6+ weeks since the last one? Probably due.'},
+  {id:'testing',cat:'Recovery & Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of max" quietly goes wrong for months.'},
+  {id:'isometric',cat:'Recovery & Testing',name:'Isometric Holds',ex:'3 sets of 20-45 second holds at a fixed joint angle',apply:'3x20s hold',blurb:'Timed holds instead of reps. Builds tendon resilience at a specific joint angle — genuinely useful around a nagging issue, not a filler.'},
 ];
 function openProtocolPicker(i,ctx){
   window._ppTarget={i:i,ctx:ctx};
   var ov=document.getElementById('protocol-picker-ov');
   if(!ov){ov=document.createElement('div');ov.id='protocol-picker-ov';document.body.appendChild(ov);}
   ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
-  var cats={};
-  _PROTOCOL_LIBRARY.forEach(function(p){(cats[p.cat]=cats[p.cat]||[]).push(p);});
-  var body='';
-  Object.keys(cats).forEach(function(cat){
-    body+='<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin:18px 0 8px;">'+cat+'</div>';
-    cats[cat].forEach(function(p){
-      body+='<div onclick="_applyProtocol(\''+p.id+'\')" style="background:rgba(16,22,29,0.4);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;">'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;">'+
-          '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;">'+p.name+'</div>'+
-        '</div>'+
-        '<div style="font-size:11px;font-weight:700;color:#7ec8ff;background:rgba(79,163,232,0.12);border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:8px;">'+p.ex+'</div>'+
-        '<div style="font-size:12.5px;color:rgba(180,200,230,0.55);line-height:1.5;">'+p.blurb+'</div>'+
-      '</div>';
-    });
-  });
+  // Same collapsible colored-category pattern as the exercise library (Arms/Back/Chest/…) —
+  // collapsed by default so this reads as 5 short category rows to scan, not 17 stacked essays.
+  var body=_PROTOCOL_CATS.map(function(cat){
+    var items=_PROTOCOL_LIBRARY.filter(function(p){return p.cat===cat.key;});
+    if(!items.length)return '';
+    return '<div class="muscle-group">'
+      +'<div class="muscle-header" onclick="this.nextElementSibling.classList.toggle(\'open\')" style="border-left:3px solid '+cat.color+'">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<div class="muscle-dot" style="background:'+cat.color+'"></div>'
+          +'<span style="color:'+cat.color+'">'+cat.key+'</span>'
+          +'<span class="muscle-count">'+items.length+' way'+(items.length===1?'':'s')+'</span>'
+        +'</div>'
+        +'<span style="color:var(--muted);font-size:12px">▼</span>'
+      +'</div>'
+      +'<div class="muscle-body">'
+        +items.map(function(p){
+          return '<div onclick="_applyProtocol(\''+p.id+'\')" style="padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;">'
+            +'<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;margin-bottom:6px;">'+p.name+'</div>'
+            +'<div style="font-size:11px;font-weight:700;color:'+cat.color+';background:'+cat.color+'1e;border-radius:6px;padding:4px 9px;display:inline-block;margin-bottom:9px;">'+p.ex+'</div>'
+            +'<div style="font-size:13px;color:rgba(180,200,230,0.55);line-height:1.6;">'+p.blurb+'</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+    +'</div>';
+  }).join('');
   ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'+
-    '<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:calc(16px + env(safe-area-inset-top,0px)) 0 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:6px;">'+
+    '<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:calc(16px + env(safe-area-inset-top,0px)) 0 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:14px;">'+
       '<button onclick="closeProtocolPicker()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">&times;</button>'+
-      '<div style="flex:1;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;">Protocol Library</div><div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">'+(ctx?'Tap one to drop it into this exercise\'s prescription':'A reference for programming beyond straight sets')+'</div></div>'+
+      '<div style="flex:1;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;">Protocol Library</div><div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">'+(ctx?'Tap one to drop it into this exercise\'s prescription':'Tap a category to browse')+'</div></div>'+
     '</div>'+
     body+
   '</div>';
@@ -3548,10 +3564,21 @@ function openCoachInsightsDetail(){
   var ov=document.getElementById('coach-insights-ov');
   if(!ov){ov=document.createElement('div');ov.id='coach-insights-ov';document.body.appendChild(ov);}
   ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
+  var COL={'exercise-repeat':'#c084fc','rep-scheme':'#4fa3e8','deload':'#ffb347'};
   function clientLink(c){
-    return '<div onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();var cl=clients.find(function(x){return x.id===\''+c.id+'\';});if(cl){renderClientModal(cl);openModal(\'clientModal\');}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.07);cursor:pointer;">'
+    return '<div onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();var cl=clients.find(function(x){return x.id===\''+c.id+'\';});if(cl){renderClientModal(cl);openModal(\'clientModal\');}" style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer;">'
       +'<span style="font-size:14px;font-weight:600;color:rgba(232,237,245,0.85);">'+_attr(c.name)+'</span>'
       +(c.weeks?'<span style="font-size:12px;color:rgba(180,200,230,0.4);">'+c.weeks+' weeks</span>':'<span style="font-size:15px;color:rgba(100,160,255,0.4);">&#9656;</span>')
+    +'</div>';
+  }
+  function card(type,icon,title,inner){
+    var col=COL[type];
+    return '<div style="background:rgba(16,22,29,0.4);border:1px solid var(--border2);border-left:3px solid '+col+';border-radius:14px;padding:16px 18px;margin-bottom:16px;">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
+        +'<div style="width:30px;height:30px;border-radius:9px;background:'+col+'20;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">'+icon+'</div>'
+        +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:#fff;line-height:1.3;">'+title+'</div>'
+      +'</div>'
+      +inner
     +'</div>';
   }
   var body='';
@@ -3560,27 +3587,21 @@ function openCoachInsightsDetail(){
   }
   insights.forEach(function(ins){
     if(ins.type==='exercise-repeat'){
-      body+='<div style="margin-bottom:28px;">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">🔁</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">'+_attr(ins.data.name)+'</div></div>'
-        +'<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:12px;">Used in '+ins.data.clients.length+' of '+ins.data.activeCount+' active programs:</div>'
+      body+=card('exercise-repeat','🔁',_attr(ins.data.name),
+        '<div style="font-size:12.5px;color:rgba(180,200,230,0.45);margin-bottom:10px;">Used in '+ins.data.clients.length+' of '+ins.data.activeCount+' active programs</div>'
         +ins.data.clients.map(clientLink).join('')
         +'<div id="insight-alts-'+ins.data.name.replace(/[^a-zA-Z0-9]+/g,'_')+'" style="margin-top:14px;">'
-          +'<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin-bottom:8px;">Alternatives</div>'
+          +'<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(192,132,252,0.7);margin-bottom:8px;">Alternatives</div>'
           +'<div style="font-size:13px;color:rgba(180,200,230,0.35);">Loading suggestions…</div>'
-        +'</div>'
-      +'</div>';
+        +'</div>');
     } else if(ins.type==='rep-scheme'){
-      body+='<div style="margin-bottom:28px;">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">📊</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">'+ins.data.pct+'% straight 8-12 rep sets</div></div>'
-        +'<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+ins.data.straightSets+' of '+ins.data.totalEx+' programmed exercises across your active roster use a straight 8-12 rep scheme. A few examples:</div>'
-        +ins.data.examples.slice(0,6).map(function(ex){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.07);"><span style="font-size:13px;color:rgba(232,237,245,0.75);">'+_attr(ex.client)+' — '+_attr(ex.exercise)+'</span><span style="font-size:12px;color:rgba(180,200,230,0.4);">'+_attr(ex.prescription)+'</span></div>';}).join('')
-        +'<button onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();openProtocolPicker(null,null);" style="width:100%;margin-top:14px;background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);border-radius:10px;padding:12px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">💡 Browse the Protocol Library</button>'
-      +'</div>';
+      body+=card('rep-scheme','📊',ins.data.pct+'% straight 8-12 rep sets',
+        '<div style="font-size:12.5px;color:rgba(180,200,230,0.45);margin-bottom:10px;">'+ins.data.straightSets+' of '+ins.data.totalEx+' programmed exercises across your active roster — a few examples:</div>'
+        +ins.data.examples.slice(0,5).map(function(ex){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="font-size:13px;color:rgba(232,237,245,0.75);">'+_attr(ex.client)+' — '+_attr(ex.exercise)+'</span><span style="font-size:12px;color:rgba(180,200,230,0.4);">'+_attr(ex.prescription)+'</span></div>';}).join('')
+        +'<button onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();openProtocolPicker(null,null);" style="width:100%;margin-top:14px;background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);border-radius:10px;padding:12px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">💡 Browse the Protocol Library</button>');
     } else if(ins.type==='deload'){
-      body+='<div style="margin-bottom:28px;">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">🪫</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">Programs running 6+ weeks unchanged</div></div>'
-        +ins.data.clients.map(clientLink).join('')
-      +'</div>';
+      body+=card('deload','🪫','Programs running 6+ weeks unchanged',
+        ins.data.clients.map(clientLink).join(''));
     }
   });
   ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'
@@ -3604,8 +3625,8 @@ function openCoachInsightsDetail(){
         if(!alt)break;
         if(alts.indexOf(alt)===-1){alts.push(alt);used[_exIdentity(alt)]=1;}
       }
-      el.innerHTML='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin-bottom:8px;">Alternatives</div>'
-        +(alts.length?alts.map(function(a){return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.07);">'+_exThumbHTML(a,a,34)+'<span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">'+_attr(a)+'</span></div>';}).join('')
+      el.innerHTML='<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(192,132,252,0.7);margin-bottom:8px;">Alternatives</div>'
+        +(alts.length?alts.map(function(a){return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'+_exThumbHTML(a,a,34)+'<span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">'+_attr(a)+'</span></div>';}).join('')
           :'<div style="font-size:13px;color:rgba(180,200,230,0.35);">No close matches found in the exercise dataset.</div>');
       try{_thumbsRefresh();}catch(e){}
     });
