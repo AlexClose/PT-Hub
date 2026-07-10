@@ -1,9 +1,5 @@
 {
-  "crons": [
-    { "path": "/api/backup", "schedule": "0 8 * * *" }
-  ],
   "routes": [
-    { "src": "/backups/(.*)", "status": 404 },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/alex", "dest": "/alex.html" },
     { "src": "/kathryn", "dest": "/kathryn.html" },
