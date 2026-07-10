@@ -3329,6 +3329,15 @@ function _genOrderDay(exs){
       cur={ss:true,g:g,items:[ex]};units.push(cur);
     }else{cur=null;units.push({ss:false,items:[ex]});}
   });
+  // A "superset" that only ended up with one member (stale/mismatched group tags from upstream
+  // edits) isn't a real superset — demote it to a plain exercise instead of showing a single-
+  // exercise "SUPERSET" box with nothing to actually pair it with.
+  units.forEach(function(u){
+    if(u.ss&&u.items.length===1){
+      u.ss=false;
+      u.items[0].name=(u.items[0].name||'').replace(/^SS\w*:\s*/i,'');
+    }
+  });
   var comp=[],iso=[];
   units.forEach(function(u){
     var isComp=u.items.some(function(ex){return _exMechanic(ex.name)==='compound';});
@@ -3852,7 +3861,21 @@ function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++)
 // Encode superset groups back into SS-prefixed names (renumbered sequentially) for storage.
 function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var nm=(e.name||'').trim();if(e.ss){if(!map[e.ss])map[e.ss]=next++;return {name:'SS'+map[e.ss]+': '+nm,prescription:e.prescription||'',load:e.load||''};}return {name:nm,prescription:e.prescription||'',load:e.load||''};});}
 // Parse stored exercises (SS-prefixed names) into the editor model with an .ss group marker.
-function _parseExForEdit(arr){return (arr||[]).map(function(ex){var m=(ex.name||'').match(/^SS(\d+):\s*/i);return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:m?parseInt(m[1],10):null};});}
+// Groups a stored program's SS-prefixed names back into .ss-tagged edit rows. Guards against a
+// "superset" that only has one member left (stale group tag from some earlier edit/generate cycle)
+// by treating it as a plain exercise — self-heals wherever it's opened rather than showing a
+// confusing single-exercise superset box in the editor.
+function _parseExForEdit(arr){
+  var list=arr||[];
+  var counts={};
+  list.forEach(function(ex){var m=(ex.name||'').match(/^SS(\d+):\s*/i);if(m)counts[m[1]]=(counts[m[1]]||0)+1;});
+  return list.map(function(ex){
+    var m=(ex.name||'').match(/^SS(\d+):\s*/i);
+    var g=m?m[1]:null;
+    var realGroup=g&&counts[g]>1;
+    return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:realGroup?parseInt(g,10):null};
+  });
+}
 function _updateEditThumb(i){
   var row=document.querySelector('.edit-ex-row[data-idx="'+i+'"]');if(!row)return;
   var el=row.querySelector('.ex-thumb');if(!el)return;
