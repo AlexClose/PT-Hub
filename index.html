@@ -842,7 +842,10 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-handle"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div class="modal-title" style="margin:0" id="buildProgTitle">Build Program</div>
-      <button onclick="openAddProgramDay()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px">+ Day</button>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button onclick="openProtocolPicker(null,null)" title="Protocol Library" style="background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);border-radius:8px;padding:7px 12px;font-size:14px;cursor:pointer;">💡</button>
+        <button onclick="openAddProgramDay()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.3px">+ Day</button>
+      </div>
     </div>
     <div id="buildProgNameRow" style="display:none;margin-bottom:14px">
       <div class="form-group" style="margin:0"><label class="form-label">Template Name</label><input id="buildProgNameInput" placeholder="e.g. PPL 3-Day Split"></div>
@@ -2141,7 +2144,7 @@ function computeCoachInsights(){
   if(active.length<3)return insights; // not enough programs to call anything a "pattern"
 
   // 1. Overused exercises across the active roster
-  const exClientCount={};
+  const exClientMap={};
   active.forEach(c=>{
     const seen=new Set();
     (c.structured_program.days||[]).forEach(d=>{
@@ -2151,46 +2154,60 @@ function computeCoachInsights(){
         const key=name.toLowerCase();
         if(seen.has(key))return;
         seen.add(key);
-        if(!exClientCount[key])exClientCount[key]={name:name,count:0};
-        exClientCount[key].count++;
+        if(!exClientMap[key])exClientMap[key]={name:name,clients:[]};
+        exClientMap[key].clients.push({id:c.id,name:c.first+' '+(c.last||'')});
       });
     });
   });
-  const overused=Object.values(exClientCount).filter(e=>e.count>=3&&e.count/active.length>=0.5).sort((a,b)=>b.count-a.count);
+  const overused=Object.values(exClientMap).filter(e=>e.clients.length>=3&&e.clients.length/active.length>=0.5).sort((a,b)=>b.clients.length-a.clients.length);
   if(overused.length){
     const top=overused[0];
-    insights.push({icon:'🔁',text:`<b>${_attr(top.name)}</b> shows up in ${top.count} of your ${active.length} active programs — might be worth swapping it for a few clients.`});
+    insights.push({type:'exercise-repeat',icon:'🔁',
+      text:`<b>${_attr(top.name)}</b> shows up in ${top.clients.length} of your ${active.length} active programs — might be worth swapping it for a few clients.`,
+      data:{name:top.name,clients:top.clients,activeCount:active.length}});
   }
 
   // 2. Rep-scheme homogeneity — how much of the roster is straight 8-12 rep sets
   let totalEx=0,straightSets=0;
+  const straightExamples=[];
   active.forEach(c=>{
     (c.structured_program.days||[]).forEach(d=>{
       (d.exercises||[]).forEach(ex=>{
         const p=(ex.prescription||'').trim();
         if(!p)return;
         totalEx++;
-        if(/^\d+\s*[x×X]\s*(8|9|10|11|12)(\s*-\s*1[0-2])?$/.test(p))straightSets++;
+        if(/^\d+\s*[x×X]\s*(8|9|10|11|12)(\s*-\s*1[0-2])?$/.test(p)){
+          straightSets++;
+          if(straightExamples.length<40)straightExamples.push({client:c.first,exercise:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:p});
+        }
       });
     });
   });
   if(totalEx>=12&&(straightSets/totalEx)>=0.7){
-    insights.push({icon:'📊',text:`${Math.round(straightSets/totalEx*100)}% of your programmed sets are straight 8-12 rep schemes — check the <a onclick="openProtocolPicker(null,null)" style="color:#7ec8ff;cursor:pointer;text-decoration:underline;">Protocol Library</a> for something different.`});
+    const pct=Math.round(straightSets/totalEx*100);
+    insights.push({type:'rep-scheme',icon:'📊',
+      text:`${pct}% of your programmed sets are straight 8-12 rep schemes — check the <a onclick="event.stopPropagation();openProtocolPicker(null,null)" style="color:#7ec8ff;cursor:pointer;text-decoration:underline;">Protocol Library</a> for something different.`,
+      data:{pct,totalEx,straightSets,examples:straightExamples}});
   }
 
   // 3. Programs running a long time without a refresh (rough proxy for "deload might be due" —
   // there's no explicit deload marker in the data model, so this stays a time-based nudge, not a claim).
-  const overdue=active.filter(c=>{
+  const overdue=active.map(c=>{
     const started=c.structured_program.started_at;
-    if(!started)return false;
+    if(!started)return null;
     const d=new Date(started);
-    if(isNaN(d))return false;
-    return (Date.now()-d.getTime())/(7*24*3600*1000)>=6;
-  });
+    if(isNaN(d))return null;
+    const weeks=Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));
+    return weeks>=6?{id:c.id,name:c.first+' '+(c.last||''),weeks}:null;
+  }).filter(Boolean).sort((a,b)=>b.weeks-a.weeks);
   if(overdue.length===1){
-    insights.push({icon:'🪫',text:`<b>${_attr(overdue[0].first)}</b> has been on the same program for 6+ weeks — might be time for a deload or a refresh.`});
+    insights.push({type:'deload',icon:'🪫',
+      text:`<b>${_attr(overdue[0].name)}</b> has been on the same program for ${overdue[0].weeks}+ weeks — might be time for a deload or a refresh.`,
+      data:{clients:overdue}});
   }else if(overdue.length>1){
-    insights.push({icon:'🪫',text:`${overdue.length} clients have been on their current program 6+ weeks without a change — might be time to refresh a few.`});
+    insights.push({type:'deload',icon:'🪫',
+      text:`${overdue.length} clients have been on their current program 6+ weeks without a change — might be time to refresh a few.`,
+      data:{clients:overdue}});
   }
 
   return insights;
@@ -2247,8 +2264,8 @@ function renderDashboard(){
   const insightsEl=document.getElementById('dashInsights');
   if(insightsEl){
     const insights=computeCoachInsights();
-    insightsEl.innerHTML=!insights.length?'':'<div style="background:rgba(255,179,71,0.05);border:1px solid rgba(255,179,71,0.16);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
-      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.6);margin-bottom:10px;">💡 Coaching Insights</div>'
+    insightsEl.innerHTML=!insights.length?'':'<div onclick="openCoachInsightsDetail()" style="cursor:pointer;background:rgba(255,179,71,0.05);border:1px solid rgba(255,179,71,0.16);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.6);">💡 Coaching Insights</div><div style="font-size:11px;color:rgba(255,179,71,0.5);font-weight:600;">Details ›</div></div>'
       +insights.map(function(ins){return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;margin-bottom:8px;"><span style="flex-shrink:0;">'+ins.icon+'</span><span>'+ins.text+'</span></div>';}).join('')
       +'</div>';
   }
@@ -3441,7 +3458,7 @@ function _editExRowHtml(i){
     '<div style="flex:1;min-width:0;">'+
       '<div class="edit-ex-fields">'+
         '<input value="'+(ex.name||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].name=this.value;_updateEditThumb('+i+')" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" placeholder="Exercise name" autocomplete="off">'+
-        '<input value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">'+
+        '<input value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value" oninput="editingExercises['+i+'].prescription=this.value;_prescAcShow(this,'+i+')" onblur="_prescAcBlur();" onkeydown="if(event.key===\'Escape\')_prescAcHide();" placeholder="Sets×Reps · or type a protocol" autocomplete="off" style="font-size:12px">'+
         '<input value="'+(ex.load||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].load=this.value" placeholder="Load" style="font-size:12px">'+
       '</div>'+
       '<div class="edit-ex-actions"><button class="lib-btn" onclick="openProtocolPicker('+i+',\'edit\')">💡 Ideas</button><button class="lib-btn danger" onclick="removeEx('+i+')">Remove</button></div>'+
@@ -3488,6 +3505,11 @@ const _PROTOCOL_LIBRARY=[
   {id:'giant',cat:'Metabolic / Conditioning',name:'Giant Sets / Circuit',ex:'4+ exercises back-to-back, minimal rest, repeat for 3-4 rounds',apply:'3 rounds',blurb:'Time-efficient and keeps heart rate up — good for a client who wants a "workout" feel rather than a strength-session feel that day.'},
   {id:'deload',cat:'Recovery',name:'Deload Week',ex:'Same exercises, ~40-50% less volume or intensity for the week',apply:'2x10 (deload)',blurb:'A planned lighter week. Not optional long-term — fatigue that never dissipates eventually shows up as a plateau or an injury. If it\'s been 6+ weeks since the last one for a client, it\'s probably due.'},
   {id:'testing',cat:'Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of your max" quietly becomes wrong for months.'},
+  {id:'restpause',cat:'Hypertrophy',name:'Rest-Pause',ex:'Set to near-failure, rest 15-20s, squeeze out a few more reps — repeat 2-3x',apply:'3x10 rest-pause',blurb:'One working set stretched further instead of several full sets. Time-efficient hypertrophy tool when a client is short on session time but not on effort.'},
+  {id:'myoreps',cat:'Hypertrophy',name:'Myo-Reps',ex:'One activation set of ~12-15 reps, then mini-sets of 3-5 reps with ~10s rest',apply:'12,3,3,3 myo-reps',blurb:'Modern, well-studied hypertrophy technique — most of the growth stimulus with a fraction of the total reps of straight sets. Good for accessory work when volume needs to stay high but time doesn\'t.'},
+  {id:'dup',cat:'Strength',name:'Daily Undulating Periodization (DUP)',ex:'Same lift, different rep range each session: Mon 5×5 · Wed 4×8 · Fri 3×12',apply:'5x5 (Day A)',blurb:'Instead of one rep range for weeks at a time, rotate rep ranges within the same week. Research-backed alternative to block periodization — keeps a lift feeling fresh three times a week instead of stale for a month.'},
+  {id:'contrast',cat:'Power',name:'Contrast / Post-Activation Potentiation',ex:'Heavy compound (e.g. 3×3 squat) immediately followed by an explosive movement (e.g. jumps)',apply:'3x3',blurb:'Pairs a heavy lift with an explosive movement (as a superset — use ⊕ Superset) to train rate of force development, not just max force. The one training quality most general programming never touches: power.'},
+  {id:'isometric',cat:'Strength / Rehab',name:'Isometric Holds',ex:'3 sets of 20-45 second holds at a fixed joint angle',apply:'3x20s hold',blurb:'Timed holds instead of reps. Builds tendon resilience and strength at a specific joint angle — genuinely useful around a nagging joint issue or sticking point, not just a filler exercise.'},
 ];
 function openProtocolPicker(i,ctx){
   window._ppTarget={i:i,ctx:ctx};
@@ -3510,14 +3532,85 @@ function openProtocolPicker(i,ctx){
     });
   });
   ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'+
-    '<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:6px;">'+
-      '<button onclick="closeProtocolPicker()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;">&times;</button>'+
+    '<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:calc(16px + env(safe-area-inset-top,0px)) 0 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:6px;">'+
+      '<button onclick="closeProtocolPicker()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">&times;</button>'+
       '<div style="flex:1;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;">Protocol Library</div><div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">'+(ctx?'Tap one to drop it into this exercise\'s prescription':'A reference for programming beyond straight sets')+'</div></div>'+
     '</div>'+
     body+
   '</div>';
 }
 function closeProtocolPicker(){var ov=document.getElementById('protocol-picker-ov');if(ov)ov.remove();}
+// Full detail behind the dashboard's compact Coaching Insights card — actual client names instead
+// of just counts, and real alternative-exercise suggestions (reusing the same swap logic "Generate
+// Next Program" uses) instead of just pointing out a problem with nothing to do about it.
+function openCoachInsightsDetail(){
+  var insights=computeCoachInsights();
+  var ov=document.getElementById('coach-insights-ov');
+  if(!ov){ov=document.createElement('div');ov.id='coach-insights-ov';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
+  function clientLink(c){
+    return '<div onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();var cl=clients.find(function(x){return x.id===\''+c.id+'\';});if(cl){renderClientModal(cl);openModal(\'clientModal\');}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(100,160,255,0.07);cursor:pointer;">'
+      +'<span style="font-size:14px;font-weight:600;color:rgba(232,237,245,0.85);">'+_attr(c.name)+'</span>'
+      +(c.weeks?'<span style="font-size:12px;color:rgba(180,200,230,0.4);">'+c.weeks+' weeks</span>':'<span style="font-size:15px;color:rgba(100,160,255,0.4);">&#9656;</span>')
+    +'</div>';
+  }
+  var body='';
+  if(!insights.length){
+    body='<div style="text-align:center;padding:60px 20px;color:rgba(180,200,230,0.35);font-size:14px;">Nothing to flag right now — check back as your roster and programs grow.</div>';
+  }
+  insights.forEach(function(ins){
+    if(ins.type==='exercise-repeat'){
+      body+='<div style="margin-bottom:28px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">🔁</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">'+_attr(ins.data.name)+'</div></div>'
+        +'<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:12px;">Used in '+ins.data.clients.length+' of '+ins.data.activeCount+' active programs:</div>'
+        +ins.data.clients.map(clientLink).join('')
+        +'<div id="insight-alts-'+ins.data.name.replace(/[^a-zA-Z0-9]+/g,'_')+'" style="margin-top:14px;">'
+          +'<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin-bottom:8px;">Alternatives</div>'
+          +'<div style="font-size:13px;color:rgba(180,200,230,0.35);">Loading suggestions…</div>'
+        +'</div>'
+      +'</div>';
+    } else if(ins.type==='rep-scheme'){
+      body+='<div style="margin-bottom:28px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">📊</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">'+ins.data.pct+'% straight 8-12 rep sets</div></div>'
+        +'<div style="font-size:13px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+ins.data.straightSets+' of '+ins.data.totalEx+' programmed exercises across your active roster use a straight 8-12 rep scheme. A few examples:</div>'
+        +ins.data.examples.slice(0,6).map(function(ex){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.07);"><span style="font-size:13px;color:rgba(232,237,245,0.75);">'+_attr(ex.client)+' — '+_attr(ex.exercise)+'</span><span style="font-size:12px;color:rgba(180,200,230,0.4);">'+_attr(ex.prescription)+'</span></div>';}).join('')
+        +'<button onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();openProtocolPicker(null,null);" style="width:100%;margin-top:14px;background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);border-radius:10px;padding:12px;font-family:Syne,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">💡 Browse the Protocol Library</button>'
+      +'</div>';
+    } else if(ins.type==='deload'){
+      body+='<div style="margin-bottom:28px;">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:18px;">🪫</span><div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;">Programs running 6+ weeks unchanged</div></div>'
+        +ins.data.clients.map(clientLink).join('')
+      +'</div>';
+    }
+  });
+  ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'
+    +'<div style="width:40px;height:4px;background:rgba(180,200,230,0.28);border-radius:2px;margin:calc(10px + env(safe-area-inset-top,0px)) auto 0;"></div>'
+    +'<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:18px;">'
+      +'<button onclick="var o=document.getElementById(\'coach-insights-ov\');if(o)o.remove();" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">&times;</button>'
+      +'<div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:#fff;">Coaching Insights</div>'
+    +'</div>'
+    +body
+  +'</div>';
+  // Alternatives load async (needs the exercise dataset) — fill in once ready.
+  var repeatIns=insights.find(function(i){return i.type==='exercise-repeat';});
+  if(repeatIns){
+    _loadExDb().then(function(){
+      var el=document.getElementById('insight-alts-'+repeatIns.data.name.replace(/[^a-zA-Z0-9]+/g,'_'));
+      if(!el)return;
+      var used={};used[_exIdentity(repeatIns.data.name)]=1;
+      var alts=[];
+      for(var i=0;i<9&&alts.length<3;i++){
+        var alt=_altExerciseFor(repeatIns.data.name,used,false);
+        if(!alt)break;
+        if(alts.indexOf(alt)===-1){alts.push(alt);used[_exIdentity(alt)]=1;}
+      }
+      el.innerHTML='<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin-bottom:8px;">Alternatives</div>'
+        +(alts.length?alts.map(function(a){return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(100,160,255,0.07);">'+_exThumbHTML(a,a,34)+'<span style="font-size:13px;font-weight:600;color:rgba(232,237,245,0.8);">'+_attr(a)+'</span></div>';}).join('')
+          :'<div style="font-size:13px;color:rgba(180,200,230,0.35);">No close matches found in the exercise dataset.</div>');
+      try{_thumbsRefresh();}catch(e){}
+    });
+  }
+}
 function _applyProtocol(id){
   var p=_PROTOCOL_LIBRARY.find(function(x){return x.id===id;});
   var t=window._ppTarget;
@@ -3529,6 +3622,62 @@ function _applyProtocol(id){
   }
   closeProtocolPicker();
 }
+// Type-ahead for the prescription field itself — start typing "drop set" or "myo" and the matching
+// protocol(s) show up right there, tap to apply, without leaving the program builder.
+function _prescAcShow(inputEl,i){
+  var val=(inputEl.value||'').trim();
+  if(val.length<2){_prescAcHide();return;}
+  var ql=val.toLowerCase();
+  var matches=_PROTOCOL_LIBRARY.filter(function(p){return p.name.toLowerCase().indexOf(ql)!==-1;}).slice(0,6);
+  if(!matches.length){_prescAcHide();return;}
+  var drop=document.getElementById('_presc-ac-drop');
+  if(!drop){
+    drop=document.createElement('div');drop.id='_presc-ac-drop';
+    drop.style.cssText='position:fixed;z-index:9999;background:#12161f;border:1px solid rgba(255,179,71,0.3);border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.8);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;display:none;';
+    drop.addEventListener('pointerdown',function(e){e.preventDefault();});
+    document.body.appendChild(drop);
+  }
+  drop.innerHTML=matches.map(function(p){
+    return '<div class="_presc-opt" data-id="'+p.id+'" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,179,71,0.1);">'
+      +'<div style="font-weight:700;color:#fff;font-family:Syne,sans-serif;font-size:13px;">💡 '+p.name+'</div>'
+      +'<div style="font-size:11px;color:rgba(180,200,230,0.45);margin-top:2px;">'+p.apply+'</div>'
+    +'</div>';
+  }).join('');
+  drop.style.display='block';
+  requestAnimationFrame(function(){
+    var r=inputEl.getBoundingClientRect();
+    var vv=window.visualViewport;
+    var voTop=vv?vv.offsetTop:0, voLeft=vv?vv.offsetLeft:0, vh=vv?vv.height:window.innerHeight;
+    var gap=4, margin=8;
+    drop.style.left=(r.left+voLeft)+'px';
+    drop.style.width=Math.max(r.width,220)+'px';
+    drop.style.maxHeight='none';
+    var natural=drop.scrollHeight;
+    var spaceBelow=vh-r.bottom-gap-margin;
+    var spaceAbove=r.top-gap-margin;
+    if(spaceBelow>=Math.min(natural,160)||spaceBelow>=spaceAbove){
+      drop.style.top=(r.bottom+voTop+gap)+'px';
+      drop.style.maxHeight=Math.max(100,spaceBelow)+'px';
+    }else{
+      var h=Math.min(natural,Math.max(100,spaceAbove));
+      drop.style.top=(r.top+voTop-gap-h)+'px';
+      drop.style.maxHeight=h+'px';
+    }
+  });
+  drop.querySelectorAll('._presc-opt').forEach(function(opt){
+    opt.addEventListener('click',function(){
+      var p=_PROTOCOL_LIBRARY.find(function(x){return x.id===opt.dataset.id;});
+      if(p){
+        inputEl.value=p.apply;
+        if(editingExercises[i])editingExercises[i].prescription=p.apply;
+        toast(p.name+' applied — tweak the numbers for this client');
+      }
+      _prescAcHide();
+    });
+  });
+}
+function _prescAcHide(){var d=document.getElementById('_presc-ac-drop');if(d)d.style.display='none';}
+function _prescAcBlur(){setTimeout(_prescAcHide,160);}
 // Update the exercise thumbnail sitting next to a name input as the user types/selects (logging rows).
 function _syncRowThumb(inputEl){
   var wrap=inputEl.parentNode;var el=wrap?wrap.querySelector('.ex-thumb'):null;if(!el)return;
@@ -4713,9 +4862,9 @@ function _showSessionDetail(s, histCtx){
     </div>`;
   }).join(''):'<div style="color:rgba(180,200,230,0.35);font-size:14px;padding:24px 0;text-align:center;">No exercises were logged for this session.</div>';
   ov.innerHTML=`<div style="max-width:520px;width:100%;margin:0 auto;padding:0 20px 60px;">
-    <div style="width:40px;height:4px;background:rgba(180,200,230,0.28);border-radius:2px;margin:10px auto 0;"></div>
+    <div style="width:40px;height:4px;background:rgba(180,200,230,0.28);border-radius:2px;margin:calc(10px + env(safe-area-inset-top,0px)) auto 0;"></div>
     <div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:18px;">
-      <button onclick="var o=document.getElementById('sess-detail-ov');if(o)o.remove();" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;">&times;</button>
+      <button onclick="var o=document.getElementById('sess-detail-ov');if(o)o.remove();" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">&times;</button>
       <div style="flex:1;font-family:Syne,sans-serif;font-weight:700;font-size:16px;color:#fff;">Completed Session</div>
     </div>
     <div style="font-size:12px;color:rgba(126,200,255,0.6);margin-bottom:2px;letter-spacing:.5px;">${s.date||''}</div>
