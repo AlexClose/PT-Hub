@@ -1496,8 +1496,17 @@ function closeModal(id){
   // event (saveDraftCoach via visibilitychange) resurrect an already-completed session as a "draft" —
   // which then auto-reopens next launch, looking unfinished, and gets logged again as a duplicate.
   if(id==='logModal'){pendingLogId=null;window._logmambGen=(window._logmambGen||0)+1;}
+  // Editing a day from the Generate Next Program preview borrows this same modal — on the way out
+  // (Save or Cancel alike), drop back into the preview sheet it was opened from. Also unconditionally
+  // clears _editProgSaveMode on any close (Cancel included) — it was previously only cleared on
+  // Save, so canceling out of a "build new program" day edit left it stale and could route a LATER,
+  // unrelated day edit's save into the wrong place.
+  if(id==='editProgramModal'){
+    if(window._editProgSaveMode==='gen'){window._genEditingDayIndex=null;_openGenPreview();}
+    window._editProgSaveMode=null;
+  }
 }
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}o.classList.remove('open');}));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target!==o)return;if(o.id==='logModal'){closeLogSession();return;}closeModal(o.id);}));
 
 // ════ EXERCISE DEMO LIBRARY (free-exercise-db · public domain) ════
 var _EXDB_BASE='https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/';
@@ -3386,56 +3395,60 @@ function _genExRowView(ex){
       +'<div style="font-size:10px;color:'+subCol+';margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+sub+' &nbsp;·&nbsp; '+(ex.prescription||'')+(ex.load?' · '+ex.load:'')+'</div>'
     +'</div></div>';
 }
-function _genExRowEdit(di,ei,ex){
-  var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
-  var isSS=/^SS/i.test(ex.name||'');
-  var inp='background:#1a1f28;border:1px solid rgba(100,160,255,0.2);border-radius:8px;color:#fff;font-size:13px;font-weight:600;font-family:Syne,sans-serif;padding:9px 10px;outline:none;box-sizing:border-box;';
-  return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.12);border-radius:9px;padding:8px;margin-bottom:8px;">'
-    +(isSS?'<div style="font-size:8px;font-weight:800;letter-spacing:1.2px;color:#ffb380;margin:0 0 5px 2px;">⊕ SUPERSET</div>':'')
-    +'<div style="display:flex;align-items:center;gap:8px;">'
-      +_exThumbHTML(ex.name,clean,36,'')
-      +'<input id="gen-name-'+di+'-'+ei+'" value="'+_attr(clean)+'" placeholder="Exercise name…" autocomplete="off" oninput="_exAcInput(this);_syncRowThumb(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" style="flex:1;min-width:0;'+inp+'">'
-      +'<button onclick="_genDelEx('+di+','+ei+')" title="Remove" style="flex:0 0 auto;background:none;border:none;color:rgba(255,120,130,0.6);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;">×</button>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:6px;">'
-      +'<input id="gen-presc-'+di+'-'+ei+'" value="'+_attr(ex.prescription||'')+'" placeholder="3×10" style="flex:1;'+inp+'">'
-      +'<input id="gen-load-'+di+'-'+ei+'" value="'+_attr(ex.load||'')+'" placeholder="load (optional)" style="flex:1;'+inp+'">'
-    +'</div>'
-  +'</div>';
+// View-only preview, grouped into the same orange-bordered superset boxes the real program
+// builder uses (SS-prefixed consecutive rows grouped as one unit) — was previously flat rows with
+// just a tiny "SUPERSET" text tag per row, unreadable as an actual pair/group.
+function _genDayRowsHtml(exs){
+  var html='',i=0;
+  while(i<exs.length){
+    var isSS=/^SS/i.test(exs[i].name||'');
+    if(isSS){
+      var m=(exs[i].name||'').match(/^SS(\w*):/i),g=m?m[1]:'';
+      var rows='';
+      while(i<exs.length&&/^SS/i.test(exs[i].name||'')&&(exs[i].name||'').match(/^SS(\w*):/i)[1]===g){rows+=_genExRowView(exs[i]);i++;}
+      html+='<div style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:8px;background:rgba(255,140,71,0.03);overflow:hidden;padding:8px;">'
+        +'<div style="padding:0 4px 6px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);">⊕ Superset</div>'
+        +rows
+      +'</div>';
+    } else { html+=_genExRowView(exs[i]); i++; }
+  }
+  return html;
 }
 function _genPreviewBodyHtml(){
   var prog=window._genProgram;if(!prog)return '';
-  var edit=!!window._genEditMode,swapped=0,total=0;
+  var swapped=0,total=0;
   var body=prog.days.map(function(d,di){
-    var rows=(d.exercises||[]).map(function(ex,ei){total++;if(ex._swapped)swapped++;return edit?_genExRowEdit(di,ei,ex):_genExRowView(ex);}).join('');
-    var add=edit?('<button onclick="_genAddEx('+di+')" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:8px;padding:9px;font-family:Syne,sans-serif;font-size:12px;font-weight:700;color:rgba(126,200,255,0.55);cursor:pointer;margin-top:2px;">+ Add exercise</button>'):'';
-    return '<div style="margin-bottom:16px;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:'+(d.color||'#7ec8ff')+';margin-bottom:8px;">'+d.name+'</div>'+rows+add+'</div>';
+    (d.exercises||[]).forEach(function(ex){total++;if(ex._swapped)swapped++;});
+    return '<div style="margin-bottom:16px;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+        +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:'+(d.color||'#7ec8ff')+';">'+d.name+'</div>'
+        +'<button onclick="editGenDayExercises('+di+')" style="flex-shrink:0;background:rgba(255,255,255,0.05);border:1px solid rgba(100,160,255,0.2);border-radius:7px;padding:5px 12px;font-family:Syne,sans-serif;font-size:11px;font-weight:700;color:rgba(126,200,255,0.8);cursor:pointer;">✎ Edit</button>'
+      +'</div>'
+      +_genDayRowsHtml(d.exercises||[])
+    +'</div>';
   }).join('');
-  var summary=edit
-    ?'<div style="font-size:11px;color:rgba(124,200,255,0.7);margin-bottom:12px;">✎ Editing — tweak names, sets/reps &amp; loads, add or remove. Tap “Done” to preview, then Apply.</div>'
-    :'<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+swapped+' of '+total+' exercises swapped for fresh variations, with rotated rep schemes · same days</div>';
-  var toggle='<button onclick="_genToggleEdit()" style="width:100%;margin-bottom:14px;background:'+(edit?'linear-gradient(135deg,#43d9a2,#34c08a)':'rgba(124,92,255,0.16)')+';border:1px solid '+(edit?'rgba(67,217,162,0.4)':'rgba(124,92,255,0.4)')+';border-radius:11px;padding:14px;font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+(edit?'#0a0d12':'#c4b5fd')+';cursor:pointer;letter-spacing:.3px;">'+(edit?'✓ Done Editing':'✎ Edit Exercises')+'</button>';
-  return summary+toggle+body;
-}
-// Pull the current edit-mode input values back into the in-memory program (SS prefixes preserved).
-function _genReadEditInputs(){
-  var prog=window._genProgram;if(!prog||!window._genEditMode)return;
-  prog.days.forEach(function(d,di){(d.exercises||[]).forEach(function(ex,ei){
-    var ni=document.getElementById('gen-name-'+di+'-'+ei);
-    var pi=document.getElementById('gen-presc-'+di+'-'+ei);
-    var li=document.getElementById('gen-load-'+di+'-'+ei);
-    if(ni){var pfx=(ex.name||'').match(/^SS\w+:\s*/i);ex.name=(pfx?pfx[0]:'')+ni.value.trim();}
-    if(pi)ex.prescription=pi.value.trim();
-    if(li)ex.load=li.value.trim();
-  });});
+  var summary='<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+swapped+' of '+total+' exercises swapped for fresh variations, with rotated rep schemes · same days. Tap ✎ Edit on any day to adjust — same editor as the regular program builder.</div>';
+  return summary+body;
 }
 function _genRerender(){var b=document.getElementById('gen-body');if(b)b.innerHTML=_genPreviewBodyHtml();try{_thumbsRefresh();}catch(e){}}
-function _genToggleEdit(){_genReadEditInputs();window._genEditMode=!window._genEditMode;_genRerender();}
-function _genDelEx(di,ei){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d&&d.exercises)d.exercises.splice(ei,1);_genRerender();}
-function _genAddEx(di){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d){d.exercises=d.exercises||[];d.exercises.push({name:'',prescription:'',load:'',_from:'',_swapped:false});}_genRerender();}
+// Routes into the REAL program-day editor (same modal, same components — suggestion chips,
+// Protocol Library button, drag reorder, proper superset grouping) instead of the old bespoke
+// inline edit mode. Save destination is the in-memory preview, not the live client, until Apply.
+function editGenDayExercises(di){
+  var prog=window._genProgram;if(!prog)return;
+  var day=prog.days[di];if(!day)return;
+  window._genEditingDayIndex=di;
+  editingClientId=window._genClientId;
+  editingExercises=_parseExForEdit(day.exercises||[]);
+  document.getElementById('editProgTitle').textContent='Edit — '+day.name;
+  window._editProgSaveMode='gen';
+  // The preview sheet sits above editProgramModal's z-index — remove it while editing so the
+  // real editor isn't hidden behind it; closeModal() recreates it via _openGenPreview() on return.
+  var sheet=document.getElementById('gen-program-sheet');if(sheet)sheet.remove();
+  renderEditExerciseList();openModal('editProgramModal');
+}
 function _openGenPreview(){
   var c=clients.find(function(x){return x.id===window._genClientId;});if(!c)return;
-  window._genEditMode=false;
   var ex=document.getElementById('gen-program-sheet');if(ex)ex.remove();
   var ov=document.createElement('div');ov.id='gen-program-sheet';
   ov.style.cssText='position:fixed;inset:0;z-index:8800;background:rgba(0,0,0,0.72);display:flex;align-items:flex-end;justify-content:center;';/* below the demo sheet (9000) so tapping a thumbnail opens the demo on top */
@@ -3458,13 +3471,11 @@ function _openGenPreview(){
   try{_thumbsRefresh();}catch(e){}
 }
 function _regenNextProgram(){
-  window._genEditMode=false;
   _buildGenProgram(window._genClientId);
   _genRerender();
 }
 function _applyGenProgram(){
   var c=clients.find(function(x){return x.id===window._genClientId;});if(!c||!window._genProgram)return;
-  _genReadEditInputs();
   if(!confirm('Replace '+c.first+'\'s current program with this generated one? You can edit it after — logged history is kept.'))return;
   var prog=JSON.parse(JSON.stringify(window._genProgram));
   // Drop any blank rows left from editing, then strip preview-only helper fields.
@@ -4056,6 +4067,16 @@ async function saveProgramDay(){
     buildingDays[buildingDayEditing].exercises=_encodeEx(editingExercises);
     window._editProgSaveMode=null;
     closeModal('editProgramModal');renderBuildDayList();toast('Exercises updated ✓');return;
+  }
+  if(window._editProgSaveMode==='gen'){
+    // Hand-edited from the Generate Next Program preview — save into the in-memory preview only,
+    // nothing touches the live client until "Apply". Once hand-edited, the "was: X" swap history
+    // for this day no longer means anything, so it's dropped rather than shown stale.
+    // closeModal() below detects _editProgSaveMode==='gen' and reopens the preview sheet — shared
+    // with the Cancel button so both paths return to the preview the same way.
+    const day=window._genProgram&&window._genProgram.days[window._genEditingDayIndex];
+    if(day)day.exercises=_encodeEx(editingExercises);
+    closeModal('editProgramModal');toast('Day updated ✓');return;
   }
   const c=clients.find(x=>x.id===editingClientId);if(!c||!c.structured_program)return;
   const prog=JSON.parse(JSON.stringify(c.structured_program));
