@@ -897,6 +897,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
     <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
     <div id="editExerciseList"></div>
+    <div id="dayGapNudge"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-sm" onclick="addExerciseToDay()">+ Add Exercise</button>
       <button class="btn btn-secondary btn-sm" onclick="addSupersetToDay()" style="border-color:rgba(255,140,71,0.45);color:#ffb380">⊕ Superset</button>
@@ -3191,14 +3192,15 @@ function renderStructuredProgram(c){
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(100,160,255,0.55)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </div>`;
   const genBtn=`<button onclick="generateNextProgram('${c.id}')" style="width:100%;margin-top:12px;background:linear-gradient(135deg,rgba(124,92,255,0.16),rgba(67,217,162,0.12));border:1px solid rgba(124,92,255,0.32);border-radius:12px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#c4b5fd;cursor:pointer;letter-spacing:.4px;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;" onmouseover="this.style.background='linear-gradient(135deg,rgba(124,92,255,0.24),rgba(67,217,162,0.18))';" onmouseout="this.style.background='linear-gradient(135deg,rgba(124,92,255,0.16),rgba(67,217,162,0.12))';"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg> Generate Next Program</button>
-    <div style="font-size:10px;color:rgba(180,200,230,0.32);text-align:center;margin-top:6px;line-height:1.4;">Same days &amp; rep schemes — fresh exercise variations.<br>Preview &amp; tweak before it goes live.</div>`;
+    <div style="font-size:10px;color:rgba(180,200,230,0.32);text-align:center;margin-top:6px;line-height:1.4;">Same days, fresh exercises &amp; rep schemes.<br>Preview &amp; tweak before it goes live.</div>`;
   return startBanner + days + customCard + genBtn;
 }
 
 // ── GENERATE NEXT PROGRAM ──
-// Clones the current program's structure (days, set/rep schemes, supersets) but swaps each exercise
-// for a fresh variation hitting the same primary muscle + mechanic, so the coach skips the blank-page
-// rebuild every cycle and just tweaks. Demo dataset drives the alternatives.
+// Clones the current program's structure (days, supersets) but swaps each exercise for a fresh
+// variation hitting the same primary muscle + mechanic, AND rotates the rep scheme (via the same
+// suggestion pool the manual builder uses) so regenerating doesn't just reshuffle exercise names
+// while leaving every prescription at whatever it always was. Demo dataset drives the alternatives.
 var _OUR_TO_EXDB={chest:'chest',back:'lats',shoulders:'shoulders',quads:'quadriceps',hamstrings:'hamstrings',glutes:'glutes',biceps:'biceps',triceps:'triceps',calves:'calves',abs:'abdominals',traps:'traps',lower_back:'lower back',forearms:'forearms',glute_med:'abductors',adductors:'adductors'};
 // The dataset is full of strongman / mobility / olympic junk; keep candidates to real gym movements.
 var _GEN_OK_EQUIP={'barbell':1,'dumbbell':1,'cable':1,'machine':1,'kettlebells':1,'body only':1,'e-z curl bar':1,'bands':1,'exercise ball':1};
@@ -3315,6 +3317,10 @@ function _buildGenProgram(clientId){
       var out=Object.assign({},ex);
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
       else{out._from=clean;out._swapped=false;}
+      // Vary the rep scheme too, not just the exercise name — regenerating shouldn't just
+      // reshuffle names while every prescription stays whatever it always was.
+      var sug=_prescSuggestionFor(clientId,(out.name||'').replace(/^SS\w+:\s*/i,''));
+      if(sug)out.prescription=sug.apply;
       return out;
     });
     // Final pass: compounds before isolation work so a day never leads with an accessory
@@ -3373,7 +3379,7 @@ function _genPreviewBodyHtml(){
   }).join('');
   var summary=edit
     ?'<div style="font-size:11px;color:rgba(124,200,255,0.7);margin-bottom:12px;">✎ Editing — tweak names, sets/reps &amp; loads, add or remove. Tap “Done” to preview, then Apply.</div>'
-    :'<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+swapped+' of '+total+' exercises swapped for fresh variations · same days &amp; rep schemes</div>';
+    :'<div style="font-size:11px;color:rgba(180,200,230,0.5);margin-bottom:12px;">'+swapped+' of '+total+' exercises swapped for fresh variations, with rotated rep schemes · same days</div>';
   var toggle='<button onclick="_genToggleEdit()" style="width:100%;margin-bottom:14px;background:'+(edit?'linear-gradient(135deg,#43d9a2,#34c08a)':'rgba(124,92,255,0.16)')+';border:1px solid '+(edit?'rgba(67,217,162,0.4)':'rgba(124,92,255,0.4)')+';border-radius:11px;padding:14px;font-family:Syne,sans-serif;font-size:15px;font-weight:800;color:'+(edit?'#0a0d12':'#c4b5fd')+';cursor:pointer;letter-spacing:.3px;">'+(edit?'✓ Done Editing':'✎ Edit Exercises')+'</button>';
   return summary+toggle+body;
 }
@@ -3392,7 +3398,7 @@ function _genReadEditInputs(){
 function _genRerender(){var b=document.getElementById('gen-body');if(b)b.innerHTML=_genPreviewBodyHtml();try{_thumbsRefresh();}catch(e){}}
 function _genToggleEdit(){_genReadEditInputs();window._genEditMode=!window._genEditMode;_genRerender();}
 function _genDelEx(di,ei){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d&&d.exercises)d.exercises.splice(ei,1);_genRerender();}
-function _genAddEx(di){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d){d.exercises=d.exercises||[];d.exercises.push({name:'',prescription:'3x10',load:'',_from:'',_swapped:false});}_genRerender();}
+function _genAddEx(di){_genReadEditInputs();var d=window._genProgram&&window._genProgram.days[di];if(d){d.exercises=d.exercises||[];d.exercises.push({name:'',prescription:'',load:'',_from:'',_swapped:false});}_genRerender();}
 function _openGenPreview(){
   var c=clients.find(function(x){return x.id===window._genClientId;});if(!c)return;
   window._genEditMode=false;
@@ -3449,6 +3455,16 @@ function openEditProgramDay(clientId,dayIndex){
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   renderEditExerciseList();openModal('editProgramModal');
 }
+// The suggestion chip is the "ambient default" — visible only when there's a name but no
+// prescription yet, shows a scheme deliberately different from that client's history for this
+// exercise, one tap fills it. Disappears the moment there's a value, never a popup.
+function _prescChipHtml(i,ex){
+  var hasName=ex.name&&ex.name.trim();
+  var hasPresc=ex.prescription&&ex.prescription.trim();
+  var show=hasName&&!hasPresc;
+  var sug=show?_prescSuggestionFor(editingClientId,ex.name):null;
+  return '<div class="ex-suggest-chip" id="ex-suggest-'+i+'" onclick="_applyPrescSuggestion('+i+')" data-apply="'+(sug?_attr(sug.apply):'')+'" style="display:'+(sug?'inline-flex':'none')+';align-items:center;gap:6px;background:rgba(67,217,162,0.08);border:1px dashed rgba(67,217,162,0.35);border-radius:8px;padding:6px 10px;font-size:11.5px;color:#43d9a2;cursor:pointer;margin-bottom:8px;width:fit-content;max-width:100%;">💡 '+(sug?_attr(sug.text):'')+' — tap to use</div>';
+}
 function _editExRowHtml(i){
   var ex=editingExercises[i];
   return '<div class="edit-ex-row" data-idx="'+i+'">'+
@@ -3456,13 +3472,33 @@ function _editExRowHtml(i){
     _exThumbHTML(ex.name||'',ex.name||'',40)+
     '<div style="flex:1;min-width:0;">'+
       '<div class="edit-ex-fields">'+
-        '<input value="'+(ex.name||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].name=this.value;_updateEditThumb('+i+')" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" placeholder="Exercise name" autocomplete="off">'+
-        '<input value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value" oninput="editingExercises['+i+'].prescription=this.value;_prescAcShow(this,'+i+')" onblur="_prescAcBlur();" onkeydown="if(event.key===\'Escape\')_prescAcHide();" placeholder="Sets×Reps · or type a protocol" autocomplete="off" style="font-size:12px">'+
+        '<input value="'+(ex.name||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].name=this.value;_updateEditThumb('+i+');_refreshPrescSuggestion('+i+')" oninput="_exAcInput(this);" onblur="_exAcBlur();" onkeydown="if(event.key===\'Escape\')_exAcHide();" placeholder="Exercise name" autocomplete="off">'+
+        '<input class="presc-input" value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value;_refreshPrescSuggestion('+i+')" oninput="editingExercises['+i+'].prescription=this.value;_prescAcShow(this,'+i+');_refreshPrescSuggestion('+i+')" onblur="_prescAcBlur();" onkeydown="if(event.key===\'Escape\')_prescAcHide();" placeholder="Sets×Reps · or type a protocol" autocomplete="off" style="font-size:12px">'+
         '<input value="'+(ex.load||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].load=this.value" placeholder="Load" style="font-size:12px">'+
       '</div>'+
+      _prescChipHtml(i,ex)+
       '<div class="edit-ex-actions"><button class="lib-btn" onclick="openProtocolPicker('+i+',\'edit\')">💡 Ideas</button><button class="lib-btn danger" onclick="removeEx('+i+')">Remove</button></div>'+
     '</div>'+
   '</div>';
+}
+function _refreshPrescSuggestion(i){
+  var ex=editingExercises[i];if(!ex)return;
+  var chip=document.getElementById('ex-suggest-'+i);if(!chip)return;
+  var row=chip.closest('.edit-ex-row');
+  var input=row?row.querySelector('.presc-input'):null;
+  if(input)ex.prescription=input.value;
+  var html=_prescChipHtml(i,ex);
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  var fresh=tmp.firstChild;
+  chip.replaceWith(fresh);
+}
+function _applyPrescSuggestion(i){
+  var chip=document.getElementById('ex-suggest-'+i);if(!chip||!chip.dataset.apply)return;
+  editingExercises[i].prescription=chip.dataset.apply;
+  var row=chip.closest('.edit-ex-row');
+  var input=row?row.querySelector('.presc-input'):null;
+  if(input)input.value=chip.dataset.apply;
+  chip.style.display='none';
 }
 function renderEditExerciseList(){
   var list=document.getElementById('editExerciseList');if(!list)return;
@@ -3482,6 +3518,26 @@ function renderEditExerciseList(){
   list.innerHTML=html;
   setupExDrag();
   try{_thumbsRefresh();}catch(e){}
+  try{_renderDayGapNudge();}catch(e){}
+}
+// A quiet, inline "you might be missing X" strip — not a popup, just sits below the exercise list
+// once there's enough of a day built to make the observation meaningful (3+ exercises). Only checks
+// for things with a real data signal (core work, via the existing muscle mapping) rather than
+// guessing at things like "conditioning" that the data can't actually distinguish.
+function _dayGapNudge(){
+  if(editingExercises.length<3)return null;
+  var hasCore=editingExercises.some(function(ex){
+    if(!ex.name)return false;
+    var muscles=(typeof exerciseToMuscles==='function')?(exerciseToMuscles(ex.name)||[]):[];
+    return muscles.some(function(m){return m.muscle==='abs';});
+  });
+  if(!hasCore)return {text:'No core work in this day yet — worth adding one?'};
+  return null;
+}
+function _renderDayGapNudge(){
+  var el=document.getElementById('dayGapNudge');if(!el)return;
+  var tip=_dayGapNudge();
+  el.innerHTML=!tip?'':'<div onclick="addExerciseToDay()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(79,163,232,0.06);border:1px dashed rgba(79,163,232,0.3);border-radius:10px;padding:10px 14px;margin:10px 0;font-size:12.5px;color:#7ec8ff;">💡 '+tip.text+'</div>';
 }
 
 // ── PROTOCOL LIBRARY ──
@@ -3517,6 +3573,42 @@ const _PROTOCOL_LIBRARY=[
   {id:'testing',cat:'Recovery & Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of max" quietly goes wrong for months.'},
   {id:'isometric',cat:'Recovery & Testing',name:'Isometric Holds',ex:'3 sets of 20-45 second holds at a fixed joint angle',apply:'3x20s hold',blurb:'Timed holds instead of reps. Builds tendon resilience at a specific joint angle — genuinely useful around a nagging issue, not a filler.'},
 ];
+// A small rotation pool used for auto-suggesting a prescription — deliberately excludes 'straight'
+// itself so a suggestion is never just "3x10 again". Deterministic per client+exercise (same pick
+// every time you look at it, not random each render) but varies BETWEEN exercises/clients, and
+// explicitly excludes whatever scheme is already on record so it's never "the same as last time".
+const _PRESC_VARIETY=[
+  {apply:'5x5',label:'5×5 strength'},
+  {apply:'12,10,8,6',label:'pyramid'},
+  {apply:'3x8 tempo 3-1-1',label:'tempo'},
+  {apply:'3x10 rest-pause',label:'rest-pause'},
+  {apply:'3x3',label:'cluster sets'},
+  {apply:'3x10 + dropset',label:'drop set'},
+];
+function _prescSuggestionFor(clientId,name){
+  if(!name)return null;
+  const c=clients.find(function(x){return x.id===clientId;});
+  const key=name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');
+  const last=c&&c.exercise_history&&c.exercise_history[key];
+  let pool=_PRESC_VARIETY;
+  if(last&&last.reps){
+    const lastNorm=String(last.reps).trim();
+    const filtered=pool.filter(function(v){return v.apply!==lastNorm;});
+    if(filtered.length)pool=filtered;
+  }
+  let h=0;const hashSrc=(clientId||'')+key;
+  for(let i=0;i<hashSrc.length;i++)h=(h*31+hashSrc.charCodeAt(i))|0;
+  const pick=pool[Math.abs(h)%pool.length];
+  let weeksTxt='';
+  if(last&&last.date){
+    const d=new Date(last.date);
+    if(!isNaN(d)){
+      const weeks=Math.floor((Date.now()-d.getTime())/(7*24*3600*1000));
+      if(weeks>=8)weeksTxt=' · last done '+weeks+'w ago';
+    }
+  }
+  return {apply:pick.apply,text:pick.apply+' ('+pick.label+')'+weeksTxt};
+}
 function openProtocolPicker(i,ctx){
   window._ppTarget={i:i,ctx:ctx};
   var ov=document.getElementById('protocol-picker-ov');
@@ -3710,8 +3802,8 @@ function _syncRowThumb(inputEl){
   _hydrateExThumbs();
 }
 function _nextSsGroup(){var mx=0;editingExercises.forEach(function(e){if(e.ss&&e.ss>mx)mx=e.ss;});return mx+1;}
-function addSupersetToDay(){var g=_nextSsGroup();editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});editingExercises.push({name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
-function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'3x10',load:'',ss:g});renderEditExerciseList();}
+function addSupersetToDay(){var g=_nextSsGroup();editingExercises.push({name:'',prescription:'',load:'',ss:g});editingExercises.push({name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
+function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
 // Encode superset groups back into SS-prefixed names (renumbered sequentially) for storage.
 function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var nm=(e.name||'').trim();if(e.ss){if(!map[e.ss])map[e.ss]=next++;return {name:'SS'+map[e.ss]+': '+nm,prescription:e.prescription||'',load:e.load||''};}return {name:nm,prescription:e.prescription||'',load:e.load||''};});}
 // Parse stored exercises (SS-prefixed names) into the editor model with an .ss group marker.
@@ -3791,7 +3883,7 @@ function _pickerAdd(){
   var sel=window._pickerSel||{},names=Object.keys(sel).map(function(k){return sel[k];});
   if(!names.length){_closeExPicker();return;}
   if(typeof editingExercises!=='undefined'&&Array.isArray(editingExercises)){
-    names.forEach(function(nm){editingExercises.push({name:nm,prescription:'3x10',load:''});});
+    names.forEach(function(nm){editingExercises.push({name:nm,prescription:'',load:''});});
     _closeExPicker();if(typeof renderEditExerciseList==='function')renderEditExerciseList();
     toast('Added '+names.length+' exercise'+(names.length>1?'s':''));
   } else _closeExPicker();
@@ -3895,7 +3987,7 @@ function _setupBlockDrag(list){
   });
 }
 function removeEx(i){editingExercises.splice(i,1);renderEditExerciseList();}
-function addExerciseToDay(){editingExercises.push({name:'',prescription:'3x10',load:'',ss:null});renderEditExerciseList();}
+function addExerciseToDay(){editingExercises.push({name:'',prescription:'',load:'',ss:null});renderEditExerciseList();}
 // Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
 function _demoMuscleGroup(m){
   if(!m)return '';
