@@ -3248,6 +3248,13 @@ function _genCandMech(e){return _GEN_ISO_RE.test(e.name||'')?'isolation':String(
 // Pick a fresh exercise for the same muscle/mechanic, excluding anything in `used` (by demo identity).
 // `first` = this is the day's lead (main) lift → keep it a recognizable compound; accessory slots get
 // a wider pick window so some interesting variety still comes through.
+// Strips equipment/brand words so "Decline Bench Press" and "Dumbbell Decline Bench Press" reduce
+// to the same base movement — used to stop the generator from "swapping" an exercise for a reskin
+// of itself (regenerating kept flip-flopping the lead exercise between two near-identical variants).
+var _EQUIP_WORDS_RE=/\b(barbell|dumbbell|db|machine|cable|smith|kettlebell|kb|band|banded|ez.?bar|bodyweight|body.?only|plate.?loaded|hammer strength|selectorized|trap bar|safety bar|assisted|weighted|incline|decline|flat)\b/gi;
+function _exBaseMovement(name){
+  return (name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(_EQUIP_WORDS_RE,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+}
 function _altExerciseFor(origName,used,first){
   if(!_exDb)return null;
   var clean=(origName||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return null;
@@ -3280,7 +3287,12 @@ function _altExerciseFor(origName,used,first){
     if(same.length)pool=same;
   }
   pool.sort(function(a,b){return _altScore(b,mech,equip)-_altScore(a,mech,equip);});
-  var top=pool.slice(0,Math.min(first?2:6,pool.length));
+  // Prefer a genuinely different movement over an equipment reskin of the original, whenever
+  // there's enough of a pool to afford being picky about it.
+  var origBase=_exBaseMovement(clean);
+  var different=pool.filter(function(e){return _exBaseMovement(e.name)!==origBase;});
+  var effectivePool=different.length>=3?different:pool;
+  var top=effectivePool.slice(0,Math.min(first?6:8,effectivePool.length));
   var pick=top[Math.floor(Math.random()*top.length)];
   return pick?pick.name:null;
 }
@@ -3313,10 +3325,19 @@ function _buildGenProgram(clientId){
     d.exercises=(d.exercises||[]).map(function(ex,ei){
       var ssm=(ex.name||'').match(/^SS\w+:\s*/i),pfx=ssm?ssm[0]:'';
       var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
-      var alt=_altExerciseFor(clean,used,ei===0);
       var out=Object.assign({},ex);
+      // Not every exercise SHOULD swap — a client's main lifts (and staple accessories they
+      // always do) are fine to keep program to program; that's normal programming, not a rut.
+      // Weight the swap decision toward keeping recognizable staples, especially in the lead
+      // slot, and toward refreshing everything else. The rep scheme changes regardless (below) —
+      // that's the part that was actually stale, not necessarily the exercise itself.
+      var isLead=ei===0;
+      var match=_exDbMatch(clean);
+      var isStaple=match&&_genCommonIds()[match.id];
+      var swapChance=(isLead?0.3:0.6)*(isStaple?0.4:1);
+      var alt=(Math.random()<swapChance)?_altExerciseFor(clean,used,isLead):null;
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
-      else{out._from=clean;out._swapped=false;}
+      else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;}
       // Vary the rep scheme too, not just the exercise name — regenerating shouldn't just
       // reshuffle names while every prescription stays whatever it always was.
       var sug=_prescSuggestionFor(clientId,(out.name||'').replace(/^SS\w+:\s*/i,''));
