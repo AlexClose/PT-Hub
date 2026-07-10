@@ -3337,18 +3337,20 @@ function _buildGenProgram(clientId){
       var ssm=(ex.name||'').match(/^SS\w+:\s*/i),pfx=ssm?ssm[0]:'';
       var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
       var out=Object.assign({},ex);
-      // Not every exercise SHOULD swap — a client's main lifts (and staple accessories they
-      // always do) are fine to keep program to program; that's normal programming, not a rut.
-      // Weight the swap decision toward keeping recognizable staples, especially in the lead
-      // slot, and toward refreshing everything else. The rep scheme changes regardless (below) —
-      // that's the part that was actually stale, not necessarily the exercise itself.
+      // A client's MAIN lift is fine to keep program to program (that's normal programming, not
+      // a rut) — so the lead slot swaps less often. Accessories get a strong default refresh rate;
+      // the earlier version also suppressed swaps for any "recognizable" exercise (via
+      // _genCommonIds), which was too broad — it caught ordinary accessories like Lat Raise or
+      // Reverse Fly, not just deliberate anchors, and ended up keeping almost everything. Rep
+      // scheme changes regardless of whether the exercise itself swaps (below).
       var isLead=ei===0;
-      var match=_exDbMatch(clean);
-      var isStaple=match&&_genCommonIds()[match.id];
-      var swapChance=(isLead?0.3:0.6)*(isStaple?0.4:1);
-      var alt=(Math.random()<swapChance)?_altExerciseFor(clean,used,isLead):null;
+      var swapChance=isLead?0.4:0.75;
+      var attempted=Math.random()<swapChance;
+      var alt=attempted?_altExerciseFor(clean,used,isLead):null;
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
-      else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;}
+      // _searchFailed only true when a swap was actually attempted and genuinely found nothing —
+      // distinct from "kept on purpose", which the preview should never describe as a failure.
+      else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;out._searchFailed=attempted;}
       // Vary the rep scheme too, not just the exercise name — regenerating shouldn't just
       // reshuffle names while every prescription stays whatever it always was.
       var sug=_prescSuggestionFor(clientId,(out.name||'').replace(/^SS\w+:\s*/i,''));
@@ -3375,7 +3377,7 @@ function generateNextProgram(clientId){
 function _genExRowView(ex){
   var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
   var isSS=/^SS/i.test(ex.name||'');
-  var sub=ex._swapped?('was: '+ex._from):(ex._from===''?'new exercise':'kept (no fresh variation found)');
+  var sub=ex._swapped?('was: '+ex._from):(ex._from===''?'new exercise':(ex._searchFailed?'kept — no fresh variation found':'kept'));
   var subCol=ex._swapped?'rgba(67,217,162,0.6)':'rgba(180,200,230,0.35)';
   return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:rgba(255,255,255,0.03);border:1px solid rgba(100,160,255,0.1);border-radius:9px;margin-bottom:6px;">'
     +_exThumbHTML(ex.name,clean,36,'')
