@@ -556,6 +556,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div id="todaySessions" style="margin-bottom:16px"></div>
     <div class="stats-grid" id="dashStats"></div>
     <div id="dashAlerts"></div>
+    <div id="dashInsights"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:8px;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div>
@@ -593,6 +594,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
         <h2>Library</h2>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-sm" onclick="openProtocolPicker(null,null)" style="background:rgba(255,179,71,0.12);color:#ffb347;border:1px solid rgba(255,179,71,0.3);">💡 Protocols</button>
         <button id="libReviewBtn" class="btn btn-sm" onclick="toggleLibReview()" style="background:rgba(79,163,232,0.12);color:#7ec8ff;border:1px solid rgba(79,163,232,0.3);">Review Demos</button>
         <button class="btn btn-primary btn-sm" onclick="openAddExercise()">+ Exercise</button>
       </div>
@@ -2128,6 +2130,71 @@ function quickLog(id){
   openLogSession(id,dayIdx);
 }
 
+// ── COACHING INSIGHTS ──
+// Cross-client pattern detection — surfaces ruts a coach can't see day-to-day (same exercise
+// everywhere, same rep range everywhere, programs running untouched too long). Deliberately
+// conservative: only speaks up when there's enough data for the pattern to mean something, and
+// never invents a "testing overdue" signal — there's no reliable data for that, so it isn't guessed.
+function computeCoachInsights(){
+  const active=clients.filter(c=>!c.paused&&c.structured_program&&(c.structured_program.days||[]).length);
+  const insights=[];
+  if(active.length<3)return insights; // not enough programs to call anything a "pattern"
+
+  // 1. Overused exercises across the active roster
+  const exClientCount={};
+  active.forEach(c=>{
+    const seen=new Set();
+    (c.structured_program.days||[]).forEach(d=>{
+      (d.exercises||[]).forEach(ex=>{
+        const name=(ex.name||'').replace(/^SS\w+:\s*/i,'').trim();
+        if(!name)return;
+        const key=name.toLowerCase();
+        if(seen.has(key))return;
+        seen.add(key);
+        if(!exClientCount[key])exClientCount[key]={name:name,count:0};
+        exClientCount[key].count++;
+      });
+    });
+  });
+  const overused=Object.values(exClientCount).filter(e=>e.count>=3&&e.count/active.length>=0.5).sort((a,b)=>b.count-a.count);
+  if(overused.length){
+    const top=overused[0];
+    insights.push({icon:'🔁',text:`<b>${_attr(top.name)}</b> shows up in ${top.count} of your ${active.length} active programs — might be worth swapping it for a few clients.`});
+  }
+
+  // 2. Rep-scheme homogeneity — how much of the roster is straight 8-12 rep sets
+  let totalEx=0,straightSets=0;
+  active.forEach(c=>{
+    (c.structured_program.days||[]).forEach(d=>{
+      (d.exercises||[]).forEach(ex=>{
+        const p=(ex.prescription||'').trim();
+        if(!p)return;
+        totalEx++;
+        if(/^\d+\s*[x×X]\s*(8|9|10|11|12)(\s*-\s*1[0-2])?$/.test(p))straightSets++;
+      });
+    });
+  });
+  if(totalEx>=12&&(straightSets/totalEx)>=0.7){
+    insights.push({icon:'📊',text:`${Math.round(straightSets/totalEx*100)}% of your programmed sets are straight 8-12 rep schemes — check the <a onclick="openProtocolPicker(null,null)" style="color:#7ec8ff;cursor:pointer;text-decoration:underline;">Protocol Library</a> for something different.`});
+  }
+
+  // 3. Programs running a long time without a refresh (rough proxy for "deload might be due" —
+  // there's no explicit deload marker in the data model, so this stays a time-based nudge, not a claim).
+  const overdue=active.filter(c=>{
+    const started=c.structured_program.started_at;
+    if(!started)return false;
+    const d=new Date(started);
+    if(isNaN(d))return false;
+    return (Date.now()-d.getTime())/(7*24*3600*1000)>=6;
+  });
+  if(overdue.length===1){
+    insights.push({icon:'🪫',text:`<b>${_attr(overdue[0].first)}</b> has been on the same program for 6+ weeks — might be time for a deload or a refresh.`});
+  }else if(overdue.length>1){
+    insights.push({icon:'🪫',text:`${overdue.length} clients have been on their current program 6+ weeks without a change — might be time to refresh a few.`});
+  }
+
+  return insights;
+}
 function renderDashboard(){
   const withPkg=clients.filter(c=>(c.package_size>0||!!c.remaining)&&!c.paused);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
@@ -2177,6 +2244,14 @@ function renderDashboard(){
     else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div></div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
+  const insightsEl=document.getElementById('dashInsights');
+  if(insightsEl){
+    const insights=computeCoachInsights();
+    insightsEl.innerHTML=!insights.length?'':'<div style="background:rgba(255,179,71,0.05);border:1px solid rgba(255,179,71,0.16);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(255,179,71,0.6);margin-bottom:10px;">💡 Coaching Insights</div>'
+      +insights.map(function(ins){return '<div style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;margin-bottom:8px;"><span style="flex-shrink:0;">'+ins.icon+'</span><span>'+ins.text+'</span></div>';}).join('')
+      +'</div>';
+  }
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   const dashFiltered=dashQ?sorted.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(dashQ)):sorted;
@@ -3369,7 +3444,7 @@ function _editExRowHtml(i){
         '<input value="'+(ex.prescription||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].prescription=this.value" placeholder="Sets×Reps" style="font-size:12px">'+
         '<input value="'+(ex.load||'').replace(/"/g,'&quot;')+'" onchange="editingExercises['+i+'].load=this.value" placeholder="Load" style="font-size:12px">'+
       '</div>'+
-      '<div class="edit-ex-actions"><button class="lib-btn danger" onclick="removeEx('+i+')">Remove</button></div>'+
+      '<div class="edit-ex-actions"><button class="lib-btn" onclick="openProtocolPicker('+i+',\'edit\')">💡 Ideas</button><button class="lib-btn danger" onclick="removeEx('+i+')">Remove</button></div>'+
     '</div>'+
   '</div>';
 }
@@ -3391,6 +3466,68 @@ function renderEditExerciseList(){
   list.innerHTML=html;
   setupExDrag();
   try{_thumbsRefresh();}catch(e){}
+}
+
+// ── PROTOCOL LIBRARY ──
+// A quick-reference set/rep-scheme cheat sheet for the program builder (see "💡 Ideas" button on
+// each exercise row). Exists because it's easy to default to the same straight-sets scheme for
+// every client — this surfaces the rest of what a CSCS-level coach already knows but doesn't
+// always reach for mid-program-build. `ex` is the illustrative long-form shown in the library;
+// `apply` is the short value actually dropped into the prescription field (parseSets-compatible
+// where the scheme has a real "sets" concept — leading "NxN" or comma-separated reps).
+const _PROTOCOL_LIBRARY=[
+  {id:'straight',cat:'Hypertrophy',name:'Straight Sets',ex:'3×10, same reps every set',apply:'3x10',blurb:'The default. Reliable, but if every client on every exercise is here, it\'s happening by accident, not by design.'},
+  {id:'strength5x5',cat:'Strength',name:'5×5 Strength',ex:'5 sets of 5, heavier load, 2-3 min rest',apply:'5x5',blurb:'Builds max strength on main lifts without the fatigue cost of high-volume hypertrophy work. Good main-lift swap when a client\'s been stuck in the 8-12 range for months.'},
+  {id:'pyramid',cat:'Strength / Hypertrophy',name:'Pyramid Sets',ex:'12, 10, 8, 6 reps — weight goes up each set',apply:'12,10,8,6',blurb:'Warms up naturally into a heavy top set. Reverse pyramid (heaviest first) front-loads intensity while the client is freshest.'},
+  {id:'wave',cat:'Strength',name:'Wave Loading',ex:'Week 1: 5×5 · Week 2: 4×4 heavier · Week 3: 3×3 heaviest, then reset',apply:'5x5',blurb:'Undulate intensity across weeks instead of adding weight every single week forever. Classic 5/3/1-style structure — prevents the "add 5lb weekly" plateau. Applies this week\'s starting point; adjust by hand as the wave progresses.'},
+  {id:'cluster',cat:'Strength',name:'Cluster Sets',ex:'3 sets of 3 mini-sets of 3, ~15-20s rest between minis',apply:'3x3',blurb:'Breaking a set into rest-pause mini-sets lets a client handle heavier loads with better bar speed than one long set to failure.'},
+  {id:'density',cat:'Metabolic / Conditioning',name:'Density Block (AMRAP)',ex:'As many quality reps as possible in 10-12 minutes',apply:'AMRAP 10min',blurb:'Time-capped instead of set-capped. Good for conditioning days or breaking up a program that\'s gotten too spreadsheet-y.'},
+  {id:'tempo',cat:'Hypertrophy / Technique',name:'Tempo Training',ex:'3 sets of 8 at a 3-1-1 tempo (3s down, 1s pause, 1s up)',apply:'3x8 tempo 3-1-1',blurb:'Prescribing the eccentric/pause/concentric speed increases time under tension — a great fix for a client with sloppy form who needs to slow down.'},
+  {id:'dropset',cat:'Hypertrophy',name:'Drop Sets',ex:'3×10 to near-failure, drop weight 20-30%, continue to failure',apply:'3x10 + dropset',blurb:'Extends a set past failure by immediately reducing the load. High fatigue cost — usually just the last set of an exercise, not every set.'},
+  {id:'emom',cat:'Metabolic / Conditioning',name:'EMOM',ex:'6-8 reps at the top of every minute, for 10-15 minutes',apply:'EMOM 10min x6-8',blurb:'Every Minute On the Minute — do the reps, rest whatever\'s left of the minute. Built-in pacing for skill work or conditioning.'},
+  {id:'giant',cat:'Metabolic / Conditioning',name:'Giant Sets / Circuit',ex:'4+ exercises back-to-back, minimal rest, repeat for 3-4 rounds',apply:'3 rounds',blurb:'Time-efficient and keeps heart rate up — good for a client who wants a "workout" feel rather than a strength-session feel that day.'},
+  {id:'deload',cat:'Recovery',name:'Deload Week',ex:'Same exercises, ~40-50% less volume or intensity for the week',apply:'2x10 (deload)',blurb:'A planned lighter week. Not optional long-term — fatigue that never dissipates eventually shows up as a plateau or an injury. If it\'s been 6+ weeks since the last one for a client, it\'s probably due.'},
+  {id:'testing',cat:'Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of your max" quietly becomes wrong for months.'},
+];
+function openProtocolPicker(i,ctx){
+  window._ppTarget={i:i,ctx:ctx};
+  var ov=document.getElementById('protocol-picker-ov');
+  if(!ov){ov=document.createElement('div');ov.id='protocol-picker-ov';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
+  var cats={};
+  _PROTOCOL_LIBRARY.forEach(function(p){(cats[p.cat]=cats[p.cat]||[]).push(p);});
+  var body='';
+  Object.keys(cats).forEach(function(cat){
+    body+='<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(126,200,255,0.5);margin:18px 0 8px;">'+cat+'</div>';
+    cats[cat].forEach(function(p){
+      body+='<div onclick="_applyProtocol(\''+p.id+'\')" style="background:rgba(16,22,29,0.4);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;">'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;">'+
+          '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;color:#fff;">'+p.name+'</div>'+
+        '</div>'+
+        '<div style="font-size:11px;font-weight:700;color:#7ec8ff;background:rgba(79,163,232,0.12);border-radius:6px;padding:3px 8px;display:inline-block;margin-bottom:8px;">'+p.ex+'</div>'+
+        '<div style="font-size:12.5px;color:rgba(180,200,230,0.55);line-height:1.5;">'+p.blurb+'</div>'+
+      '</div>';
+    });
+  });
+  ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'+
+    '<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:16px 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:6px;">'+
+      '<button onclick="closeProtocolPicker()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;">&times;</button>'+
+      '<div style="flex:1;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;">Protocol Library</div><div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">'+(ctx?'Tap one to drop it into this exercise\'s prescription':'A reference for programming beyond straight sets')+'</div></div>'+
+    '</div>'+
+    body+
+  '</div>';
+}
+function closeProtocolPicker(){var ov=document.getElementById('protocol-picker-ov');if(ov)ov.remove();}
+function _applyProtocol(id){
+  var p=_PROTOCOL_LIBRARY.find(function(x){return x.id===id;});
+  var t=window._ppTarget;
+  if(!p){closeProtocolPicker();return;}
+  if(t&&t.ctx==='edit'&&editingExercises[t.i]){
+    editingExercises[t.i].prescription=p.apply;
+    renderEditExerciseList();
+    toast(p.name+' applied — tweak the numbers for this client');
+  }
+  closeProtocolPicker();
 }
 // Update the exercise thumbnail sitting next to a name input as the user types/selects (logging rows).
 function _syncRowThumb(inputEl){
