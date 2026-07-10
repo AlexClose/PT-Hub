@@ -3255,6 +3255,16 @@ var _EQUIP_WORDS_RE=/\b(barbell|dumbbell|db|machine|cable|smith|kettlebell|kb|ba
 function _exBaseMovement(name){
   return (name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(_EQUIP_WORDS_RE,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 }
+// The dataset's raw primaryMuscles tags are narrower than how a coach actually thinks about
+// swaps — "Chest Supported Row" (middle back) and "T-Bar Row" (lats) are both just "a back
+// exercise" to a coach, but an exact-string match treated them as unrelated, so the pool was
+// often empty and the generator gave up ("no fresh variation found") far too often. Grouped by
+// swap-worthy region — deliberately keeps quads/hamstrings/calves/adductors separate since a
+// coach programming leg day cares about hitting those distinctly, unlike back sub-regions.
+var _GEN_SWAP_GROUP={chest:'chest',lats:'back','middle back':'back','lower back':'back',lower_back:'back',back:'back',traps:'back',neck:'back',
+  biceps:'biceps',triceps:'triceps',forearms:'forearms',shoulders:'shoulders',
+  quadriceps:'quads',quads:'quads',hamstrings:'hamstrings',calves:'calves',adductors:'adductors',
+  abductors:'glutes',glutes:'glutes',glute_med:'glutes',abdominals:'abs',abs:'abs'};
 function _altExerciseFor(origName,used,first){
   if(!_exDb)return null;
   var clean=(origName||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return null;
@@ -3266,9 +3276,10 @@ function _altExerciseFor(origName,used,first){
   // ("Machine Chest Press" variants etc.) still constrains the slot instead of going free-for-all —
   // that's how a cable crossover once landed as a push day's lead lift.
   if(mech!=='compound'&&mech!=='isolation')mech=_exMechanic(clean);
+  var primaryGroup=_GEN_SWAP_GROUP[primary]||primary;
   var pool=_exDb.filter(function(e){
     var pm=(e.primaryMuscles&&e.primaryMuscles[0]||'').toLowerCase();
-    if(pm!==primary)return false;
+    if((_GEN_SWAP_GROUP[pm]||pm)!==primaryGroup)return false;
     if(origId&&e.id===origId)return false;
     if(used&&used[_exIdentity(e.name)])return false;
     if(!_genOkEx(e))return false;
