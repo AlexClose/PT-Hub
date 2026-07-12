@@ -1021,6 +1021,15 @@ const MUSCLE_COLORS={Chest:'#e05252',Back:'#4caf70',Legs:'#c9a84c',Shoulders:'#4
 
 // Extracts highest numeric value from weight strings like "55,65,75" or "135"
 function maxWeight(str){if(!str)return 0;return Math.max(0,...String(str).split(/[,\/\s]+/).map(v=>parseFloat(v)||0));}
+// Superset name-tag convention: every save path has always WRITTEN "SS<n>: Name" (colon-space —
+// see _encodeEx), but some clients' programs were saved by an older version of the app that used
+// "SS<n> Name" (a bare space, no colon) — every strict `:`-requiring regex silently failed to
+// recognize or strip that tag, which is what made a legacy client's supersets look like they'd
+// "disappeared": the exercises rendered as plain standalone rows with a literal "SS1 " stuck in
+// the visible name. This tolerates both separators (colon+space, bare space, or nothing) so any
+// read site can strip/parse the tag regardless of which era wrote it; group id is always numeric
+// (the only writer, _encodeEx, only ever assigns sequential integers).
+var _SS_TAG_RE=/^SS(\d+)\s*:?\s*/i;
 var _KNOWN_EXERCISES=['Bench Press','Incline Bench Press','Decline Bench Press','Squat','Front Squat','Goblet Squat',
   'Deadlift','Romanian Deadlift','Sumo Deadlift','Pull-Up','Chin-Up','Overhead Press','Push Press',
   'Bent Over Row','Pendlay Row','T-Bar Row','Leg Press','Hack Squat','Lat Pulldown',
@@ -2157,7 +2166,7 @@ function computeCoachInsights(){
     const seen=new Set();
     (c.structured_program.days||[]).forEach(d=>{
       (d.exercises||[]).forEach(ex=>{
-        const name=(ex.name||'').replace(/^SS\w+:\s*/i,'').trim();
+        const name=(ex.name||'').replace(_SS_TAG_RE,'').trim();
         if(!name)return;
         const key=name.toLowerCase();
         if(seen.has(key))return;
@@ -2186,7 +2195,7 @@ function computeCoachInsights(){
         totalEx++;
         if(/^\d+\s*[x×X]\s*(8|9|10|11|12)(\s*-\s*1[0-2])?$/.test(p)){
           straightSets++;
-          if(straightExamples.length<40)straightExamples.push({client:c.first,exercise:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:p});
+          if(straightExamples.length<40)straightExamples.push({client:c.first,exercise:(ex.name||'').replace(_SS_TAG_RE,''),prescription:p});
         }
       });
     });
@@ -2817,8 +2826,8 @@ function renderClientModal(c){
             cardBody='<div style="font-size:13px;color:rgba(180,200,230,0.4);">No exercises in this day yet.</div>';
           } else {
             const chips=exs.map(ex=>{
-              const isSuperset=/^SS\d+:/i.test(ex.name);
-              const dispName=ex.name.replace(/^SS\d+:\s*/i,'');
+              const isSuperset=_SS_TAG_RE.test(ex.name);
+              const dispName=ex.name.replace(_SS_TAG_RE,'');
               const key=ex.name.toLowerCase().replace(/\s+/g,'_');
               const hist=c.exercise_history?.[key];
               const lastWt=hist&&hist.weight?maxWeight(String(hist.weight)):0;
@@ -3143,7 +3152,7 @@ function renderStructuredProgram(c){
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
       const isSuperset=ex.name.match(/^SS/i);
-      const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+      const displayName=ex.name.replace(_SS_TAG_RE,'');
       if(!isSuperset)exNum++;
       const numLabel=isSuperset?'':''+exNum;
       const lastHtml=last
@@ -3243,7 +3252,7 @@ function _altScore(e,mech,equip){
 var _GEN_ISO_RE=/\b(fly|flye?s?|crossover|cross over|raise|curl|extension|pushdown|push down|kickback|pullover|pec deck|shrug|calf|calves|adduction|abduction|face pull|pull.?apart|concentration|preacher|skull|crusher|wrist|woodchop|wood chop|crunch|sit.?up|plank|twist|rotation|leg raise|knee raise|hollow|dead bug)\b/i;
 var _GEN_COMP_RE=/\b(squat|deadlift|bench|press|row|pull.?up|chin.?up|pulldown|pull.?down|dip|lunge|split squat|leg press|hack|thrust|bridge|good morning|step.?up|rdl|carry|farmer)\b/i;
 function _exMechanic(name){
-  var clean=(name||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return '';
+  var clean=(name||'').replace(_SS_TAG_RE,'').trim();if(!clean)return '';
   // Isolation name-cues override the dataset label — it tags some flyes/raises "compound".
   if(_GEN_ISO_RE.test(clean))return 'isolation';
   var m=(typeof _exDbMatch==='function'&&_exDb)?_exDbMatch(clean):null;
@@ -3276,7 +3285,7 @@ var _GEN_SWAP_GROUP={chest:'chest',lats:'back','middle back':'back','lower back'
   abductors:'glutes',glutes:'glutes',glute_med:'glutes',abdominals:'abs',abs:'abs'};
 function _altExerciseFor(origName,used,first){
   if(!_exDb)return null;
-  var clean=(origName||'').replace(/^SS\w+:\s*/i,'').trim();if(!clean)return null;
+  var clean=(origName||'').replace(_SS_TAG_RE,'').trim();if(!clean)return null;
   var m=_exDbMatch(clean),primary='',mech='',equip='',origId=null;
   if(m){primary=(m.primaryMuscles&&m.primaryMuscles[0]||'').toLowerCase();mech=(m.mechanic||'').toLowerCase();equip=(m.equipment||'').toLowerCase();origId=m.id;}
   if(!primary){var ours=(typeof exerciseToMuscles==='function')?exerciseToMuscles(clean):null;if(ours&&ours.length)primary=_OUR_TO_EXDB[ours[0].muscle]||'';}
@@ -3325,7 +3334,7 @@ function _altExerciseFor(origName,used,first){
 function _coalesceSsGroups(exs){
   var groups={},order=[],standalones=[];
   (exs||[]).forEach(function(ex,i){
-    var m=(ex.name||'').match(/^SS(\w+):\s*/i);
+    var m=(ex.name||'').match(_SS_TAG_RE);
     if(m){
       var g=m[1];
       if(!groups[g]){groups[g]=[];order.push({type:'group',g:g,pos:i});}
@@ -3343,7 +3352,7 @@ function _coalesceSsGroups(exs){
 function _genOrderDay(exs){
   var units=[],cur=null;
   _coalesceSsGroups(exs).forEach(function(ex){
-    var ssm=(ex.name||'').match(/^SS(\w*):/i);
+    var ssm=(ex.name||'').match(_SS_TAG_RE);
     if(ssm){
       var g=ssm[1]||'';
       if(cur&&cur.ss&&cur.g===g){cur.items.push(ex);return;}
@@ -3356,7 +3365,7 @@ function _genOrderDay(exs){
   units.forEach(function(u){
     if(u.ss&&u.items.length===1){
       u.ss=false;
-      u.items[0].name=(u.items[0].name||'').replace(/^SS\w*:\s*/i,'');
+      u.items[0].name=(u.items[0].name||'').replace(_SS_TAG_RE,'');
     }
   });
   var comp=[],iso=[];
@@ -3373,8 +3382,11 @@ function _buildGenProgram(clientId){
   prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){var id=_exIdentity(ex.name);if(id)used[id]=1;});});
   prog.days.forEach(function(d){
     d.exercises=(d.exercises||[]).map(function(ex,ei){
-      var ssm=(ex.name||'').match(/^SS\w+:\s*/i),pfx=ssm?ssm[0]:'';
-      var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+      // Rebuild the tag in the canonical "SS<n>: " form (rather than reusing whatever separator
+      // the original happened to use) — self-heals legacy "SS<n> Name" (no colon) data to the
+      // modern format every time a program passes through the generator.
+      var ssm=(ex.name||'').match(_SS_TAG_RE),pfx=ssm?('SS'+ssm[1]+': '):'';
+      var clean=(ex.name||'').replace(_SS_TAG_RE,'');
       var out=Object.assign({},ex);
       // A client's MAIN lift is fine to keep program to program (that's normal programming, not
       // a rut) — so the lead slot swaps less often. Accessories get a strong default refresh rate;
@@ -3392,7 +3404,7 @@ function _buildGenProgram(clientId){
       else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;out._searchFailed=attempted;}
       // Vary the rep scheme too, not just the exercise name — regenerating shouldn't just
       // reshuffle names while every prescription stays whatever it always was.
-      var sug=_prescSuggestionFor(clientId,(out.name||'').replace(/^SS\w+:\s*/i,''));
+      var sug=_prescSuggestionFor(clientId,(out.name||'').replace(_SS_TAG_RE,''));
       if(sug)out.prescription=sug.apply;
       return out;
     });
@@ -3414,7 +3426,7 @@ function generateNextProgram(clientId){
   });
 }
 function _genExRowView(ex){
-  var clean=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+  var clean=(ex.name||'').replace(_SS_TAG_RE,'');
   var isSS=/^SS/i.test(ex.name||'');
   var sub=ex._swapped?('was: '+ex._from):(ex._from===''?'new exercise':(ex._searchFailed?'kept — no fresh variation found':'kept'));
   var subCol=ex._swapped?'rgba(67,217,162,0.6)':'rgba(180,200,230,0.35)';
@@ -3433,9 +3445,9 @@ function _genDayRowsHtml(exs){
   while(i<exs.length){
     var isSS=/^SS/i.test(exs[i].name||'');
     if(isSS){
-      var m=(exs[i].name||'').match(/^SS(\w*):/i),g=m?m[1]:'';
+      var m=(exs[i].name||'').match(_SS_TAG_RE),g=m?m[1]:'';
       var rows='';
-      while(i<exs.length&&/^SS/i.test(exs[i].name||'')&&(exs[i].name||'').match(/^SS(\w*):/i)[1]===g){rows+=_genExRowView(exs[i]);i++;}
+      while(i<exs.length&&/^SS/i.test(exs[i].name||'')&&(exs[i].name||'').match(_SS_TAG_RE)[1]===g){rows+=_genExRowView(exs[i]);i++;}
       html+='<div style="border:2px solid rgba(255,140,71,0.35);border-radius:12px;margin-bottom:8px;background:rgba(255,140,71,0.03);overflow:hidden;padding:8px;">'
         +'<div style="padding:0 4px 6px;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--warn);">⊕ Superset</div>'
         +rows
@@ -3509,7 +3521,7 @@ function _applyGenProgram(){
   if(!confirm('Replace '+c.first+'\'s current program with this generated one? You can edit it after — logged history is kept.'))return;
   var prog=JSON.parse(JSON.stringify(window._genProgram));
   // Drop any blank rows left from editing, then strip preview-only helper fields.
-  prog.days.forEach(function(d){d.exercises=(d.exercises||[]).filter(function(ex){return (ex.name||'').replace(/^SS\w+:\s*/i,'').trim();});});
+  prog.days.forEach(function(d){d.exercises=(d.exercises||[]).filter(function(ex){return (ex.name||'').replace(_SS_TAG_RE,'').trim();});});
   prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){delete ex._from;delete ex._swapped;});});
   prog.started_at=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   db.updateClient(c.id,{structured_program:prog}).then(function(){
@@ -3895,14 +3907,14 @@ function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var n
 function _parseExForEdit(arr){
   var list=_coalesceSsGroups(arr||[]);
   var counts={};
-  list.forEach(function(ex){var m=(ex.name||'').match(/^SS(\w+):\s*/i);if(m)counts[m[1]]=(counts[m[1]]||0)+1;});
+  list.forEach(function(ex){var m=(ex.name||'').match(_SS_TAG_RE);if(m)counts[m[1]]=(counts[m[1]]||0)+1;});
   var map={},next=1;
   return list.map(function(ex){
-    var m=(ex.name||'').match(/^SS(\w+):\s*/i);
+    var m=(ex.name||'').match(_SS_TAG_RE);
     var g=m?m[1]:null;
     var realGroup=g&&counts[g]>1;
     if(realGroup&&!map[g])map[g]=next++;
-    return {name:(ex.name||'').replace(/^SS\w+:\s*/i,''),prescription:ex.prescription||'',load:ex.load||'',ss:realGroup?map[g]:null};
+    return {name:(ex.name||'').replace(_SS_TAG_RE,''),prescription:ex.prescription||'',load:ex.load||'',ss:realGroup?map[g]:null};
   });
 }
 function _updateEditThumb(i){
@@ -4147,7 +4159,7 @@ function _demoMuscleGroup(m){
 }
 // Identity of an exercise = the demo it resolves to (so naming variants collapse), else its normalized name.
 function _exIdentity(name){
-  var n=(name||'').replace(/^SS\w+:\s*/i,'').trim();if(!n)return '';
+  var n=(name||'').replace(_SS_TAG_RE,'').trim();if(!n)return '';
   var m=(typeof _exDbMatch==='function')?_exDbMatch(n):null;
   return m?('id:'+m.id):('nm:'+_normExName(n));
 }
@@ -4159,7 +4171,7 @@ function _ensureLibraryHas(names){
   var have={};library.forEach(function(e){var id=_exIdentity(e.name);if(id)have[id]=1;});
   var toAdd=[],seen={};
   names.forEach(function(raw){
-    var n=(raw||'').replace(/^SS\w+:\s*/i,'').trim();if(!n)return;
+    var n=(raw||'').replace(_SS_TAG_RE,'').trim();if(!n)return;
     var id=_exIdentity(n);if(!id||have[id]||seen[id])return;seen[id]=1;
     var m=(typeof _exDbMatch==='function')?_exDbMatch(n):null;
     toAdd.push({name:n,muscle_group:_demoMuscleGroup(m)||'Other',equipment:(m&&m.equipment)?_cap(m.equipment):''});
@@ -4399,7 +4411,7 @@ function updateLogWorkout(clientId){
       const isSuperset=/^SS/i.test(ex.name);
       const ssGroup=exSSGroup[ei]||null;
       const ssLabel=ssGroup&&!ssGroup.startsWith('_r')?'Superset '+ssGroup:'Superset';
-      const displayName=ex.name.replace(/^SS\w+:\s*/i,'');
+      const displayName=ex.name.replace(_SS_TAG_RE,'');
       const isFirst=ssGroup&&ssBounds[ssGroup].first===ei;
       const isLast=ssGroup&&ssBounds[ssGroup].last===ei;
       if(isFirst){
@@ -4623,10 +4635,10 @@ async function confirmLogSession(){
           const key=ex.name.toLowerCase().replace(/\s+/g,'_');
           const prevE=c.exercise_history&&c.exercise_history[key]?_bestE1RM(c.exercise_history[key].reps,c.exercise_history[key].weight):0;
           const newE=_bestE1RM(wr,wt),isPB=newE>0&&newE>prevE+0.01;
-          if(isPB)coachPBs.push(ex.name.replace(/^SS\w+:\s*/i,''));
+          if(isPB)coachPBs.push(ex.name.replace(_SS_TAG_RE,''));
           newHistory[key]={reps:wr||'',weight:wt||'',date:dateStr,pb:isPB?(wt||''):(c.exercise_history&&c.exercise_history[key]&&c.exercise_history[key].pb?c.exercise_history[key].pb:'')};
           workout.push({...(workout.length===0?{day:day.name}:{}),name:ex.name,reps:wr||'',weight:wt||''});
-          exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(/^SS\w+:\s*/i,''),reps:wr||'',weight:wt||'',day_name:day.name});
+          exLogs.push({client_id:c.id,session_date:dateStr,exercise_name:ex.name.replace(_SS_TAG_RE,''),reps:wr||'',weight:wt||'',day_name:day.name});
         }
       });}
     }
@@ -5124,7 +5136,7 @@ function _showSessionDetail(s, histCtx){
     ov.addEventListener('touchend',function(e){ if(!_sdDrag)return; var dy=e.changedTouches[0].clientY-_sdy; if(dy>80){ ov.style.transition='transform .26s ease,opacity .26s ease'; ov.style.transform='translateY(100%)'; ov.style.opacity='0'; setTimeout(function(){var o=document.getElementById('sess-detail-ov');if(o)o.remove();},260); } else { ov.style.transition='transform .2s ease,opacity .2s ease'; ov.style.transform=''; ov.style.opacity=''; } _sdDrag=false; },{passive:true});
   }
   const rows=workout.length?workout.map(ex=>{
-    const disp=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+    const disp=(ex.name||'').replace(_SS_TAG_RE,'');
     const isSS=/^SS/i.test(ex.name||'');
     return `<div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid rgba(100,160,255,0.07);${isSS?'border-left:3px solid rgba(255,140,71,0.55);padding-left:12px;':''}">
       ${_exThumbHTML(ex.name||'',disp,44,histCtx)}
@@ -5172,7 +5184,7 @@ window._repeatWorkoutPortal=function(workout){
   workout.forEach(function(ex){
     window._addCustomExRow();
     var id=window._customExN-1;
-    var ni=document.getElementById('cex-name-'+id);if(ni)ni.value=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+    var ni=document.getElementById('cex-name-'+id);if(ni)ni.value=(ex.name||'').replace(_SS_TAG_RE,'');
     var ri=document.getElementById('cex-reps-'+id);if(ri)ri.value=ex.reps||'';
     var wi=document.getElementById('cex-wt-'+id);if(wi)wi.value=ex.weight||'';
     if(ni&&typeof _syncRowThumb==='function')_syncRowThumb(ni);
@@ -5190,7 +5202,7 @@ window._repeatWorkoutCoach=function(cid,workout){
     workout.forEach(function(ex){
       addAdHocExercise();
       var id=window._adhocCount-1;
-      var ni=document.getElementById('an-adhoc-'+id);if(ni)ni.value=(ex.name||'').replace(/^SS\w+:\s*/i,'');
+      var ni=document.getElementById('an-adhoc-'+id);if(ni)ni.value=(ex.name||'').replace(_SS_TAG_RE,'');
       var ri=document.getElementById('wr-adhoc-'+id);if(ri)ri.value=ex.reps||'';
       var wi=document.getElementById('wt-adhoc-'+id);if(wi)wi.value=ex.weight||'';
       if(ni&&typeof _syncRowThumb==='function')_syncRowThumb(ni);
@@ -5210,7 +5222,7 @@ function openEditSession(cid, sessionId) {
   if (!ov) { ov = document.createElement('div'); ov.id = 'edit-sess-ov'; document.body.appendChild(ov); }
   ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';
   const rows = workout.length ? workout.map((ex, i) => {
-    const displayName = ex.name.replace(/^SS\w+:\s*/i,'');
+    const displayName = ex.name.replace(_SS_TAG_RE,'');
     const isSS = /^SS/i.test(ex.name);
     return `<div style="padding:14px 0;border-bottom:1px solid rgba(100,160,255,0.07);">
       ${isSS?`<div style="font-size:9px;color:rgba(126,200,255,0.4);letter-spacing:1.5px;font-weight:700;margin-bottom:4px;">SUPERSET</div>`:''}
@@ -5271,7 +5283,7 @@ async function saveEditSession() {
         .filter(l => l.id != null && (dayName ? l.day_name === dayName : (l.day_name === 'Custom Workout' || l.day_name === 'Ad-hoc' || !l.day_name)))
         .map(l => l.id);
     } catch(e) { oldIds = []; }
-    const newRows = updatedWorkout.filter(ex => ex.reps || ex.weight).map(ex => ({client_id:cid, session_date:date, exercise_name:ex.name.replace(/^SS\w+:\s*/i,''), reps:ex.reps||'', weight:ex.weight||'', day_name:dayName}));
+    const newRows = updatedWorkout.filter(ex => ex.reps || ex.weight).map(ex => ({client_id:cid, session_date:date, exercise_name:ex.name.replace(_SS_TAG_RE,''), reps:ex.reps||'', weight:ex.weight||'', day_name:dayName}));
     if (newRows.length) await sb('POST','exercise_logs',newRows);
     if (oldIds.length) { try { await sb('DELETE','exercise_logs',null,'?id=in.('+oldIds.join(',')+')'); } catch(e){} }
     // Refresh in-memory sessions
@@ -6932,7 +6944,7 @@ function startClientPortal(id) {
           return '<div style="background:' + bg + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
               '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">' +
-                '<div style="font-size:14px;font-weight:600;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.replace(/^SS\w+:\s*/i,'') + '</div>' +
+                '<div style="font-size:14px;font-weight:600;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ex.replace(_SS_TAG_RE,'') + '</div>' +
                 (highlight ? '<div style="background:rgba(192,132,252,0.2);border:1px solid rgba(192,132,252,0.4);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;color:#c084fc;white-space:nowrap;">NEW PR</div>' : '') +
               '</div>' +
               '<div style="font-size:11px;color:rgba(180,200,230,0.35);">' +
@@ -7551,7 +7563,7 @@ function startClientPortal(id) {
     for (var i = 0; i < exercises.length; i++) {
       var ex = exercises[i];
       var isSuperset = /^SS/i.test(ex.name || '');
-      var name = (ex.name || '').replace(/^SS\w+:\s*/i, '');
+      var name = (ex.name || '').replace(_SS_TAG_RE, '');
       var histKey = (ex.name || '').toLowerCase().replace(/\s+/g,'_');
       var lastData = window._portalHistory && window._portalHistory[histKey];
       var ssGroupMatch = (ex.name || '').match(/^SS(\d+)/i);
@@ -7631,7 +7643,7 @@ function startClientPortal(id) {
           var prevE = window._portalHistory && window._portalHistory[key] ? _bestE1RM(window._portalHistory[key].reps, window._portalHistory[key].weight) : 0;
           var newE = _bestE1RM(reps, weight);
           var isPB = newE > 0 && newE > prevE + 0.01;
-          if (isPB) newPBs.push(exercises[i].name.replace(/^SS\w+:\s*/i, ''));
+          if (isPB) newPBs.push(exercises[i].name.replace(_SS_TAG_RE, ''));
           workout.push({name: exercises[i].name, reps: reps, weight: weight, pb: isPB});
           newHistory[key] = {reps: reps, weight: weight, date: dateStr, pb: isPB ? weight : (window._portalHistory && window._portalHistory[key] && window._portalHistory[key].pb ? window._portalHistory[key].pb : '')};
         }
@@ -7685,7 +7697,7 @@ function startClientPortal(id) {
           '</div>' +
         '</div>';
 
-      var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(/^SS\w+:\s*/i,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
+      var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(_SS_TAG_RE,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
       // Two-stage idempotent save: each stage is guarded by its own flag so a Retry after a partial
       // failure NEVER duplicates the session and never skips the client update. In-memory state and
       // the draft are only touched after the corresponding write actually persisted.
