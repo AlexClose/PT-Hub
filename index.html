@@ -363,6 +363,13 @@ display:flex;align-items:center;justify-content:space-between;
 .mchip.sel{background:#2563eb;border-color:#2563eb;color:#fff;}
 .ex-drag-handle{cursor:grab;color:rgba(180,200,230,0.28);font-size:20px;padding:6px 8px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;flex-shrink:0;line-height:1;align-self:center;}
 .ex-drag-handle:active{cursor:grabbing;}
+/* Pair-up mode: select two standalone exercises and combine them into a superset */
+.ex-pair-check{flex-shrink:0;align-self:center;width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,140,71,0.5);background:rgba(255,140,71,0.06);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.ex-pair-check.sel{background:var(--warn,#ff8c47);border-color:var(--warn,#ff8c47);}
+.edit-ex-row.pair-sel{border-color:rgba(255,140,71,0.6);background:rgba(255,140,71,0.05);}
+.pair-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,140,71,0.08);border:1px solid rgba(255,140,71,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.pair-mode-bar .pm-msg{flex:1;min-width:140px;font-size:12px;color:#ffb380;font-weight:600;}
+#editExerciseList.pairing .ex-drag-handle{display:none;}
 
 /* ── LOADING ── */
 .loading{text-align:center;padding:48px 20px;color:var(--muted);}
@@ -897,6 +904,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
     <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
     <div id="editExerciseList"></div>
+    <div id="exPairTrigger"></div>
     <div id="dayGapNudge"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
       <button class="btn btn-secondary btn-sm" onclick="addExerciseToDay()">+ Add Exercise</button>
@@ -3481,7 +3489,7 @@ function editGenDayExercises(di){
   var day=prog.days[di];if(!day)return;
   window._genEditingDayIndex=di;
   editingClientId=window._genClientId;
-  editingExercises=_parseExForEdit(day.exercises||[]);
+  _exExitPairState();editingExercises=_parseExForEdit(day.exercises||[]);
   document.getElementById('editProgTitle').textContent='Edit — '+day.name;
   window._editProgSaveMode='gen';
   // The preview sheet sits above editProgramModal's z-index — remove it while editing so the
@@ -3538,7 +3546,7 @@ function openEditProgramDay(clientId,dayIndex){
   const c=clients.find(x=>x.id===clientId);if(!c||!c.structured_program)return;
   editingClientId=clientId;editingDayIndex=dayIndex;
   const day=c.structured_program.days[dayIndex];
-  editingExercises=_parseExForEdit(day.exercises);
+  _exExitPairState();editingExercises=_parseExForEdit(day.exercises);
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   renderEditExerciseList();openModal('editProgramModal');
 }
@@ -3554,7 +3562,13 @@ function _prescChipHtml(i,ex){
 }
 function _editExRowHtml(i){
   var ex=editingExercises[i];
-  return '<div class="edit-ex-row" data-idx="'+i+'">'+
+  // In "pair up" mode, standalone exercises get a tappable select circle so the coach can pick two
+  // (or more) to combine into a superset. Exercises already in a superset aren't selectable.
+  var pairMode=window._exPairMode&&!ex.ss;
+  var selected=pairMode&&(window._exPairSel||[]).indexOf(i)>=0;
+  var selHtml=pairMode?'<div class="ex-pair-check'+(selected?' sel':'')+'" onclick="_exPairToggle('+i+')" title="Select to pair">'+(selected?'✓':'')+'</div>':'';
+  return '<div class="edit-ex-row'+(selected?' pair-sel':'')+'" data-idx="'+i+'">'+
+    selHtml+
     '<div class="ex-drag-handle" title="Drag to reorder">⠿</div>'+
     _exThumbHTML(ex.name||'',ex.name||'',40)+
     '<div style="flex:1;min-width:0;">'+
@@ -3590,7 +3604,16 @@ function _applyPrescSuggestion(i){
 function renderEditExerciseList(){
   var list=document.getElementById('editExerciseList');if(!list)return;
   list._dragSetup=false;
+  list.classList.toggle('pairing',!!window._exPairMode);
   var html='',i=0;
+  if(window._exPairMode){
+    var n=(window._exPairSel||[]).length;
+    html+='<div class="pair-mode-bar">'+
+      '<div class="pm-msg">'+(n<2?'Tap 2 exercises to combine into a superset':n+' selected — combine into a superset?')+'</div>'+
+      '<button class="lib-btn" onclick="_exCancelPairMode()">Cancel</button>'+
+      '<button class="lib-btn" onclick="_exCombineSelected()" style="color:#ffb380;border-color:rgba(255,140,71,0.5);'+(n<2?'opacity:0.4;pointer-events:none;':'')+'">⊕ Combine ('+n+')</button>'+
+    '</div>';
+  }
   while(i<editingExercises.length){
     if(editingExercises[i].ss){
       var g=editingExercises[i].ss,rows='';
@@ -3609,6 +3632,47 @@ function renderEditExerciseList(){
   setupExDrag();
   try{_thumbsRefresh();}catch(e){}
   try{_renderDayGapNudge();}catch(e){}
+  try{_renderPairTrigger();}catch(e){}
+}
+// The "combine existing exercises" entry point — only worth offering once there are at least two
+// standalone (non-superset) exercises in the day to actually pair. Hidden while already pairing
+// (the Combine/Cancel bar at the top of the list takes over then).
+function _renderPairTrigger(){
+  var el=document.getElementById('exPairTrigger');if(!el)return;
+  if(window._exPairMode){el.innerHTML='';return;}
+  var singles=editingExercises.filter(function(e){return !e.ss;}).length;
+  el.innerHTML=singles>=2
+    ?'<button class="lib-btn" onclick="_exStartPairMode()" style="width:100%;margin-top:8px;padding:9px;color:#ffb380;border-color:rgba(255,140,71,0.3);">⊕ Combine two exercises into a superset</button>'
+    :'';
+}
+function _exExitPairState(){window._exPairMode=false;window._exPairSel=[];}
+function _exStartPairMode(){
+  if(editingExercises.filter(function(e){return !e.ss;}).length<2){toast('Need at least two single exercises to pair');return;}
+  window._exPairMode=true;window._exPairSel=[];renderEditExerciseList();
+}
+function _exCancelPairMode(){_exExitPairState();renderEditExerciseList();}
+function _exPairToggle(i){
+  if(!window._exPairSel)window._exPairSel=[];
+  var pos=window._exPairSel.indexOf(i);
+  if(pos>=0)window._exPairSel.splice(pos,1);else window._exPairSel.push(i);
+  renderEditExerciseList();
+}
+// Combine the selected standalone exercises into one new superset group: assign them a fresh group
+// id and move them to be contiguous, anchored at the position of the first-selected one (so a group
+// pulled from scattered rows lands where the coach started). renderEditExerciseList then draws them
+// inside one orange superset wrapper.
+function _exCombineSelected(){
+  var sel=(window._exPairSel||[]).filter(function(i){return editingExercises[i]&&!editingExercises[i].ss;});
+  sel.sort(function(a,b){return a-b;});
+  if(sel.length<2){toast('Pick at least two single exercises');return;}
+  var g=_nextSsGroup();
+  var items=sel.map(function(i){var e=editingExercises[i];e.ss=g;return e;});
+  var firstIdx=sel[0];
+  sel.slice().sort(function(a,b){return b-a;}).forEach(function(i){editingExercises.splice(i,1);});
+  editingExercises.splice.apply(editingExercises,[firstIdx,0].concat(items));
+  _exExitPairState();
+  renderEditExerciseList();
+  toast('Superset created ✓');
 }
 // A quiet, inline "you might be missing X" strip — not a popup, just sits below the exercise list
 // once there's enough of a day built to make the observation meaningful (3+ exercises). Only checks
@@ -3892,8 +3956,8 @@ function _syncRowThumb(inputEl){
   _hydrateExThumbs();
 }
 function _nextSsGroup(){var mx=0;editingExercises.forEach(function(e){if(e.ss&&e.ss>mx)mx=e.ss;});return mx+1;}
-function addSupersetToDay(){var g=_nextSsGroup();editingExercises.push({name:'',prescription:'',load:'',ss:g});editingExercises.push({name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
-function addToSuperset(g){var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
+function addSupersetToDay(){_exExitPairState();var g=_nextSsGroup();editingExercises.push({name:'',prescription:'',load:'',ss:g});editingExercises.push({name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
+function addToSuperset(g){_exExitPairState();var last=-1;for(var i=0;i<editingExercises.length;i++){if(editingExercises[i].ss===g)last=i;}if(last<0)return;editingExercises.splice(last+1,0,{name:'',prescription:'',load:'',ss:g});renderEditExerciseList();}
 // Encode superset groups back into SS-prefixed names (renumbered sequentially) for storage.
 function _encodeEx(arr){var map={},next=1;return (arr||[]).map(function(e){var nm=(e.name||'').trim();if(e.ss){if(!map[e.ss])map[e.ss]=next++;return {name:'SS'+map[e.ss]+': '+nm,prescription:e.prescription||'',load:e.load||''};}return {name:nm,prescription:e.prescription||'',load:e.load||''};});}
 // Parse stored exercises (SS-prefixed names) into the editor model with an .ss group marker.
@@ -4024,6 +4088,7 @@ function setupExDrag(){
   if(!list||list._dragSetup)return;
   list._dragSetup=true;
   list.addEventListener('pointerdown',function(e){
+    if(window._exPairMode)return; // selection-by-tap takes over; reordering is disabled while pairing
     var handle=e.target.closest('.ex-drag-handle');
     if(!handle)return;
     e.preventDefault();
@@ -4142,6 +4207,7 @@ function _setupBlockDrag(list){
 // that tag and found only one member. Demote the partner back to a plain exercise right away
 // instead of leaving a stale tag for something else to trip over later.
 function removeEx(i){
+  _exExitPairState();
   var removed=editingExercises[i];
   editingExercises.splice(i,1);
   if(removed&&removed.ss){
@@ -4150,7 +4216,7 @@ function removeEx(i){
   }
   renderEditExerciseList();
 }
-function addExerciseToDay(){editingExercises.push({name:'',prescription:'',load:'',ss:null});renderEditExerciseList();}
+function addExerciseToDay(){_exExitPairState();editingExercises.push({name:'',prescription:'',load:'',ss:null});renderEditExerciseList();}
 // Derive the app muscle group (Chest/Back/Legs/...) from a matched demo's target muscles.
 function _demoMuscleGroup(m){
   if(!m)return '';
@@ -5087,7 +5153,7 @@ function deleteBuildDay(i){buildingDays.splice(i,1);renderBuildDayList();}
 function editBuildDayExercises(dayIdx){
   buildingDayEditing=dayIdx;
   const day=buildingDays[dayIdx];
-  editingExercises=_parseExForEdit(day.exercises||[]);
+  _exExitPairState();editingExercises=_parseExForEdit(day.exercises||[]);
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
   window._editProgSaveMode='build';
   renderEditExerciseList();openModal('editProgramModal');
