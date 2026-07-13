@@ -3396,14 +3396,18 @@ function _buildGenProgram(clientId){
       var ssm=(ex.name||'').match(_SS_TAG_RE),pfx=ssm?('SS'+ssm[1]+': '):'';
       var clean=(ex.name||'').replace(_SS_TAG_RE,'');
       var out=Object.assign({},ex);
-      // A client's MAIN lift is fine to keep program to program (that's normal programming, not
-      // a rut) — so the lead slot swaps less often. Accessories get a strong default refresh rate;
-      // the earlier version also suppressed swaps for any "recognizable" exercise (via
-      // _genCommonIds), which was too broad — it caught ordinary accessories like Lat Raise or
-      // Reverse Fly, not just deliberate anchors, and ended up keeping almost everything. Rep
-      // scheme changes regardless of whether the exercise itself swaps (below).
+      // What's worth KEEPING across programs is the compound anchor lifts (squat/bench/deadlift/
+      // row/press) — those you progress block to block, that's programming, not a rut. Accessories
+      // are exactly where staleness is the problem, so those ALWAYS refresh. Keeping by mechanic
+      // (not by list position + a blanket 25% keep) is what stops random accessories from sticking
+      // around and forcing the coach to hand-replace them. The rep/set scheme still rotates on a
+      // kept lift (below), so a kept compound still comes back with a fresh scheme.
+      //   • compound → mostly kept, with an occasional swap so the big lift still varies sometimes
+      //   • isolation/accessory → always attempt a swap; only kept if the dataset genuinely has
+      //     no alternative left (a real "no fresh variation found", surfaced honestly in the preview)
       var isLead=ei===0;
-      var swapChance=isLead?0.4:0.75;
+      var isCompound=_exMechanic(clean)==='compound';
+      var swapChance=isCompound?0.3:1;
       var attempted=Math.random()<swapChance;
       var alt=attempted?_altExerciseFor(clean,used,isLead):null;
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
