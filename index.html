@@ -3396,24 +3396,20 @@ function _buildGenProgram(clientId){
       var ssm=(ex.name||'').match(_SS_TAG_RE),pfx=ssm?('SS'+ssm[1]+': '):'';
       var clean=(ex.name||'').replace(_SS_TAG_RE,'');
       var out=Object.assign({},ex);
-      // What's worth KEEPING across programs is the compound anchor lifts (squat/bench/deadlift/
-      // row/press) — those you progress block to block, that's programming, not a rut. Accessories
-      // are exactly where staleness is the problem, so those ALWAYS refresh. Keeping by mechanic
-      // (not by list position + a blanket 25% keep) is what stops random accessories from sticking
-      // around and forcing the coach to hand-replace them. The rep/set scheme still rotates on a
-      // kept lift (below), so a kept compound still comes back with a fresh scheme.
-      //   • compound → mostly kept, with an occasional swap so the big lift still varies sometimes
-      //   • isolation/accessory → always attempt a swap; only kept if the dataset genuinely has
-      //     no alternative left (a real "no fresh variation found", surfaced honestly in the preview)
+      // Keep-across-programs was removed at the user's request — EVERY exercise is swapped for a
+      // fresh variation on the same muscle + mechanic. (If they later want to keep a specific lift,
+      // they just leave it out of the swap by hand-editing the preview.) The only time an exercise
+      // stays is when the dataset genuinely has no other option for it:
+      //   1. first try honoring the cross-day `used` set, so the new program has no internal repeats;
+      //   2. if that exhausts the pool (common muscle groups run dry late in a big program), retry
+      //      IGNORING `used` — a cross-day repeat is still better than silently keeping the original,
+      //      which is exactly what used to make it look like it "kept a lot";
+      //   3. only if BOTH come back empty (an exercise we can't even match to the dataset) is it
+      //      kept, shown honestly as "no fresh variation found".
       var isLead=ei===0;
-      var isCompound=_exMechanic(clean)==='compound';
-      var swapChance=isCompound?0.3:1;
-      var attempted=Math.random()<swapChance;
-      var alt=attempted?_altExerciseFor(clean,used,isLead):null;
+      var alt=_altExerciseFor(clean,used,isLead)||_altExerciseFor(clean,{},isLead);
       if(alt){used[_exIdentity(alt)]=1;out.name=pfx+alt;out._from=clean;out._swapped=true;}
-      // _searchFailed only true when a swap was actually attempted and genuinely found nothing —
-      // distinct from "kept on purpose", which the preview should never describe as a failure.
-      else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;out._searchFailed=attempted;}
+      else{used[_exIdentity(clean)]=1;out._from=clean;out._swapped=false;out._searchFailed=true;}
       // Vary the rep scheme too, not just the exercise name — regenerating shouldn't just
       // reshuffle names while every prescription stays whatever it always was.
       var sug=_prescSuggestionFor(clientId,(out.name||'').replace(_SS_TAG_RE,''));
