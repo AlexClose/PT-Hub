@@ -3329,7 +3329,10 @@ function _altExerciseFor(origName,used,first){
   var origBase=_exBaseMovement(clean);
   var different=pool.filter(function(e){return _exBaseMovement(e.name)!==origBase;});
   var effectivePool=different.length>=3?different:pool;
-  var top=effectivePool.slice(0,Math.min(first?6:8,effectivePool.length));
+  // Lead slot stays narrow (top 6) so the main lift remains a recognizable compound; accessory slots
+  // draw from a wider band (top 12) for more rotation across regenerates, since the recent-avoid set
+  // above already steers each pass toward genuinely fresh picks.
+  var top=effectivePool.slice(0,Math.min(first?6:12,effectivePool.length));
   var pick=top[Math.floor(Math.random()*top.length)];
   return pick?pick.name:null;
 }
@@ -3388,6 +3391,11 @@ function _buildGenProgram(clientId){
   var prog=JSON.parse(JSON.stringify(c.structured_program));
   var used={};
   prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){var id=_exIdentity(ex.name);if(id)used[id]=1;});});
+  // Also avoid whatever the last couple of Regenerate passes already surfaced, so hitting Regenerate
+  // rotates through fresh exercises instead of re-drawing the same top-scored handful every time. The
+  // two-stage swap below falls back to ignoring `used` when a pool is exhausted, so this can only add
+  // variety — it can never cause a "kept" by starving the pool.
+  (window._genRecent||[]).forEach(function(id){if(id)used[id]=1;});
   prog.days.forEach(function(d){
     d.exercises=(d.exercises||[]).map(function(ex,ei){
       // Rebuild the tag in the canonical "SS<n>: " form (rather than reusing whatever separator
@@ -3420,12 +3428,19 @@ function _buildGenProgram(clientId){
     // (regardless of how the source program happened to be ordered).
     d.exercises=_genOrderDay(d.exercises);
   });
+  // Record this pass's picks so the next Regenerate avoids them. Capped (FIFO) so the avoid-set is
+  // roughly the last ~2 passes — enough to stop immediate repeats without permanently starving the
+  // candidate pool over many regenerates.
+  if(!window._genRecent)window._genRecent=[];
+  prog.days.forEach(function(d){(d.exercises||[]).forEach(function(ex){var id=_exIdentity(ex.name);if(id)window._genRecent.push(id);});});
+  if(window._genRecent.length>80)window._genRecent=window._genRecent.slice(-80);
   prog.started_at=null;
   window._genProgram=prog;
 }
 function generateNextProgram(clientId){
   var c=clients.find(function(x){return x.id===clientId;});if(!c||!c.structured_program)return;
   window._genClientId=clientId;
+  window._genRecent=[]; // fresh avoid-set per client; accumulates across Regenerate taps (below)
   toast('Generating…');
   _loadExDb().then(function(){
     if(!_exDb){alert('Exercise database isn\'t loaded yet (needs an internet connection). Try again in a moment.');return;}
@@ -3727,24 +3742,37 @@ const _PROTOCOL_LIBRARY=[
   {id:'testing',cat:'Recovery & Testing',name:'1RM / Strength Testing Week',ex:'Build up in singles: ~60% → 80% → 90% → 100% of estimate',apply:'1x1 (test)',blurb:'Periodic re-testing recalibrates every percentage-based number in a program. Without it, "70% of max" quietly goes wrong for months.'},
   {id:'isometric',cat:'Recovery & Testing',name:'Isometric Holds',ex:'3 sets of 20-45 second holds at a fixed joint angle',apply:'3x20s hold',blurb:'Timed holds instead of reps. Builds tendon resilience at a specific joint angle — genuinely useful around a nagging issue, not a filler.'},
 ];
-// A small rotation pool used for auto-suggesting a prescription — deliberately excludes 'straight'
-// itself so a suggestion is never just "3x10 again". Deterministic per client+exercise (same pick
-// every time you look at it, not random each render) but varies BETWEEN exercises/clients, and
-// explicitly excludes whatever scheme is already on record so it's never "the same as last time".
-const _PRESC_VARIETY=[
+// Rotation pools for auto-suggesting a prescription — split by mechanic so the scheme actually fits
+// the movement. Nobody does 3×3 face pulls: a low-rep strength/power scheme on an accessory is just
+// wrong, so isolation/accessory work stays in the higher-rep hypertrophy range, and only compound
+// anchors get the heavy low-rep options. Both deliberately exclude a plain 'straight 3x10' so a
+// suggestion is never just "3x10 again", vary BETWEEN exercises/clients (deterministic per
+// client+exercise — same pick every time you look, not random each render), and _prescSuggestionFor
+// additionally drops whatever scheme is already on record so it's never "the same as last time".
+const _PRESC_VARIETY_COMPOUND=[
   {apply:'5x5',label:'5×5 strength'},
+  {apply:'4x6',label:'heavy 4×6'},
   {apply:'12,10,8,6',label:'pyramid'},
   {apply:'3x8 tempo 3-1-1',label:'tempo'},
-  {apply:'3x10 rest-pause',label:'rest-pause'},
-  {apply:'3x3',label:'cluster sets'},
-  {apply:'3x10 + dropset',label:'drop set'},
+  {apply:'5,5,3,3',label:'wave loading'},
+  {apply:'3x8',label:'3×8'},
+];
+const _PRESC_VARIETY_ISO=[
+  {apply:'3x12',label:'hypertrophy'},
+  {apply:'3x15',label:'high-rep'},
+  {apply:'4x12',label:'volume'},
+  {apply:'3x12 rest-pause',label:'rest-pause'},
+  {apply:'3x15 + dropset',label:'drop set'},
+  {apply:'12,12,10',label:'back-off'},
 ];
 function _prescSuggestionFor(clientId,name){
   if(!name)return null;
   const c=clients.find(function(x){return x.id===clientId;});
   const key=name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');
   const last=c&&c.exercise_history&&c.exercise_history[key];
-  let pool=_PRESC_VARIETY;
+  // Compound anchors can take heavy low-rep work; everything else stays in the hypertrophy range.
+  const isCompound=(typeof _exMechanic==='function')&&_exMechanic(name)==='compound';
+  let pool=isCompound?_PRESC_VARIETY_COMPOUND:_PRESC_VARIETY_ISO;
   if(last&&last.reps){
     const lastNorm=String(last.reps).trim();
     const filtered=pool.filter(function(v){return v.apply!==lastNorm;});
