@@ -5180,6 +5180,7 @@ function deleteBuildDay(i){buildingDays.splice(i,1);renderBuildDayList();}
 
 function editBuildDayExercises(dayIdx){
   buildingDayEditing=dayIdx;
+  editingClientId=buildingClientId; // so the 💡 suggestion chip uses THIS client's history, not whoever was edited last (null when building a template — handled gracefully)
   const day=buildingDays[dayIdx];
   _exExitPairState();editingExercises=_parseExForEdit(day.exercises||[]);
   document.getElementById('editProgTitle').textContent=`Edit — ${day.name}`;
