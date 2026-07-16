@@ -564,6 +564,7 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="stats-grid" id="dashStats"></div>
     <div id="dashAlerts"></div>
     <div id="dashInsights"></div>
+    <div id="dashEducation"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:8px;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div>
@@ -2237,6 +2238,155 @@ function computeCoachInsights(){
 
   return insights;
 }
+// ── CONTINUING EDUCATION ──
+// A small daily professional-development feature: a "Learn Today" card on the coach dashboard that
+// surfaces one evidence-based coaching tidbit, tappable through to a full detail page + a browsable
+// library. Content is a hand-curated set of accurate, mainstream sports-science principles with
+// HONEST attributions — deliberately NOT fabricated studies/citations put in real orgs' mouths. If a
+// live, citation-verified research feed is ever wired in, it can replace or augment _CE_LIBRARY.
+// Reading a tidbit in detail auto-logs it to "reviewed this month"; any tidbit can be saved for later.
+const _CE_CATS=[
+  {key:'Strength & Conditioning',color:'#4fa3e8'},
+  {key:'Hypertrophy',color:'#43d9a2'},
+  {key:'Nutrition',color:'#ffb347'},
+  {key:'Recovery',color:'#c084fc'},
+  {key:'Technique & Assessment',color:'#2dd4bf'},
+  {key:'Special Populations',color:'#ff8c47'},
+  {key:'Behavior & Adherence',color:'#f472b6'},
+];
+// Content strings are double-quoted (they contain apostrophes) and contain no literal double-quotes.
+const _CE_LIBRARY=[
+  {id:"progressive-overload",cat:"Strength & Conditioning",title:"Progressive Overload Is the Non-Negotiable",hook:"Adaptation only continues if the demand keeps rising — load, reps, sets, tempo, or density.",body:"Muscle and connective tissue adapt to a stimulus, then stop responding once it becomes routine. Progressive overload means systematically increasing one variable over time — weight, reps, sets, range of motion, tempo, or reduced rest — not just piling on weight every session. Track at least one progressing variable per key lift so you can prove a client is actually advancing, not merely training.",source:"Foundational principle across NSCA and ACSM resistance-training guidance."},
+  {id:"rest-intervals",cat:"Strength & Conditioning",title:"Longer Rests Build More, Not Less",hook:"The old 'keep rest short for growth' idea does not hold for heavy compound work.",body:"For multi-joint strength and hypertrophy work, rest periods around 2 to 3 minutes generally allow more total quality volume than very short rests, because the client can hold load and reps across sets. Cutting rest too short spikes fatigue and shortens the working sets. Reserve very short rests for isolation or metabolic finishers where load is not the priority.",source:"Reflects resistance-training rest-interval research (Schoenfeld and colleagues)."},
+  {id:"autoregulation-rir",cat:"Strength & Conditioning",title:"Autoregulate with RIR Instead of Fixed Percentages",hook:"How a client feels day to day changes what a given load actually costs them.",body:"Reps-in-reserve (RIR) and RPE let you match load to daily readiness rather than locking in a percentage that ignores sleep, stress, and fatigue. Coaching most working sets to leave about 1 to 3 reps in reserve keeps intensity productive while managing fatigue. It is also a simple, teachable self-regulation tool clients can use on their own.",source:"Widely used autoregulation method in strength-and-conditioning practice."},
+  {id:"interference-effect",cat:"Strength & Conditioning",title:"Mind the Interference Effect",hook:"Stacking hard endurance right before lifting can blunt strength and power gains.",body:"When high-volume endurance and strength training compete in the same session or day, strength and power adaptations can be attenuated — the interference effect. It is most pronounced when intense cardio precedes lifting. If a client wants both, separate the sessions when possible, or train the quality that matters most for their goal first while fresh.",source:"Documented in concurrent-training research; consistent with NSCA guidance."},
+  {id:"weekly-volume",cat:"Hypertrophy",title:"Weekly Sets Drive Growth More Than Any Single Session",hook:"Roughly 10 or more hard sets per muscle per week is a useful starting target for most.",body:"Hypertrophy scales with weekly hard-set volume up to an individual ceiling. Many trainees grow well on about 10 to 20 challenging sets per muscle group per week, spread across sessions. Instead of chasing brutal single workouts, count weekly hard sets per muscle and progress that number gradually.",source:"Consistent with resistance-training volume meta-analyses (Schoenfeld and colleagues)."},
+  {id:"rep-range",cat:"Hypertrophy",title:"You Can Build Muscle Across a Wide Rep Range",hook:"Anywhere from about 5 to 30 reps grows muscle — if the set is taken close to failure.",body:"Hypertrophy is not locked to the 8 to 12 zone. Loads from roughly 30 to 85 percent of max can produce similar growth when sets are taken near failure. That gives huge programming flexibility — use heavier reps where joints tolerate load, and higher reps where they do not, without sacrificing growth.",source:"Supported by load-versus-hypertrophy research (Schoenfeld and colleagues)."},
+  {id:"proximity-failure",cat:"Hypertrophy",title:"Effort Matters More Than the Number on the Bar",hook:"Light sets stopped far from failure leave growth on the table.",body:"With lighter loads especially, the stimulus depends on training close to failure — otherwise not enough motor units are recruited. With heavier loads, meaningful recruitment happens earlier, so you can leave a rep or two in reserve. Match effort to load: lighter work has to be pushed harder to count.",source:"Consistent with motor-unit recruitment and training-effort research."},
+  {id:"doms-not-goal",cat:"Hypertrophy",title:"Soreness Is Not a Scorecard",hook:"A workout is not 'better' because a client is wrecked the next day.",body:"Delayed-onset muscle soreness reflects novelty and eccentric stress, not how much muscle was built. Chasing soreness drives unnecessary fatigue and worse consistency. Judge a program by progression over weeks — load, reps, and total volume trending up — not by how sore each session leaves someone.",source:"Well-established in exercise science: DOMS does not equal hypertrophy."},
+  {id:"protein-total",cat:"Nutrition",title:"Protein: Aim for the Evidence-Based Range",hook:"About 1.6 to 2.2 g per kg of bodyweight per day supports muscle for most training clients.",body:"For building or keeping muscle in active people, roughly 1.6 to 2.2 grams of protein per kilogram of bodyweight per day is well supported. Higher intakes are not harmful for healthy kidneys but give diminishing returns. For a client in a fat-loss phase, protein toward the top of that range helps preserve lean mass and blunt hunger.",source:"Reflects the ISSN position stand on protein and exercise."},
+  {id:"protein-distribution",cat:"Nutrition",title:"Spread Protein Across the Day",hook:"Three or four doses of about 0.4 g per kg beat one giant serving.",body:"Muscle protein synthesis responds to per-meal protein up to a point, so spreading intake across 3 to 4 meals of roughly 0.4 g per kg each tends to beat skewing it all to dinner. Each feeding should clear a leucine threshold high enough to trigger the response. Practical cue: anchor every meal around a palm-plus of protein.",source:"Consistent with ISSN protein-timing and distribution guidance."},
+  {id:"energy-balance",cat:"Nutrition",title:"Fat Loss Still Runs on Energy Balance",hook:"No single food or macro unlocks fat loss without an overall deficit.",body:"Bodyweight change is governed by energy balance over time. Diet approaches work mainly because they help a client sustain a deficit — through protein, fiber, food volume, or structure — not through magic. Help clients pick the adherence strategy they can actually maintain, then keep protein high and daily steps up.",source:"Core principle across ACSM and registered-dietitian guidance."},
+  {id:"neat",cat:"Nutrition",title:"NEAT Is the Hidden Lever in Fat Loss",hook:"Daily non-exercise movement can swing energy expenditure more than the workout.",body:"Non-exercise activity thermogenesis — walking, standing, fidgeting, daily movement — varies enormously between people and often dwarfs the calories burned in a single session. It also tends to fall during a diet, stalling progress. Coaching a simple daily step target is frequently higher-yield than tacking on more cardio.",source:"Well-documented in energy-expenditure research."},
+  {id:"sleep",cat:"Recovery",title:"Sleep Is a Performance Enhancer",hook:"Under-sleeping quietly erodes strength, recovery, and appetite control.",body:"Chronic short sleep is linked to reduced strength and power, impaired recovery, worse insulin sensitivity, and increased hunger. For most adults, 7 to 9 hours is the target. When a client stalls despite solid training and nutrition, sleep is often the untreated variable — screen for it before adding more work.",source:"Consistent with sleep-and-performance research and general health guidance."},
+  {id:"deload",cat:"Recovery",title:"Plan Deloads Before You Need Them",hook:"Fatigue masks fitness — a lighter week often reveals new strength.",body:"Accumulated fatigue can hide the fitness a client has built. Periodic lighter weeks — reduced volume and/or intensity — let fatigue clear so adaptations show up. Programming a deload roughly every 4 to 8 weeks, or when performance and motivation dip, keeps progress sustainable and lowers injury risk.",source:"Standard periodization practice in strength-and-conditioning."},
+  {id:"stress-budget",cat:"Recovery",title:"Manage the Stress, Not Just the Session",hook:"Total life stress draws on the same recovery budget as training.",body:"Recovery pulls from one shared budget — training, work, sleep debt, and life stress all draw on it. A program that looks fine on paper can overreach a client going through a hard stretch. Ask about sleep and stress, and be willing to autoregulate volume down when life load is high.",source:"Reflects the general-adaptation and fatigue-management model."},
+  {id:"dynamic-warmup",cat:"Technique & Assessment",title:"Warm Up Dynamically, Save Static Stretching",hook:"Long static holds right before lifting can briefly reduce force output.",body:"Prolonged static stretching immediately before heavy or explosive work can transiently cut strength and power. A dynamic warm-up — movement prep, ramping sets, and mobility specific to the day's lifts — prepares tissue and the nervous system better. Keep longer static stretching for after training or separate sessions if flexibility is a goal.",source:"Consistent with warm-up and stretching research; NSCA-aligned."},
+  {id:"full-rom",cat:"Technique & Assessment",title:"Train Through a Full Range Where You Can",hook:"Loading muscles at longer lengths tends to drive strong growth.",body:"Training through a full, controlled range of motion — especially loading muscle at longer lengths — tends to produce robust hypertrophy and carries strength benefits across the range. Partial-range work has its place for specific goals, but full range should be the default unless pain or structure says otherwise.",source:"Supported by range-of-motion hypertrophy research."},
+  {id:"screen-first",cat:"Technique & Assessment",title:"Screen Before You Load",hook:"A two-minute movement check keeps you from loading a compensation.",body:"A brief movement screen — squat, hinge, press, and single-leg patterns — surfaces restrictions or asymmetries before you load them. Loading a compensation reinforces it and raises injury risk. You do not need a formal battery; a consistent visual check at intake, and periodically after, is enough to guide regressions and progressions.",source:"General best practice in strength-and-conditioning assessment."},
+  {id:"older-power",cat:"Special Populations",title:"Older Adults Should Train Power, Not Just Strength",hook:"Movement speed fades faster than raw strength and predicts real-world function.",body:"With aging, muscle power (force times speed) declines earlier and faster than maximal strength, and it is strongly tied to fall risk and daily function like stairs and getting off the floor. Including intentionally fast concentric reps with manageable, well-coached loads helps preserve that function. Resistance training also supports bone density.",source:"Consistent with ACSM guidance for older adults."},
+  {id:"bone-health",cat:"Special Populations",title:"Lifting Is Frontline for Bone Health",hook:"Mechanical loading is one of the few things that meaningfully builds bone.",body:"Progressive resistance training and weight-bearing loading stimulate bone remodeling and help preserve or improve bone mineral density — especially important for peri- and post-menopausal clients. That is a strong case for strength work beyond aesthetics: it is directly protective against osteoporosis and fracture risk.",source:"Aligned with ACSM and bone-health position statements."},
+  {id:"red-s",cat:"Special Populations",title:"Watch for Underfueling",hook:"Too little energy availability harms performance, hormones, and bone.",body:"Low energy availability — not eating enough to cover training plus basic function — can impair performance, disrupt menstrual and hormonal health, and reduce bone density (Relative Energy Deficiency in Sport). It shows up in driven clients under-eating while over-training. If a client is fatigued, not progressing, and restricting hard, more food may be the intervention.",source:"Reflects the RED-S framework in sports-medicine literature."},
+  {id:"adherence",cat:"Behavior & Adherence",title:"The Best Program Is the One They Will Do",hook:"Consistency on a good plan beats perfection on one they abandon.",body:"Program design matters, but adherence is the real rate-limiter for results. A slightly less optimal plan a client follows consistently will out-produce an ideal plan they quit. Build around their schedule, preferences, and equipment, and cut friction — fewer barriers usually beats more sophistication.",source:"Consistent with behavior-change and adherence research."},
+  {id:"minimum-floor",cat:"Behavior & Adherence",title:"Set a Floor, Not Just a Ceiling",hook:"A tiny non-negotiable minimum protects consistency on bad weeks.",body:"Motivation swings; systems do not. Giving a client a minimum viable session — on your worst days, just do the two main lifts — keeps the habit alive when life gets chaotic. Protecting the streak matters more than any single great workout, because missed weeks are what actually derail progress.",source:"Applied behavior-change practice."},
+  {id:"autonomy-goals",cat:"Behavior & Adherence",title:"Tie Training to What They Actually Value",hook:"Personal, intrinsic goals sustain effort far longer than ones you impose.",body:"Adherence is stronger when clients connect training to outcomes they personally care about — playing with grandkids, hiking pain-free, feeling capable — rather than numbers you assign. Give them some autonomy in exercise choice where it does not compromise the plan; ownership drives long-term consistency.",source:"Grounded in self-determination theory and motivation research."},
+];
+// Today's featured entry — deterministic by calendar day so it is stable all day, and rotates through
+// the whole library before repeating. (Swap the divisor to ~43200000 for a twice-daily rotation.)
+function _ceTodayEntry(){if(!_CE_LIBRARY.length)return null;return _CE_LIBRARY[Math.floor(Date.now()/86400000)%_CE_LIBRARY.length];}
+function _ceEntry(id){return _CE_LIBRARY.find(function(e){return e.id===id;});}
+function _ceCatColor(cat){var c=_CE_CATS.find(function(x){return x.key===cat;});return c?c.color:'#7ec8ff';}
+// Local-storage state: saved bookmarks + a reviewed-this-month log (keyed YYYY-M → [ids]).
+function _ceGet(k,def){try{var v=JSON.parse(localStorage.getItem(k));return v||def;}catch(e){return def;}}
+function _ceSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function _ceSavedIds(){return _ceGet('bm_ce_saved',[]);}
+function _ceIsSaved(id){return _ceSavedIds().indexOf(id)>=0;}
+function _ceToggleSave(id){var s=_ceSavedIds();var i=s.indexOf(id);if(i>=0)s.splice(i,1);else s.push(id);_ceSet('bm_ce_saved',s);}
+function _ceMonthKey(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1);}
+function _ceMarkReviewed(id){var log=_ceGet('bm_ce_reviewed',{}),m=_ceMonthKey();if(!log[m])log[m]=[];if(log[m].indexOf(id)<0){log[m].push(id);_ceSet('bm_ce_reviewed',log);}}
+function _ceReviewedThisMonth(){return (_ceGet('bm_ce_reviewed',{})[_ceMonthKey()]||[]).length;}
+// Dashboard "Learn Today" card.
+function _ceHomeCardHtml(){
+  var e=_ceTodayEntry();if(!e)return '';
+  var col=_ceCatColor(e.cat),reviewed=_ceReviewedThisMonth();
+  return '<div style="background:rgba(16,22,29,0.4);border:1px solid var(--border2);border-radius:14px;padding:14px 16px;margin-bottom:16px;">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);">📚 Learn Today</div>'
+      +'<div onclick="openCELibrary()" style="cursor:pointer;font-size:11px;color:rgba(126,200,255,0.6);font-weight:600;">Library ›</div>'
+    +'</div>'
+    +'<div onclick="showCEDetail(\''+e.id+'\')" style="cursor:pointer;">'
+      +'<div style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:'+col+';background:'+col+'1e;border-radius:6px;padding:3px 8px;margin-bottom:8px;">'+e.cat+'</div>'
+      +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:16px;color:#fff;line-height:1.25;margin-bottom:5px;">'+e.title+'</div>'
+      +'<div style="font-size:13px;color:rgba(232,237,245,0.7);line-height:1.5;margin-bottom:10px;">'+e.hook+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+        +'<span style="font-size:12px;font-weight:700;color:'+col+';">Read more →</span>'
+        +(reviewed>0?'<span style="font-size:10px;color:rgba(180,200,230,0.4);">'+reviewed+' reviewed this month</span>':'')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+function _ceSheetEl(){var ov=document.getElementById('ce-sheet');if(!ov){ov=document.createElement('div');ov.id='ce-sheet';document.body.appendChild(ov);}ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(5,10,18,0.97);overflow-y:auto;display:flex;flex-direction:column;';return ov;}
+function closeCE(){var ov=document.getElementById('ce-sheet');if(ov)ov.remove();var el=document.getElementById('dashEducation');if(el){try{el.innerHTML=_ceHomeCardHtml();}catch(e){}}}
+function _ceListRowHtml(e,col){
+  return '<div onclick="showCEDetail(\''+e.id+'\')" style="padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;">'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;color:#fff;line-height:1.3;">'+e.title+'</div>'
+      +'<div style="font-size:11.5px;color:rgba(180,200,230,0.5);line-height:1.45;margin-top:3px;">'+e.hook+'</div>'
+    +'</div>'
+    +(_ceIsSaved(e.id)?'<span style="color:'+col+';font-size:14px;flex-shrink:0;">★</span>':'')
+    +'<span style="color:rgba(180,200,230,0.3);flex-shrink:0;font-size:18px;">›</span>'
+  +'</div>';
+}
+function _ceFeaturedHtml(e){
+  var col=_ceCatColor(e.cat);
+  return '<div onclick="showCEDetail(\''+e.id+'\')" style="cursor:pointer;background:rgba(16,22,29,0.5);border:1px solid '+col+'40;border-radius:14px;padding:16px;margin-bottom:20px;">'
+    +'<div style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:'+col+';background:'+col+'1e;border-radius:6px;padding:3px 8px;margin-bottom:9px;">'+e.cat+'</div>'
+    +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;line-height:1.25;margin-bottom:6px;">'+e.title+'</div>'
+    +'<div style="font-size:13px;color:rgba(232,237,245,0.7);line-height:1.5;margin-bottom:10px;">'+e.hook+'</div>'
+    +'<span style="font-size:12px;font-weight:700;color:'+col+';">Read more →</span>'
+  +'</div>';
+}
+function openCELibrary(){
+  var ov=_ceSheetEl(),today=_ceTodayEntry(),reviewed=_ceReviewedThisMonth();
+  var savedItems=_ceSavedIds().map(_ceEntry).filter(Boolean);
+  var cats=_CE_CATS.map(function(cat){
+    var items=_CE_LIBRARY.filter(function(p){return p.cat===cat.key;});
+    if(!items.length)return '';
+    return '<div class="muscle-group">'
+      +'<div class="muscle-header" onclick="this.nextElementSibling.classList.toggle(\'open\')" style="border-left:3px solid '+cat.color+'">'
+        +'<div style="display:flex;align-items:center;gap:8px"><div class="muscle-dot" style="background:'+cat.color+'"></div><span style="color:'+cat.color+'">'+cat.key+'</span><span class="muscle-count">'+items.length+'</span></div>'
+        +'<span style="color:var(--muted);font-size:12px">▼</span>'
+      +'</div>'
+      +'<div class="muscle-body">'+items.map(function(e){return _ceListRowHtml(e,cat.color);}).join('')+'</div>'
+    +'</div>';
+  }).join('');
+  var savedHtml=savedItems.length
+    ?'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:4px 0 10px;">★ Saved</div>'
+      +'<div style="border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:20px;">'+savedItems.map(function(e){return _ceListRowHtml(e,_ceCatColor(e.cat));}).join('')+'</div>'
+    :'';
+  ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'
+    +'<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:calc(16px + env(safe-area-inset-top,0px)) 0 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:16px;">'
+      +'<button onclick="closeCE()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">&times;</button>'
+      +'<div style="flex:1;"><div style="font-family:Syne,sans-serif;font-weight:800;font-size:17px;color:#fff;">Continuing Education</div><div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">'+reviewed+' topic'+(reviewed===1?'':'s')+' reviewed this month</div></div>'
+    +'</div>'
+    +(today?('<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:10px;">Today</div>'+_ceFeaturedHtml(today)):'')
+    +savedHtml
+    +'<div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin:4px 0 10px;">All Topics</div>'
+    +cats
+    +'<div style="margin-top:24px;font-size:10.5px;color:rgba(180,200,230,0.3);line-height:1.6;">Evidence-based summaries for professional development. Verify specifics against primary sources before making major program or nutrition changes.</div>'
+  +'</div>';
+  ov.scrollTop=0;
+}
+function showCEDetail(id){
+  var e=_ceEntry(id);if(!e){openCELibrary();return;}
+  _ceMarkReviewed(id);
+  var ov=_ceSheetEl(),col=_ceCatColor(e.cat),saved=_ceIsSaved(id);
+  ov.innerHTML='<div style="max-width:560px;width:100%;margin:0 auto;padding:0 20px 60px;">'
+    +'<div style="position:sticky;top:0;z-index:10;background:rgba(5,10,18,0.97);backdrop-filter:blur(12px);padding:calc(16px + env(safe-area-inset-top,0px)) 0 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(100,160,255,0.08);margin-bottom:18px;">'
+      +'<button onclick="openCELibrary()" style="background:none;border:none;color:rgba(126,200,255,0.8);cursor:pointer;font-size:26px;line-height:1;padding:0 4px;font-family:Syne,sans-serif;flex-shrink:0;">‹</button>'
+      +'<div style="flex:1;font-family:Syne,sans-serif;font-weight:800;font-size:15px;color:#fff;">Continuing Education</div>'
+      +'<button onclick="_ceToggleSaveDetail(\''+id+'\')" style="background:'+(saved?col+'22':'rgba(255,255,255,0.05)')+';border:1px solid '+(saved?col+'66':'var(--border2)')+';color:'+(saved?col:'rgba(180,200,230,0.7)')+';border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:Instrument Sans,sans-serif;flex-shrink:0;">'+(saved?'★ Saved':'☆ Save')+'</button>'
+    +'</div>'
+    +'<div style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:'+col+';background:'+col+'1e;border-radius:6px;padding:4px 9px;margin-bottom:12px;">'+e.cat+'</div>'
+    +'<div style="font-family:Syne,sans-serif;font-weight:800;font-size:23px;color:#fff;line-height:1.2;margin-bottom:12px;">'+e.title+'</div>'
+    +'<div style="font-size:16px;color:'+col+';font-weight:600;line-height:1.5;margin-bottom:16px;">'+e.hook+'</div>'
+    +'<div style="font-size:15px;color:rgba(232,237,245,0.85);line-height:1.7;margin-bottom:22px;">'+e.body+'</div>'
+    +'<div style="border-top:1px solid var(--border);padding-top:14px;font-size:12px;color:rgba(180,200,230,0.45);line-height:1.5;"><b style="color:rgba(180,200,230,0.6);">Source:</b> '+e.source+'</div>'
+    +'<div style="margin-top:20px;font-size:10.5px;color:rgba(180,200,230,0.3);line-height:1.6;">Evidence-based summary for professional development — verify specifics against primary sources before making major program or nutrition changes.</div>'
+  +'</div>';
+  ov.scrollTop=0;
+}
+function _ceToggleSaveDetail(id){_ceToggleSave(id);showCEDetail(id);}
 function renderDashboard(){
   const withPkg=clients.filter(c=>(c.package_size>0||!!c.remaining)&&!c.paused);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
@@ -2295,6 +2445,8 @@ function renderDashboard(){
       +insights.map(function(ins){const col=insightCol[ins.type]||'#7ec8ff';return '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="flex-shrink:0;width:24px;height:24px;border-radius:7px;background:'+col+'20;display:flex;align-items:center;justify-content:center;font-size:12px;">'+ins.icon+'</div><span style="font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;padding-top:3px;">'+ins.text+'</span></div>';}).join('')
       +'</div>';
   }
+  const eduEl=document.getElementById('dashEducation');
+  if(eduEl){try{eduEl.innerHTML=_ceHomeCardHtml();}catch(e){eduEl.innerHTML='';}}
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   const dashFiltered=dashQ?sorted.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(dashQ)):sorted;
