@@ -2358,16 +2358,20 @@ function _ceToggleSave(id){var s=_ceSavedIds();var i=s.indexOf(id);if(i>=0)s.spl
 function _ceMonthKey(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1);}
 function _ceMarkReviewed(id){var log=_ceGet('bm_ce_reviewed',{}),m=_ceMonthKey();if(!log[m])log[m]=[];if(log[m].indexOf(id)<0){log[m].push(id);_ceSet('bm_ce_reviewed',log);}}
 function _ceReviewedThisMonth(){return (_ceGet('bm_ce_reviewed',{})[_ceMonthKey()]||[]).length;}
+// Has TODAY's featured topic been opened yet? Drives the in-app "New" nudge on the dashboard card,
+// which clears itself the moment the coach reads today's topic (reading marks it reviewed).
+function _ceTodayUnread(){var e=_ceTodayEntry();if(!e)return false;return (_ceGet('bm_ce_reviewed',{})[_ceMonthKey()]||[]).indexOf(e.id)<0;}
 // Dashboard "Learn Today" card.
 function _ceHomeCardHtml(){
   var e=_ceTodayEntry();if(!e)return '';
-  var col=_ceCatColor(e.cat),reviewed=_ceReviewedThisMonth();
+  var col=_ceCatColor(e.cat),reviewed=_ceReviewedThisMonth(),unread=_ceTodayUnread();
   // Editorial identity, tinted by TODAY'S category color — visibly different from Coaching Insights
   // (purple utility module) and fresh-looking day to day as the category rotates.
   return '<div style="background:linear-gradient(135deg,'+col+'16,rgba(16,22,29,0.4) 58%);border:1px solid '+col+'36;border-left:3px solid '+col+';border-radius:14px;padding:14px 16px;margin-bottom:26px;">'
     +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">'
       +'<div style="flex-shrink:0;width:26px;height:26px;border-radius:8px;background:'+col+'1f;display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>'
       +'<div style="flex:1;font-family:Syne,sans-serif;font-weight:800;font-size:13.5px;color:#fff;letter-spacing:0.3px;">Learn Today</div>'
+      +(unread?'<span style="background:'+col+';color:#0a0d12;font-size:9px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;border-radius:20px;padding:3px 9px;margin-right:2px;">New</span>':'')
       +'<div onclick="openCELibrary()" style="cursor:pointer;font-size:11px;color:'+col+'bb;font-weight:600;">Library ›</div>'
     +'</div>'
     +'<div onclick="showCEDetail(\''+e.id+'\')" style="cursor:pointer;">'
