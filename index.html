@@ -160,6 +160,10 @@ display:inline-flex;align-items:center;gap:6px;
 .btn-sm{padding:7px 14px;font-size:11px;}
 .btn-full{width:100%;justify-content:center;}
 .btn:disabled{opacity:0.6;cursor:default;}
+/* Session "Mark Complete" — a premium hero CTA (base look lives here so JS style.background resets restore it) */
+.btn-log-complete{background:linear-gradient(135deg,#2f6bf0,#1d4ed8);color:#fff;padding:16px;font-size:13.5px;border-radius:13px;box-shadow:0 6px 22px rgba(37,99,235,0.45),inset 0 1px 0 rgba(255,255,255,0.14);}
+.btn-log-complete:hover{box-shadow:0 8px 28px rgba(37,99,235,0.55),inset 0 1px 0 rgba(255,255,255,0.14);}
+.btn-log-cancel{padding:16px;border-radius:13px;font-size:13.5px;}
 
 /* ── INPUTS ── */
 input,select,textarea{
@@ -944,10 +948,11 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 <div class="modal-overlay" id="logModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div>
+    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:14px;margin-bottom:22px;">
+      <div id="logModalAvatar" style="flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
         <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:5px;">Log Session</div>
-        <div id="logModalTitle" style="font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.4px;line-height:1.1;"></div>
+        <div id="logModalTitle" style="font-family:'Syne',sans-serif;font-weight:800;font-size:26px;color:var(--text);letter-spacing:-0.4px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       </div>
       <div style="width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,rgba(29,78,216,0.7),rgba(67,217,162,0.7));border:1px solid rgba(67,217,162,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 20px rgba(67,217,162,0.15);">
         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -958,9 +963,9 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
       <label class="form-label">Session Note (optional)</label>
       <textarea id="logNote" placeholder="e.g. Great energy today, improved form on squats..." oninput="saveDraftCoach()"></textarea>
     </div>
-    <div style="display:flex;gap:8px;margin-top:6px">
-      <button class="btn btn-secondary btn-full" onclick="closeLogSession()">Cancel</button>
-      <button class="btn btn-primary btn-full" onclick="confirmLogSession()">✓ Mark Complete</button>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-secondary btn-full btn-log-cancel" onclick="closeLogSession()" style="flex:0 0 40%;">Cancel</button>
+      <button class="btn btn-primary btn-full btn-log-complete" onclick="confirmLogSession()">✓ Mark Complete</button>
     </div>
   </div>
 </div>
@@ -4691,14 +4696,16 @@ function openLogSession(id, preselectedDay){
   window._logRenderedDi=undefined;
   window._coachSessionSaved=false;window._coachClientUpdated=false;window._coachSharedUpdated=false;
   document.getElementById('logModalTitle').textContent=c.first;
+  try{const av=document.getElementById('logModalAvatar');if(av)av.innerHTML='<div class="client-avatar" style="'+_avatarStyle(c,48)+'">'+(c.first[0]||'')+(c.last?c.last[0]:'')+'</div>';}catch(e){}
   document.getElementById('logNote').value='';
   let workoutHtml='';
   if(c.structured_program){
-    workoutHtml=`<div style="margin-bottom:16px;">
-      <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:8px;">Today's Workout</div>
-      <div style="position:relative;">
-        <select id="logDaySelect" onchange="_onLogDayChange('${id}',this)" style="width:100%;padding:14px 40px 14px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-size:15px;font-weight:700;font-family:'Syne',sans-serif;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">${c.structured_program.days.map((d,i)=>`<option value="${i}">${d.name}</option>`).join('')}<option value="-1" style="color:rgba(180,200,230,0.5);">↳ Custom Workout</option></select>
-        <div style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.4)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+    workoutHtml=`<div style="margin-bottom:18px;">
+      <div style="font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:9px;">Today's Workout</div>
+      <div style="position:relative;background:linear-gradient(135deg,rgba(37,99,235,0.12),rgba(23,29,38,0.6));border:1px solid rgba(79,163,232,0.28);border-left:3px solid #4fa3e8;border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,0.22);">
+        <div style="position:absolute;left:15px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:rgba(79,163,232,0.16);border:1px solid rgba(79,163,232,0.28);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7ec8ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11M6.5 17.5h11"/><rect x="3" y="4" width="3.5" height="16" rx="1"/><rect x="17.5" y="4" width="3.5" height="16" rx="1"/></svg></div>
+        <select id="logDaySelect" onchange="_onLogDayChange('${id}',this)" style="width:100%;padding:16px 42px 16px 58px;background:transparent;border:none;color:#fff;font-size:16px;font-weight:800;font-family:'Syne',sans-serif;letter-spacing:-0.2px;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;">${c.structured_program.days.map((d,i)=>`<option value="${i}" style="background:#171d26;color:#fff;">${d.name}</option>`).join('')}<option value="-1" style="background:#171d26;color:rgba(180,200,230,0.6);">↳ Custom Workout</option></select>
+        <div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;display:flex;align-items:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.55)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       </div>
     </div>
     <div id="logExercises"></div>`;
@@ -4761,7 +4768,7 @@ function updateLogWorkout(clientId){
     // Pre-compute superset group first/last indices — supports both SS1: and SS: formats
     const ssBounds={};const exSSGroup={};let _ssRunG=0,_ssRunKey='',_ssPrev=false;
     day.exercises.forEach((ex,ei)=>{const _isSS=/^SS/i.test(ex.name);if(_isSS){const m=ex.name.match(/^SS(\d+)/i);let g;if(m){g=m[1];}else{if(!_ssPrev){_ssRunG++;_ssRunKey='_r'+_ssRunG;}g=_ssRunKey;}exSSGroup[ei]=g;if(!ssBounds[g])ssBounds[g]={first:ei,last:ei};ssBounds[g].last=ei;}_ssPrev=_isSS;});
-    let html=`<div style="position:sticky;top:0;z-index:5;background:rgba(10,13,18,0.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(100,160,255,0.07);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.35);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-size:11px;color:rgba(126,200,255,0.5);font-weight:600;">0 / ${exCount}</div></div><div style="height:3px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#1d4ed8,#43d9a2);border-radius:3px;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);"></div></div></div><button onclick="autoFillLog()" style="width:100%;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.35);border-radius:10px;padding:13px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#7ec8ff;cursor:pointer;margin-bottom:16px;letter-spacing:.5px;transition:all 0.2s;" onmouseover="this.style.background='rgba(79,163,232,0.2)';this.style.borderColor='rgba(79,163,232,0.5)';" onmouseout="this.style.background='rgba(79,163,232,0.15)';this.style.borderColor='rgba(79,163,232,0.35)';">⚡ Fill Last Session</button>`;
+    let html=`<div style="position:sticky;top:0;z-index:5;background:rgba(10,13,18,0.97);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(100,160,255,0.07);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;"><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;">Progress</div><div id="coach-progress-label" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#7ec8ff;">0<span style="color:rgba(180,200,230,0.4);font-weight:600;"> / ${exCount}</span></div></div><div style="height:7px;background:rgba(255,255,255,0.05);border-radius:7px;overflow:hidden;"><div id="coach-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#2563eb,#43d9a2);border-radius:7px;transition:width 0.4s cubic-bezier(0.4,0,0.2,1);box-shadow:0 0 12px rgba(67,217,162,0.45);"></div></div></div><button onclick="autoFillLog()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,rgba(79,163,232,0.17),rgba(37,99,235,0.10));border:1px solid rgba(79,163,232,0.32);border-radius:13px;padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#9fd0ff;cursor:pointer;margin-bottom:18px;letter-spacing:.5px;transition:all 0.2s;box-shadow:0 3px 14px rgba(37,99,235,0.13);"><svg width="15" height="15" viewBox="0 0 24 24" fill="#9fd0ff" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Fill Last Session</button>`;
     day.exercises.forEach((ex,ei)=>{
       const key=ex.name.toLowerCase().replace(/\s+/g,'_');
       const last=history[key];
@@ -4822,7 +4829,7 @@ function checkExRowCoach(ei){
   for(let j=0;j<total;j++){const r2=document.getElementById('wr-'+j);const t2=document.getElementById('wt-'+j);if(r2&&t2&&r2.value.trim()&&t2.value.trim())done++;}
   const bar=document.getElementById('coach-progress-bar');const lbl=document.getElementById('coach-progress-label');
   if(bar)bar.style.width=(total?Math.round(done/total*100):0)+'%';
-  if(lbl)lbl.textContent=done+' / '+total;
+  if(lbl)lbl.innerHTML=done+'<span style="color:rgba(180,200,230,0.4);font-weight:600;"> / '+total+'</span>';
 }
 
 function autoFillLog(){
