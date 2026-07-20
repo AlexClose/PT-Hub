@@ -314,6 +314,21 @@ transition:border-color .15s;
 .workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
 .workout-inputs input{font-size:16px;padding:14px 12px;text-align:center;font-weight:600;color:#ffffff !important;background:#1e232b !important;border:1px solid rgba(100,160,255,0.2);-webkit-text-fill-color:#ffffff !important;}
 .wi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px;font-weight:600;}
+/* ── Premium session-logging cards (coach log + ad-hoc) ── */
+.log-ex-card{background:linear-gradient(180deg,rgba(31,38,49,0.55),rgba(19,25,33,0.5));border:1px solid var(--border2);border-radius:16px;padding:15px 15px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.035);transition:border-color .18s,background .18s,box-shadow .18s;}
+.log-ex-card.done{border-color:rgba(67,217,162,0.45);background:linear-gradient(180deg,rgba(28,44,39,0.55),rgba(17,27,23,0.5));box-shadow:0 2px 16px rgba(67,217,162,0.12),inset 0 1px 0 rgba(255,255,255,0.03);}
+[data-ss="1"].done{background:rgba(67,217,162,0.05);}
+.log-ex-head{display:flex;align-items:center;gap:12px;margin-bottom:11px;}
+.log-ex-head .workout-ex-name{font-size:17px;margin:0;flex:1;min-width:0;line-height:1.2;}
+.log-target{display:inline-flex;align-items:center;gap:7px;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.22);color:#a6d2ff;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:9px;margin-bottom:12px;line-height:1.35;max-width:100%;}
+.log-target svg{flex-shrink:0;opacity:0.9;}
+.log-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px;}
+.log-field{display:flex;flex-direction:column;gap:5px;background:rgba(10,14,19,0.55);border:1px solid var(--border2);border-radius:12px;padding:9px 13px 11px;cursor:text;transition:border-color .15s,box-shadow .15s;min-width:0;}
+.log-field:focus-within{border-color:rgba(79,163,232,0.55);box-shadow:0 0 0 3px rgba(79,163,232,0.13);}
+.log-field-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.5);font-weight:700;}
+.log-input{width:100%;box-sizing:border-box;border:none !important;background:transparent !important;padding:0 !important;margin:0;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;outline:none;text-align:left;}
+.log-input::placeholder{color:rgba(180,200,230,0.30);font-weight:700;-webkit-text-fill-color:rgba(180,200,230,0.30);}
+.log-input:not(:placeholder-shown){color:#43d9a2 !important;-webkit-text-fill-color:#43d9a2 !important;}
 
 /* ── LIBRARY ── */
 .muscle-group{margin-bottom:12px;}
@@ -4758,13 +4773,13 @@ function updateLogWorkout(clientId){
       } else if(isSuperset&&ssGroup){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
-      html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} style="padding:14px;position:relative;${isSuperset?'':'background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:12px;'}transition:border-color .15s,background .15s;">
-        <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">${_exThumbHTML(ex.name,displayName,44,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;margin:0;flex:1;">${displayName}</div></div>
-        <div style="font-size:14px;color:#7ec8ff;font-weight:600;margin-bottom:${last?'6':'8'}px">${ex.prescription}${ex.load?' · '+ex.load:''}</div>
+      html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} class="${isSuperset?'':'log-ex-card'}" style="${isSuperset?'padding:14px;position:relative;':''}">
+        <div class="log-ex-head">${_exThumbHTML(ex.name,displayName,46,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;">${displayName}</div></div>
+        <div class="log-target"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7ec8ff" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.5" fill="#7ec8ff"/></svg><span>${ex.prescription}${ex.load?' · '+ex.load:''}</span></div>
         ${(()=>{const gk=ex.name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);return _progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);})()}
-        <div class="workout-inputs">
-          <div><input id="wr-${ei}" placeholder="${last&&last.reps?last.reps:'Sets × Reps'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>
-          <div><input id="wt-${ei}" placeholder="${last&&last.weight?last.weight:'Weight / Load'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>
+        <div class="log-fields">
+          <label class="log-field"><span class="log-field-lbl">Sets × Reps</span><input id="wr-${ei}" class="log-input" placeholder="${last&&last.reps?last.reps:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
+          <label class="log-field"><span class="log-field-lbl">Weight / Load</span><input id="wt-${ei}" class="log-input" placeholder="${last&&last.weight?last.weight:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
         </div>
       </div>`;
       if(isLast)html+=`</div>`;
@@ -4788,9 +4803,7 @@ function checkExRowCoach(ei){
   const row=document.getElementById('ex-row-'+ei);
   const hasBoth=wr&&wt&&wr.value.trim()&&wt.value.trim();
   if(row){
-    const isSS=row.dataset.ss==='1';
-    if(!isSS){row.style.borderColor=hasBoth?'rgba(67,217,162,0.4)':'';row.style.background=hasBoth?'rgba(67,217,162,0.04)':'';}
-    else{row.style.background=hasBoth?'rgba(67,217,162,0.03)':'';}
+    row.classList.toggle('done',!!hasBoth); // .done styling lives in CSS (.log-ex-card.done + [data-ss].done)
     let cb=row.querySelector('.ex-check-badge');
     if(hasBoth&&!cb){const b=document.createElement('div');b.className='ex-check-badge';b.style.cssText='position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;background:rgba(67,217,162,0.9);display:flex;align-items:center;justify-content:center;font-size:11px;color:#0a1a12;font-weight:900;animation:checkPop .28s cubic-bezier(.34,1.56,.64,1) forwards;z-index:2;';b.textContent='✓';row.appendChild(b);}
     else if(!hasBoth&&cb)cb.remove();
@@ -4850,9 +4863,9 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
     +_exThumbHTML('','',40,'coach:'+(pendingLogId||''))
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);saveDraftCoach();" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
-    +`<div class="workout-inputs">`
-    +`<div><input id="wr-adhoc-${n}" placeholder="3×10  ·  or 8,8,6" oninput="saveDraftCoach()"><div class="wi-label">Sets × Reps</div></div>`
-    +`<div><input id="wt-adhoc-${n}" placeholder="135  ·  or 135,145,155" oninput="saveDraftCoach()"><div class="wi-label">Weight / Load</div></div>`
+    +`<div class="log-fields">`
+    +`<label class="log-field"><span class="log-field-lbl">Sets × Reps</span><input id="wr-adhoc-${n}" class="log-input" placeholder="3×10" oninput="saveDraftCoach()"></label>`
+    +`<label class="log-field"><span class="log-field-lbl">Weight / Load</span><input id="wt-adhoc-${n}" class="log-input" placeholder="135" oninput="saveDraftCoach()"></label>`
     +`</div>`
     +`</div>`;
   container.appendChild(row);
