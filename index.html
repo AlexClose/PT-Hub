@@ -314,20 +314,26 @@ transition:border-color .15s;
 .workout-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
 .workout-inputs input{font-size:16px;padding:14px 12px;text-align:center;font-weight:600;color:#ffffff !important;background:#1e232b !important;border:1px solid rgba(100,160,255,0.2);-webkit-text-fill-color:#ffffff !important;}
 .wi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px;font-weight:600;}
-/* ── Premium session-logging cards (coach log + ad-hoc) ── */
-.log-ex-card{background:linear-gradient(180deg,rgba(31,38,49,0.55),rgba(19,25,33,0.5));border:1px solid var(--border2);border-radius:16px;padding:15px 15px 16px;margin-bottom:14px;position:relative;overflow:hidden;box-shadow:0 2px 14px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.035);transition:border-color .18s,background .18s,box-shadow .18s;}
-.log-ex-card.done{border-color:rgba(67,217,162,0.45);background:linear-gradient(180deg,rgba(28,44,39,0.55),rgba(17,27,23,0.5));box-shadow:0 2px 16px rgba(67,217,162,0.12),inset 0 1px 0 rgba(255,255,255,0.03);}
-[data-ss="1"].done{background:rgba(67,217,162,0.05);}
-.log-ex-head{display:flex;align-items:center;gap:12px;margin-bottom:11px;}
-.log-ex-head .workout-ex-name{font-size:17px;margin:0;flex:1;min-width:0;line-height:1.2;}
-.log-target{display:inline-flex;align-items:center;gap:7px;background:rgba(79,163,232,0.1);border:1px solid rgba(79,163,232,0.22);color:#a6d2ff;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:9px;margin-bottom:12px;line-height:1.35;max-width:100%;}
-.log-target svg{flex-shrink:0;opacity:0.9;}
-.log-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px;}
-.log-field{display:flex;flex-direction:column;gap:5px;background:rgba(10,14,19,0.55);border:1px solid var(--border2);border-radius:12px;padding:9px 13px 11px;cursor:text;transition:border-color .15s,box-shadow .15s;min-width:0;}
-.log-field:focus-within{border-color:rgba(79,163,232,0.55);box-shadow:0 0 0 3px rgba(79,163,232,0.13);}
-.log-field-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.5);font-weight:700;}
-.log-input{width:100%;box-sizing:border-box;border:none !important;background:transparent !important;padding:0 !important;margin:0;font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;outline:none;text-align:left;}
-.log-input::placeholder{color:rgba(180,200,230,0.30);font-weight:700;-webkit-text-fill-color:rgba(180,200,230,0.30);}
+/* ── Premium session-logging cards (coach log + ad-hoc): numbered two-zone card ── */
+.log-ex-card{background:linear-gradient(180deg,#161d27,#121821);border:1px solid rgba(148,180,220,0.11);border-radius:18px;margin-bottom:16px;overflow:hidden;box-shadow:0 6px 22px rgba(0,0,0,0.30);position:relative;transition:border-color .18s;}
+.log-ex-card.done{border-color:rgba(67,217,162,0.5);}
+.log-ex-head{display:flex;align-items:center;gap:12px;padding:15px 16px 13px;padding-right:58px;}
+.log-num{width:30px;height:30px;border-radius:10px;background:rgba(79,163,232,0.15);border:1px solid rgba(79,163,232,0.32);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#7ec8ff;flex-shrink:0;}
+.done .log-num{background:rgba(67,217,162,0.16);border-color:rgba(67,217,162,0.4);color:#43d9a2;}
+.log-ex-head .workout-ex-name{flex:1;min-width:0;font-size:18px;margin:0;line-height:1.15;letter-spacing:-0.2px;}
+.log-ref{display:flex;gap:22px;padding:0 16px 15px;flex-wrap:wrap;}
+.log-ref-lbl{font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);font-weight:700;margin-bottom:3px;}
+.log-ref-val{font-size:13.5px;font-weight:700;color:#a6d2ff;}
+.log-ref-val.last{color:rgba(215,228,245,0.62);}
+.log-guide-wrap{padding:0 16px 14px;}
+.log-body{background:rgba(0,0,0,0.22);border-top:1px solid rgba(148,180,220,0.08);padding:14px 16px 16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.done .log-body{background:rgba(67,217,162,0.06);}
+.log-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:2px;}  /* simple grid for ad-hoc rows */
+.log-field{background:#0c1017;border:1.5px solid rgba(148,180,220,0.12);border-radius:13px;padding:10px 14px 12px;transition:border-color .15s,box-shadow .15s;cursor:text;min-width:0;}
+.log-field:focus-within{border-color:#4fa3e8;box-shadow:0 0 0 3px rgba(79,163,232,0.16);}
+.log-field-lbl{display:block;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(180,200,230,0.55);font-weight:700;margin-bottom:4px;}
+.log-input{width:100%;box-sizing:border-box;border:none !important;background:transparent !important;padding:0 !important;margin:0;font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;outline:none;letter-spacing:-0.3px;}
+.log-input::placeholder{color:rgba(180,200,230,0.26);-webkit-text-fill-color:rgba(180,200,230,0.26);}
 .log-input:not(:placeholder-shown){color:#43d9a2 !important;-webkit-text-fill-color:#43d9a2 !important;}
 
 /* ── LIBRARY ── */
@@ -4773,13 +4779,13 @@ function updateLogWorkout(clientId){
       } else if(isSuperset&&ssGroup){
         html+=`<div style="height:1px;background:rgba(255,140,71,0.15);margin:0 14px;"></div>`;
       }
-      html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} class="${isSuperset?'':'log-ex-card'}" style="${isSuperset?'padding:14px;position:relative;':''}">
-        <div class="log-ex-head">${_exThumbHTML(ex.name,displayName,46,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;">${displayName}</div></div>
-        <div class="log-target"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7ec8ff" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.5" fill="#7ec8ff"/></svg><span>${ex.prescription}${ex.load?' · '+ex.load:''}</span></div>
-        ${(()=>{const gk=ex.name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);return _progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);})()}
-        <div class="log-fields">
-          <label class="log-field"><span class="log-field-lbl">Sets × Reps</span><input id="wr-${ei}" class="log-input" placeholder="${last&&last.reps?last.reps:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
-          <label class="log-field"><span class="log-field-lbl">Weight / Load</span><input id="wt-${ei}" class="log-input" placeholder="${last&&last.weight?last.weight:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
+      html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} class="${isSuperset?'':'log-ex-card'}" style="position:relative;">
+        <div class="log-ex-head"><div class="log-num">${ei+1}</div>${_exThumbHTML(ex.name,displayName,46,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;">${displayName}</div></div>
+        <div class="log-ref"><div><div class="log-ref-lbl">Target</div><div class="log-ref-val">${ex.prescription}${ex.load?' · '+ex.load:''}</div></div></div>
+        ${(()=>{const gk=ex.name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);const gh=_progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);return gh?`<div class="log-guide-wrap">${gh}</div>`:'';})()}
+        <div class="log-body">
+          <label class="log-field"><div class="log-field-lbl">Sets × Reps</div><input id="wr-${ei}" class="log-input" placeholder="${last&&last.reps?last.reps:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
+          <label class="log-field"><div class="log-field-lbl">Weight / Load</div><input id="wt-${ei}" class="log-input" placeholder="${last&&last.weight?last.weight:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
         </div>
       </div>`;
       if(isLast)html+=`</div>`;
