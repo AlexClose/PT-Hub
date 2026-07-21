@@ -4805,14 +4805,25 @@ function updateLogWorkout(clientId){
   + `<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
   + `</div>`;
   try{_thumbsRefresh();}catch(e){}
+  try{document.querySelectorAll('#logExercises .log-input').forEach(_fitLogInput);}catch(e){}
   try{_setupBlockDrag(document.getElementById('adhoc-exercises'));}catch(e){}
   try{_staggerIn(document.getElementById('logExercises'),14);}catch(e){}
   saveDraftCoach();
 }
 
+// Auto-shrink a logging input's font so long multi-set values (e.g. "135,175,205") stay fully
+// readable instead of clipping at the field edge (inputs don't scroll to reveal the rest on tap).
+// Short values keep the big premium 22px; only long ones step down.
+function _fitLogInput(el){
+  if(!el)return;
+  var v=(el.value&&el.value.length)?el.value:(el.getAttribute('placeholder')||'');
+  var n=v.length;
+  el.style.fontSize=(n<=6?22:n<=8?19:n<=10?16.5:n<=13?14:12)+'px';
+}
 function checkExRowCoach(ei){
   const wr=document.getElementById('wr-'+ei);
   const wt=document.getElementById('wt-'+ei);
+  _fitLogInput(wr);_fitLogInput(wt);
   const row=document.getElementById('ex-row-'+ei);
   const hasBoth=wr&&wt&&wr.value.trim()&&wt.value.trim();
   if(row){
@@ -4877,8 +4888,8 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
     +`<input id="an-adhoc-${n}" placeholder="Exercise name..." autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.15);border-radius:8px;color:#e8edf5;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;padding:10px 12px;outline:none;" oninput="_exAcInput(this);_syncRowThumb(this);saveDraftCoach();" onblur="_exAcBlur();" onkeydown="if(event.key==='Escape')_exAcHide();">`
     +`</div>`
     +`<div class="log-fields">`
-    +`<label class="log-field"><span class="log-field-lbl">Sets × Reps</span><input id="wr-adhoc-${n}" class="log-input" placeholder="3×10" oninput="saveDraftCoach()"></label>`
-    +`<label class="log-field"><span class="log-field-lbl">Weight / Load</span><input id="wt-adhoc-${n}" class="log-input" placeholder="135" oninput="saveDraftCoach()"></label>`
+    +`<label class="log-field"><span class="log-field-lbl">Sets × Reps</span><input id="wr-adhoc-${n}" class="log-input" placeholder="3×10" oninput="_fitLogInput(this);saveDraftCoach()"></label>`
+    +`<label class="log-field"><span class="log-field-lbl">Weight / Load</span><input id="wt-adhoc-${n}" class="log-input" placeholder="135" oninput="_fitLogInput(this);saveDraftCoach()"></label>`
     +`</div>`
     +`</div>`;
   container.appendChild(row);
@@ -5676,8 +5687,18 @@ function closeEditSession() {
 async function deleteEditSession() {
   const d = window._editSessionData;
   if (!d) return;
-  if (!confirm('Delete this session? This cannot be undone. If it wrongly used a package session, adjust the client\'s remaining count afterward via Edit.')) return;
   const {cid, sessionId, workout, date} = d;
+  // Logging a session decremented the client's remaining count; deleting it should hand that
+  // session back. Work out whether a restore applies (package clients only — pure pay-per-session
+  // clients were never charged) so the confirm can honestly promise it.
+  const c0 = clients.find(x=>x.id===cid);
+  const sp0 = c0 && c0.shared_package_id ? sharedPackages.find(p=>p.id===c0.shared_package_id) : null;
+  const sharedCap = sp0 && sp0.total_sessions!=null ? sp0.total_sessions : Infinity;
+  const willRestore = c0 ? (sp0 ? ((sp0.remaining_sessions||0) < sharedCap) : (c0.package_size>0 || (c0.remaining||0)!==0)) : false;
+  const msg = willRestore
+    ? 'Delete this session? One session will be added back to '+((c0&&c0.first)||'the client')+'\'s remaining count. This cannot be undone.'
+    : 'Delete this session? This cannot be undone.';
+  if (!confirm(msg)) return;
   const dayName = workout.find(e=>e.day)?.day || workout[0]?.day || '';
   const btn = document.getElementById('es-del-btn');
   if (btn) { btn.disabled=true; btn.textContent='Deleting…'; }
@@ -5689,13 +5710,26 @@ async function deleteEditSession() {
     if (oldIds.length) { try { await sb('DELETE','exercise_logs',null,'?id=in.('+oldIds.join(',')+')'); } catch(e){} }
     await db.deleteSession(sessionId);
     const c = clients.find(x=>x.id===cid);
+    let restored = false;
     if (c) {
+      // Restore one session (mirror of the log-time decrement).
+      if (c.shared_package_id) {
+        const sp = sharedPackages.find(p=>p.id===c.shared_package_id);
+        if (sp) {
+          const cap = sp.total_sessions!=null ? sp.total_sessions : Infinity;
+          const ns = Math.min(cap, (sp.remaining_sessions||0)+1);
+          if (ns !== sp.remaining_sessions) { try { await db.updateSharedPkg(c.shared_package_id,{remaining_sessions:ns}); sp.remaining_sessions=ns; restored=true; } catch(e){} }
+        }
+      } else if (c.package_size>0 || (c.remaining||0)!==0) {
+        const nr = (c.remaining||0)+1;
+        try { await db.updateClient(cid,{remaining:nr}); c.remaining=nr; restored=true; } catch(e){}
+      }
       c._sessions = await db.getSessions(cid);
       window['_sessMap_'+cid] = {};
       c._sessions.forEach(s=>{ if(s.id) window['_sessMap_'+cid][s.id]=s; });
     }
     closeEditSession();
-    toast('Session deleted');
+    toast(restored ? 'Session deleted — 1 added back to remaining' : 'Session deleted');
     if (c) { renderClientModal(c); renderDashboard(); }
   } catch(e) {
     if (btn) { btn.disabled=false; btn.textContent='Delete Session…'; }
