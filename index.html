@@ -2499,9 +2499,17 @@ function showCEDetail(id){
 }
 function _ceToggleSaveDetail(id){_ceToggleSave(id);showCEDetail(id);}
 function renderDashboard(){
-  const withPkg=clients.filter(c=>(c.package_size>0||!!c.remaining)&&!c.paused);
+  // Shared-package clients are EXCLUDED from these individual-remaining checks — their real count
+  // lives in sharedPkg.remaining_sessions (their own c.remaining is stale/unused), and they're
+  // covered by the "Shared package alerts" loop below. Including them here wrongly flagged a
+  // shared client as low/out based on a leftover individual remaining (e.g. showed "Chase has 2
+  // left" while his shared package actually had 8).
+  const withPkg=clients.filter(c=>(c.package_size>0||!!c.remaining)&&!c.paused&&!c.shared_package_id);
   const low=withPkg.filter(c=>c.remaining>0&&c.remaining<=2);
-  const out=clients.filter(c=>!c.paused&&c.remaining<=0&&(c.package_size>0||c.remaining<0));
+  const out=clients.filter(c=>!c.paused&&!c.shared_package_id&&c.remaining<=0&&(c.package_size>0||c.remaining<0));
+  // Shared packages count toward the stat tiles once (per package, not per member).
+  const sharedLow=sharedPackages.filter(p=>p.remaining_sessions>0&&p.remaining_sessions<=2).length;
+  const sharedOut=sharedPackages.filter(p=>p.remaining_sessions<=0).length;
   const now=new Date();
   const currentMonth=now.getMonth();
   const currentYear=now.getFullYear();
@@ -2519,8 +2527,8 @@ function renderDashboard(){
   document.getElementById('dashStats').innerHTML=
     mkStat(clients.length,'Active Clients','#e8edf5')+
     mkStat(totalSess,'Sessions This Month','#7ec8ff')+
-    mkStat(low.length,'Low Sessions',low.length?'#ffb347':'rgba(180,200,230,0.35)')+
-    mkStat(out.length,'Invoice Needed',out.length?'#ff5c6a':'rgba(180,200,230,0.35)');
+    mkStat(low.length+sharedLow,'Low Sessions',(low.length+sharedLow)?'#ffb347':'rgba(180,200,230,0.35)')+
+    mkStat(out.length+sharedOut,'Invoice Needed',(out.length+sharedOut)?'#ff5c6a':'rgba(180,200,230,0.35)');
   // Count-up on first load only (re-renders after logging etc. stay instant — motion is a greeting,
   // not a constant).
   if(!window._statsAnimated){
