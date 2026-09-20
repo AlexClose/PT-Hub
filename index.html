@@ -516,92 +516,6 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
 .auth-card{background:rgba(16,22,29,0.55);border:1px solid var(--border2);border-radius:20px;padding:26px 22px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 20px 60px rgba(0,0,0,0.35);}
 .auth-input{padding:15px 16px;font-size:15px;}
 .auth-input:focus{box-shadow:0 0 0 3px rgba(79,163,232,0.14);}
-
-/* ===== DATA-LUX DASHBOARD (overhaul) ===== */
-/* fine film grain over everything — kills flat gradient banding, adds a tactile designed finish.
-   z:3 sits above content (z:1) but below chrome (z:100) and modals (z:200), pointer-events off. */
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0.032;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
-.dh-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;}
-.dh-kick{font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(126,200,255,0.6);margin-bottom:6px;}
-.dh-name{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.7px;line-height:1;color:#fff;}
-.dh-pill{font-size:11px;font-weight:700;color:rgba(200,216,236,0.7);background:rgba(255,255,255,0.05);border:1px solid rgba(150,180,220,0.12);border-radius:20px;padding:8px 14px;white-space:nowrap;flex-shrink:0;}
-.dh-hero{position:relative;overflow:hidden;border-radius:22px;padding:20px 20px 18px;margin-bottom:12px;
-  background:linear-gradient(140deg,rgba(37,99,235,0.30),rgba(16,22,32,0.72) 52%,rgba(67,217,162,0.13));
-  border:1px solid rgba(150,180,220,0.14);box-shadow:inset 0 1px 0 rgba(255,255,255,0.07),0 24px 56px -30px rgba(0,0,0,0.9);}
-.dh-hero.done{background:linear-gradient(140deg,rgba(67,217,162,0.24),rgba(16,24,22,0.72) 55%,rgba(67,217,162,0.10));border-color:rgba(67,217,162,0.24);}
-.dh-hero::before{content:'';position:absolute;top:-60%;right:-30%;width:80%;height:180%;pointer-events:none;background:radial-gradient(circle,rgba(79,163,232,0.16),transparent 62%);}
-.dh-hrow{display:flex;align-items:center;gap:18px;position:relative;cursor:pointer;}
-.dh-hcopy{flex:1;min-width:0;}
-.dh-hkick{font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:#8fd0ff;margin-bottom:7px;}
-.dh-hero.done .dh-hkick{color:#5fe3b4;}
-.dh-hbig{font-family:'Syne',sans-serif;font-weight:800;letter-spacing:-1px;line-height:0.95;font-size:31px;color:#fff;}
-.dh-hbig small{font-size:18px;color:rgba(180,200,230,0.5);font-weight:700;}
-.dh-hnote{font-size:12px;color:rgba(200,216,236,0.6);margin-top:6px;}
-.dh-ring{flex-shrink:0;filter:drop-shadow(0 0 16px rgba(37,99,235,0.42));}
-.dh-hero.done .dh-ring{filter:drop-shadow(0 0 16px rgba(67,217,162,0.45));}
-.dh-chips{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;position:relative;}
-.dh-chip{display:flex;align-items:center;gap:8px;background:rgba(8,12,18,0.5);border:1px solid rgba(150,180,220,0.14);border-radius:30px;padding:5px 13px 5px 5px;cursor:pointer;}
-.dh-chip-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;flex-shrink:0;}
-.dh-chip-nm{font-size:12px;font-weight:600;color:#dce7f5;white-space:nowrap;}
-.dh-chip-lg{font-size:12px;font-weight:800;color:#8fd0ff;}
-.dh-week{position:relative;overflow:hidden;border-radius:20px;padding:17px 20px 15px;margin-bottom:12px;
-  background:linear-gradient(180deg,rgba(26,33,45,0.6),rgba(13,17,24,0.6));border:1px solid rgba(150,180,220,0.1);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),0 18px 42px -26px rgba(0,0,0,0.9);}
-.dh-week-head{display:flex;align-items:baseline;justify-content:space-between;}
-.dh-week-lbl{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:rgba(180,200,230,0.5);}
-.dh-week-tot{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#fff;}
-.dh-week-tot small{color:rgba(180,200,230,0.45);font-size:11px;font-weight:700;}
-.dh-wbars{display:flex;align-items:flex-end;gap:7px;height:74px;margin-top:15px;}
-.dh-wb{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:9px;}
-.dh-wb-fill{width:100%;max-width:26px;border-radius:7px;background:linear-gradient(180deg,#5fb0f2,#2563eb);min-height:5px;}
-.dh-wb.today .dh-wb-fill{background:linear-gradient(180deg,#5fe3b4,#2f9e6f);box-shadow:0 0 14px rgba(67,217,162,0.45);}
-.dh-wb.empty .dh-wb-fill{background:rgba(255,255,255,0.05);}
-.dh-wb-lbl{font-size:9.5px;font-weight:700;color:rgba(180,200,230,0.4);}
-.dh-wb.today .dh-wb-lbl{color:#5fe3b4;}
-.dh-kpis{display:grid;grid-template-columns:repeat(4,1fr);background:linear-gradient(180deg,rgba(26,33,45,0.6),rgba(13,17,24,0.6));
-  border:1px solid rgba(150,180,220,0.1);border-radius:18px;overflow:hidden;margin-bottom:8px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05),0 16px 38px -26px rgba(0,0,0,0.9);}
-.dh-kpi{padding:15px 6px 13px;text-align:center;position:relative;}
-.dh-kpi + .dh-kpi::before{content:'';position:absolute;left:0;top:24%;bottom:24%;width:1px;background:rgba(150,180,220,0.1);}
-.dh-kpi-num{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;line-height:1;letter-spacing:-1px;color:#fff;}
-.dh-kpi-lbl{font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(180,200,230,0.45);margin-top:7px;}
-.dh-sec{display:flex;align-items:center;gap:11px;margin:30px 2px 14px;}
-.dh-sec-bar{width:4px;height:19px;border-radius:3px;flex-shrink:0;}
-.dh-sec-t{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;letter-spacing:0.3px;color:#fff;}
-.dh-sec-c{font-size:10.5px;font-weight:800;color:rgba(180,200,230,0.55);background:rgba(255,255,255,0.055);border:1px solid rgba(150,180,220,0.1);border-radius:20px;padding:2px 9px;}
-.dh-sec-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(150,180,220,0.14),transparent);}
-.dh-att{display:flex;align-items:center;gap:13px;padding:14px 16px;border-radius:16px;margin-bottom:9px;cursor:pointer;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,rgba(26,33,45,0.55),rgba(13,17,24,0.55));border:1px solid rgba(150,180,220,0.09);box-shadow:0 14px 32px -24px rgba(0,0,0,0.9);}
-.dh-att-bar{position:absolute;left:0;top:0;bottom:0;width:3px;}
-.dh-att-ic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.dh-att-tx{flex:1;min-width:0;font-size:13.5px;color:rgba(224,232,245,0.92);line-height:1.35;}
-.dh-att-tx b{color:#fff;font-weight:700;}
-.dh-att-tx .sub{display:block;font-size:11px;color:rgba(180,200,230,0.45);margin-top:2px;font-weight:500;}
-.dh-att-cta{font-size:10px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;padding:7px 12px;border-radius:10px;flex-shrink:0;}
-.dh-mods{display:flex;flex-direction:column;gap:11px;}
-.dh-mod{position:relative;overflow:hidden;border-radius:18px;padding:16px 17px;cursor:pointer;
-  background:linear-gradient(180deg,rgba(26,33,45,0.55),rgba(13,17,24,0.55));border:1px solid rgba(150,180,220,0.09);box-shadow:inset 0 1px 0 rgba(255,255,255,0.045),0 16px 36px -26px rgba(0,0,0,0.9);}
-.dh-mod-h{display:flex;align-items:center;gap:11px;margin-bottom:11px;}
-.dh-mod-ic{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.dh-mod-t{flex:1;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:#fff;letter-spacing:0.2px;}
-.dh-mod-badge{font-size:8.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:6px;}
-.dh-crow{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:16px;margin-bottom:9px;cursor:pointer;position:relative;overflow:hidden;
-  background:linear-gradient(180deg,rgba(24,31,42,0.55),rgba(12,16,23,0.55));border:1px solid rgba(150,180,220,0.08);box-shadow:0 14px 32px -26px rgba(0,0,0,0.9);transition:border-color .2s,transform .1s;}
-.dh-crow:active{transform:scale(0.99);}
-.dh-crow-m{flex:1;min-width:0;}
-.dh-crow-n{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#f3f7fc;letter-spacing:-0.1px;display:flex;align-items:center;gap:7px;}
-.dh-crow-lv{font-size:9.5px;color:rgba(180,200,230,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
-.dh-crow-s{font-size:11.5px;color:rgba(180,200,230,0.45);margin-top:3px;}
-.dh-crow-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}
-.dh-crow-ct{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;}
-.dh-crow-ct small{font-size:11px;color:rgba(180,200,230,0.35);}
-.dh-crow-mtr{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,0.04);}
-.dh-crow-mtr i{display:block;height:100%;}
-.dh-spill{font-size:9.5px;font-weight:800;letter-spacing:0.4px;text-transform:uppercase;padding:4px 10px;border-radius:20px;}
-.dh-search{position:relative;margin-bottom:12px;}
-.dh-search input{width:100%;box-sizing:border-box;padding:12px 14px 12px 40px;background:rgba(12,16,23,0.6);border:1px solid rgba(150,180,220,0.1);border-radius:13px;color:#e8edf5;font-size:14px;font-family:'Instrument Sans',sans-serif;outline:none;}
-.dh-search-ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:rgba(180,200,230,0.4);display:flex;}
 </style>
 
 </head>
@@ -667,28 +581,25 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:3;opac
 <div id="view-scroll">
   <!-- DASHBOARD -->
   <div class="view active" id="view-dashboard">
-    <div class="dh-top">
-      <div style="min-width:0;">
-        <div class="dh-kick" id="dashDateKick">Overview</div>
-        <h2 id="greetingText" class="dh-name">Good to see you 👋</h2>
+    <div class="page-header">
+      <div class="page-label">Overview</div>
+      <h2 id="greetingText">Good to see you 👋</h2>
+    </div>
+    <div id="todaySessions" style="margin-bottom:16px"></div>
+    <div class="stats-grid" id="dashStats"></div>
+    <div id="dashAlerts"></div>
+    <div id="dashInsights"></div>
+    <div id="dashEducation"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;margin-top:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:4px;height:22px;border-radius:2px;background:linear-gradient(180deg,#4fa3e8,#2563eb);flex-shrink:0;"></div>
+        <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:0.3px;">Clients</div>
       </div>
-      <div class="dh-pill" id="dashClientPill" style="display:none;"></div>
+      <button onclick="openSessionBackup()" style="background:none;border:none;color:rgba(180,200,230,0.15);font-size:11px;cursor:pointer;padding:4px;font-family:inherit;opacity:0.5;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.5'" title="View & restore session count backup">🔒</button>
     </div>
-    <div id="todaySessions"></div>
-    <div id="dashWeek"></div>
-    <div class="dh-kpis" id="dashStats"></div>
-    <div id="dashAttnSec" style="display:none;">
-      <div class="dh-sec"><span class="dh-sec-bar" style="background:linear-gradient(180deg,#ff8792,#ff5c6a);box-shadow:0 0 10px rgba(255,92,106,0.45);"></span><span class="dh-sec-t">Needs Attention</span><span class="dh-sec-c" id="dashAttnCount"></span><span class="dh-sec-line"></span></div>
-      <div id="dashAlerts"></div>
-    </div>
-    <div id="dashForYouSec" style="display:none;">
-      <div class="dh-sec" style="margin-top:30px;"><span class="dh-sec-bar" style="background:linear-gradient(180deg,#d3aaff,#c084fc);box-shadow:0 0 10px rgba(192,132,252,0.45);"></span><span class="dh-sec-t">For You</span><span class="dh-sec-line"></span></div>
-      <div class="dh-mods"><div id="dashInsights"></div><div id="dashEducation"></div></div>
-    </div>
-    <div class="dh-sec" style="margin-top:30px;"><span class="dh-sec-bar" style="background:linear-gradient(180deg,#7ec8ff,#2563eb);box-shadow:0 0 10px rgba(79,163,232,0.45);"></span><span class="dh-sec-t">Clients</span><span class="dh-sec-c" id="dashClientCount"></span><span class="dh-sec-line"></span><button onclick="openSessionBackup()" style="background:none;border:none;color:rgba(180,200,230,0.2);font-size:12px;cursor:pointer;padding:4px;flex-shrink:0;" title="Session count backup">🔒</button></div>
-    <div class="dh-search">
-      <span class="dh-search-ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
-      <input id="dashSearch" type="text" placeholder="Search clients..." oninput="renderDashboard()">
+    <div style="position:relative;margin-bottom:14px;">
+      <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none;opacity:0.5;">🔍</span>
+      <input id="dashSearch" type="text" placeholder="Search clients..." oninput="renderDashboard()" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,160,255,0.12);border-radius:10px;color:#e8edf5;font-size:13px;font-family:'Instrument Sans',sans-serif;outline:none;" onfocus="this.style.borderColor='rgba(100,160,255,0.3)';" onblur="this.style.borderColor='rgba(100,160,255,0.12)';">
     </div>
     <div id="dashClients"></div>
   </div>
@@ -2211,30 +2122,6 @@ function clientTodayWorkoutIndex(c){
   return pos;
 }
 
-// Weekly-activity bar chart (Mon-start) — sessions logged per day across the whole roster.
-// Real, computable data; the signature data-viz of the dashboard.
-function renderDashWeek(){
-  const el=document.getElementById('dashWeek');
-  if(!el)return;
-  const now=new Date();
-  const dow=(now.getDay()+6)%7; // 0=Mon
-  const monday=new Date(now);monday.setDate(now.getDate()-dow);monday.setHours(0,0,0,0);
-  const labels=['M','T','W','T','F','S','S'];
-  const dayStr=[];
-  for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);dayStr.push(d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}));}
-  const counts=[0,0,0,0,0,0,0];
-  clients.filter(c=>!c.is_test).forEach(c=>{(c._sessions||[]).forEach(s=>{const idx=dayStr.indexOf(s.date);if(idx>=0)counts[idx]++;});});
-  const total=counts.reduce((a,b)=>a+b,0);
-  if(total===0){el.innerHTML='';el.style.display='none';return;}
-  el.style.display='';
-  const max=Math.max(1,...counts);
-  const bars=counts.map((v,i)=>{
-    const h=v>0?Math.round(8+(v/max)*80):5;
-    const cls='dh-wb'+(i===dow?' today':'')+(v===0?' empty':'');
-    return `<div class="${cls}"><div class="dh-wb-fill" style="height:${h}%"></div><div class="dh-wb-lbl">${labels[i]}</div></div>`;
-  }).join('');
-  el.innerHTML=`<div class="dh-week"><div class="dh-week-head"><span class="dh-week-lbl">This Week</span><span class="dh-week-tot">${total} <small>session${total===1?'':'s'}</small></span></div><div class="dh-wbars">${bars}</div></div>`;
-}
 function renderTodaySessions(){
   const el=document.getElementById('todaySessions');
   if(!el)return;
@@ -2265,36 +2152,30 @@ function renderTodaySessions(){
     </div>`;
   }).join('');
 
-  // Signature hero ring — Oura-style % complete, filling as sessions log.
+  // The signature element: a gradient progress ring — today's coaching, filling as sessions log.
   const frac=todayClients.length?loggedCount/todayClients.length:0;
-  const pct=Math.round(frac*100);
-  const R=43,CIRC=2*Math.PI*R;
+  const R=25,CIRC=2*Math.PI*R;
   const ringStroke=allDone?'#43d9a2':'url(#todayRingGrad)';
-  const ring=`<svg class="dh-ring" width="106" height="106" viewBox="0 0 106 106">
-    <defs><linearGradient id="todayRingGrad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="55%" stop-color="#4fa3e8"/><stop offset="100%" stop-color="#43d9a2"/></linearGradient></defs>
-    <circle cx="53" cy="53" r="${R}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
-    <circle cx="53" cy="53" r="${R}" fill="none" stroke="${ringStroke}" stroke-width="8" stroke-linecap="round"
+  const ring=`<svg width="64" height="64" viewBox="0 0 64 64" style="flex-shrink:0;${allDone?'filter:drop-shadow(0 0 10px rgba(67,217,162,0.45));':'filter:drop-shadow(0 0 8px rgba(37,99,235,0.3));'}">
+    <defs><linearGradient id="todayRingGrad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#43d9a2"/></linearGradient></defs>
+    <circle cx="32" cy="32" r="${R}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="5"/>
+    <circle cx="32" cy="32" r="${R}" fill="none" stroke="${ringStroke}" stroke-width="5" stroke-linecap="round"
       stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${(CIRC*(1-frac)).toFixed(1)}"
-      transform="rotate(-90 53 53)" style="transition:stroke-dashoffset .7s cubic-bezier(0.22,1,0.36,1);"/>
-    <text x="53" y="50" text-anchor="middle" dominant-baseline="central" style="font-family:Syne,sans-serif;font-weight:800;font-size:31px;fill:${allDone?'#43d9a2':'#fff'};">${pct}<tspan font-size="15" dy="-8" fill="rgba(180,200,230,0.55)">%</tspan></text>
-    <text x="53" y="69" text-anchor="middle" style="font-family:Syne,sans-serif;font-weight:700;font-size:9px;letter-spacing:1px;fill:rgba(180,200,230,0.5);">LOGGED</text>
+      transform="rotate(-90 32 32)" style="transition:stroke-dashoffset .7s cubic-bezier(0.22,1,0.36,1);"/>
+    <text x="32" y="31" text-anchor="middle" dominant-baseline="central" style="font-family:Syne,sans-serif;font-weight:800;font-size:15px;fill:${allDone?'#43d9a2':'#fff'};">${loggedCount}</text>
+    <text x="32" y="43" text-anchor="middle" style="font-family:Syne,sans-serif;font-weight:700;font-size:8px;fill:rgba(180,200,230,0.4);">of ${todayClients.length}</text>
   </svg>`;
-  // Quick-log chips for the clients still un-logged today (tap = quickLog).
-  const unlogged=todayClients.filter(c=>!(c._sessions||[]).some(s=>s.date===todayDate));
-  const chips=unlogged.slice(0,4).map(c=>`<div class="dh-chip" onclick="event.stopPropagation();quickLog('${c.id}')"><div class="dh-chip-av" style="${_avatarStyle(c,26)};border-radius:50%">${c.first[0]||''}${c.last?c.last[0]:''}</div><span class="dh-chip-nm">${c.first}</span><span class="dh-chip-lg">⚡</span></div>`).join('')
-    +(unlogged.length>4?`<div class="dh-chip" style="cursor:default;padding:5px 13px;"><span class="dh-chip-nm">+${unlogged.length-4} more</span></div>`:'');
-  el.innerHTML=`<div class="dh-hero${allDone?' done':''}">
-    <div class="dh-hrow" onclick="var x=document.getElementById('todayExpanded');if(x)x.style.display=x.style.display==='none'?'block':'none';">
+  el.innerHTML=`<div style="background:rgba(16,22,29,0.22);border:1px solid ${allDone?'rgba(67,217,162,0.22)':'rgba(79,163,232,0.16)'};border-radius:16px;margin-bottom:20px;overflow:hidden;">
+    <div onclick="document.getElementById('todayExpanded').style.display=document.getElementById('todayExpanded').style.display==='none'?'block':'none'" style="padding:13px 18px;display:flex;align-items:center;gap:15px;cursor:pointer;user-select:none;">
       ${ring}
-      <div class="dh-hcopy">
-        <div class="dh-hkick">Today · ${todayName}</div>
-        <div class="dh-hbig">${loggedCount}<small> / ${todayClients.length} done</small></div>
-        <div class="dh-hnote">${allDone?'All sessions logged ✓':`${todayClients.length-loggedCount} session${todayClients.length-loggedCount===1?'':'s'} still to log`}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${allDone?'#43d9a2':'#4fa3e8'};margin-bottom:4px;">Today · ${todayName}</div>
+        <div style="font-size:14px;color:${allDone?'#43d9a2':'#e8edf5'};font-weight:700;font-family:Syne,sans-serif;">${allDone?'All sessions logged ✓':`${loggedCount} of ${todayClients.length} sessions logged`}</div>
+        ${!allDone?`<div style="font-size:11px;color:rgba(180,200,230,0.4);margin-top:2px;">${todayClients.length-loggedCount} still to log — tap to see who</div>`:''}
       </div>
-      <div style="color:rgba(180,200,230,0.3);font-size:13px;align-self:center;flex-shrink:0;">▾</div>
+      <div style="color:rgba(180,200,230,0.25);font-size:11px;flex-shrink:0;">▼</div>
     </div>
-    ${!allDone&&chips?`<div class="dh-chips">${chips}</div>`:''}
-    <div id="todayExpanded" style="display:none;margin-top:14px;border-top:1px solid rgba(150,180,220,0.1);padding-top:2px;">${list}</div>
+    <div id="todayExpanded" style="display:none;padding:4px 18px 14px;">${list}</div>
   </div>`;
 }
 
@@ -2637,69 +2518,65 @@ function renderDashboard(){
     const d=new Date(s.date);
     return d.getMonth()===currentMonth && d.getFullYear()===currentYear;
   }).length,0);
-  // KPI rail — four metrics in one compact strip (replaced four big hollow tiles).
-  const kpi=(val,label,col)=>`<div class="dh-kpi"><div class="dh-kpi-num stat-val" data-v="${val}"${col?` style="color:${col}"`:''}>${val}</div><div class="dh-kpi-lbl">${label}</div></div>`;
+  // One calm surface per tile — color lives only in the number. (Old version stacked tinted
+  // gradient + border + 4px stripe per tile: four loud boxes competing at the top of the app.)
+  const mkStat=(val,label,col)=>{
+    const glow=col.charAt(0)==='#'?`text-shadow:0 0 26px ${col}55;`:'';  // hero numbers cast their color
+    return `<div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px 18px;"><div style="font-size:9px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(180,200,230,0.4);margin-bottom:8px;">${label}</div><div class="stat-val" data-v="${val}" style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;line-height:1;letter-spacing:-1.5px;color:${col};${glow}">${val}</div></div>`;
+  };
   document.getElementById('dashStats').innerHTML=
-    kpi(clients.length,'Clients','')+
-    kpi(totalSess,'This Month','#9fd0ff')+
-    kpi(low.length+sharedLow,'Low',(low.length+sharedLow)?'#ffc06b':'rgba(210,222,238,0.4)')+
-    kpi(out.length+sharedOut,'Invoice',(out.length+sharedOut)?'#ff8792':'rgba(210,222,238,0.4)');
-  // Count-up on first load only (motion is a greeting, not a constant).
+    mkStat(clients.length,'Active Clients','#e8edf5')+
+    mkStat(totalSess,'Sessions This Month','#7ec8ff')+
+    mkStat(low.length+sharedLow,'Low Sessions',(low.length+sharedLow)?'#ffb347':'rgba(180,200,230,0.35)')+
+    mkStat(out.length+sharedOut,'Invoice Needed',(out.length+sharedOut)?'#ff5c6a':'rgba(180,200,230,0.35)');
+  // Count-up on first load only (re-renders after logging etc. stay instant — motion is a greeting,
+  // not a constant).
   if(!window._statsAnimated){
     window._statsAnimated=true;
     document.querySelectorAll('#dashStats .stat-val').forEach(function(el){
       var target=parseInt(el.getAttribute('data-v'))||0;
       if(target<=0)return;
       var t0=performance.now(),dur=650;
-      function tick(t){var p=Math.min(1,(t-t0)/dur);p=1-Math.pow(1-p,3);el.textContent=Math.round(target*p);if(p<1)requestAnimationFrame(tick);}
+      function tick(t){
+        var p=Math.min(1,(t-t0)/dur);p=1-Math.pow(1-p,3);
+        el.textContent=Math.round(target*p);
+        if(p<1)requestAnimationFrame(tick);
+      }
       requestAnimationFrame(tick);
     });
   }
-  // Header meta (date kicker + client pill/count) + weekly-activity chart.
-  try{
-    var _dk=document.getElementById('dashDateKick');
-    if(_dk)_dk.textContent=new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});
-    var _cp=document.getElementById('dashClientPill');
-    if(_cp){_cp.textContent=clients.length+' client'+(clients.length===1?'':'s');_cp.style.display=clients.length?'':'none';}
-    var _cc=document.getElementById('dashClientCount');if(_cc)_cc.textContent=clients.length;
-  }catch(e){}
-  try{renderDashWeek();}catch(e){}
-  // ── Needs Attention ── refined action rows; whole row opens the client's profile.
   let alerts='';
-  const _redIc='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff6474" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
-  const _amberIc='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
-  const _attRow=(tone,ic,name,line,subL,ctaL,clickId)=>{
-    const p=tone==='red'?{bar:'#ff6474',glow:'rgba(255,92,106,0.5)',icbg:'rgba(255,92,106,0.14)',ct:'#ff8792',ctbg:'rgba(255,92,106,0.14)'}:{bar:'#ffb347',glow:'rgba(255,179,71,0.5)',icbg:'rgba(255,179,71,0.14)',ct:'#ffc06b',ctbg:'rgba(255,179,71,0.14)'};
-    return `<div class="dh-att" onclick="openClientDetail('${clickId}')"><div class="dh-att-bar" style="background:${p.bar};box-shadow:0 0 12px ${p.glow};"></div><div class="dh-att-ic" style="background:${p.icbg};">${ic}</div><div class="dh-att-tx"><b>${name}</b> ${line}<span class="sub">${subL}</span></div><div class="dh-att-cta" style="background:${p.ctbg};color:${p.ct};">${ctaL}</div></div>`;
-  };
-  out.forEach(c=>{alerts+=_attRow('red',_redIc,`${c.first} ${c.last||''}`,'is out of sessions','Send invoice via Square','Invoice',c.id);});
-  low.forEach(c=>{alerts+=_attRow('amber',_amberIc,`${c.first} ${c.last||''}`,`has ${c.remaining} session${c.remaining===1?'':'s'} left`,'Time to renew their package','Renew',c.id);});
+  // Alerts are tappable → open that client's profile to edit (renew, adjust remaining, etc.).
+  const _alertChev='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(180,200,230,0.5)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;align-self:center;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>';
+  out.forEach(c=>{alerts+=`<div class="alert alert-danger" onclick="openClientDetail('${c.id}')" style="cursor:pointer;"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff5c6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div><b>${c.first} ${c.last||''}</b> is out of sessions — send invoice via Square</div>${_alertChev}</div>`;});
+  low.forEach(c=>{alerts+=`<div class="alert alert-warn" onclick="openClientDetail('${c.id}')" style="cursor:pointer;"><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><div><b>${c.first} ${c.last||''}</b> has ${c.remaining} session${c.remaining===1?'':'s'} left — time to renew</div>${_alertChev}</div>`;});
+  // Shared package alerts
   sharedPackages.forEach(pkg=>{
     const linkedList=clients.filter(c=>c.shared_package_id===pkg.id);
     const linked=linkedList.map(c=>c.first).join(' & ');
     const firstId=linkedList[0]?linkedList[0].id:'';
-    if(!firstId)return;
-    if(pkg.remaining_sessions<=0) alerts+=_attRow('red',_redIc,linked,'shared package is out','Invoice via Square','Invoice',firstId);
-    else if(pkg.remaining_sessions<=2) alerts+=_attRow('amber',_amberIc,linked,`shared: ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left`,'Time to renew','Renew',firstId);
+    const tap=firstId?`onclick="openClientDetail('${firstId}')" style="cursor:pointer;"`:'';
+    const chev=firstId?_alertChev:'';
+    if(pkg.remaining_sessions<=0) alerts+=`<div class="alert alert-danger" ${tap}><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ff5c6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div><b>${linked}</b> shared package is out — invoice via Square</div>${chev}</div>`;
+    else if(pkg.remaining_sessions<=2) alerts+=`<div class="alert alert-warn" ${tap}><span class="alert-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><div><b>${linked}</b> shared package has ${pkg.remaining_sessions} session${pkg.remaining_sessions===1?'':'s'} left</div>${chev}</div>`;
   });
   document.getElementById('dashAlerts').innerHTML=alerts;
-  var _attnN=document.getElementById('dashAlerts').children.length;
-  var _attnSec=document.getElementById('dashAttnSec');if(_attnSec)_attnSec.style.display=_attnN?'':'none';
-  var _attnC=document.getElementById('dashAttnCount');if(_attnC)_attnC.textContent=_attnN;
-  // ── For You ── (Coaching Insights + Learn Today)
   const insightsEl=document.getElementById('dashInsights');
   if(insightsEl){
     const insights=computeCoachInsights();
     const insightCol={'exercise-repeat':'#c084fc','rep-scheme':'#4fa3e8','deload':'#ffb347'};
-    insightsEl.innerHTML=!insights.length?'':'<div class="dh-mod" onclick="openCoachInsightsDetail()">'
-      +'<div class="dh-mod-h"><div class="dh-mod-ic" style="background:rgba(192,132,252,0.14);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.68.68 1.24 1.52 1.41 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></div><div class="dh-mod-t">Coaching Insights</div><span class="dh-mod-badge" style="background:rgba(192,132,252,0.16);color:#d3aaff;">'+insights.length+' pattern'+(insights.length===1?'':'s')+'</span></div>'
-      +insights.map(function(ins){const col=insightCol[ins.type]||'#7ec8ff';return '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:9px;"><div style="flex-shrink:0;width:22px;height:22px;border-radius:7px;background:'+col+'20;display:flex;align-items:center;justify-content:center;font-size:12px;">'+ins.icon+'</div><span style="font-size:13px;color:rgba(232,237,245,0.82);line-height:1.5;padding-top:2px;">'+ins.text+'</span></div>';}).join('')
+    // Distinct module identity (vs the Learn Today card below it): purple accent edge + icon tile.
+    insightsEl.innerHTML=!insights.length?'':'<div onclick="openCoachInsightsDetail()" style="cursor:pointer;background:rgba(16,22,29,0.4);border:1px solid rgba(192,132,252,0.22);border-left:3px solid #c084fc;border-radius:14px;padding:14px 16px;margin-bottom:14px;">'
+      +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px;">'
+        +'<div style="flex-shrink:0;width:26px;height:26px;border-radius:8px;background:rgba(192,132,252,0.14);display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5.68.68 1.24 1.52 1.41 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></div>'
+        +'<div style="flex:1;font-family:Syne,sans-serif;font-weight:800;font-size:13.5px;color:#fff;letter-spacing:0.3px;">Coaching Insights</div>'
+        +'<div style="font-size:11px;color:rgba(192,132,252,0.75);font-weight:600;">Details ›</div>'
+      +'</div>'
+      +insights.map(function(ins){const col=insightCol[ins.type]||'#7ec8ff';return '<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;"><div style="flex-shrink:0;width:24px;height:24px;border-radius:7px;background:'+col+'20;display:flex;align-items:center;justify-content:center;font-size:12px;">'+ins.icon+'</div><span style="font-size:13px;color:rgba(232,237,245,0.8);line-height:1.5;padding-top:3px;">'+ins.text+'</span></div>';}).join('')
       +'</div>';
   }
   const eduEl=document.getElementById('dashEducation');
   if(eduEl){try{eduEl.innerHTML=_ceHomeCardHtml();}catch(e){eduEl.innerHTML='';}}
-  var _fySec=document.getElementById('dashForYouSec');
-  if(_fySec)_fySec.style.display=((insightsEl&&insightsEl.innerHTML.trim())||(eduEl&&eduEl.innerHTML.trim()))?'':'none';
   const dashQ=(document.getElementById('dashSearch')?.value||'').toLowerCase();
   const sorted=[...clients].sort((a,b)=>a.first.localeCompare(b.first));
   const dashFiltered=dashQ?sorted.filter(c=>`${c.first} ${c.last||''}`.toLowerCase().includes(dashQ)):sorted;
@@ -2889,33 +2766,41 @@ function clientRowHtml(c){
   const displayRemaining = sharedPkg ? sharedPkg.remaining_sessions : c.remaining;
   const displayTotal = sharedPkg ? sharedPkg.total_sessions : c.package_size;
   const effectivePct = !hasPkg ? 0 : displayRemaining<=0 ? 100 : displayTotal>0 ? Math.min(displayRemaining/displayTotal*100, 100) : Math.min((displayRemaining||0)*10, 100);
-  // status → color, pill label, meter gradient
-  let statusCol,pillTxt,pillBg,pillFg,meterGrad;
-  if(c.paused){statusCol='rgba(180,200,230,0.45)';pillTxt='Paused';pillBg='rgba(180,200,230,0.08)';pillFg='rgba(180,200,230,0.55)';meterGrad='rgba(180,200,230,0.3)';}
-  else if(!hasPkg){statusCol='#9fd0ff';pillTxt='Pay/session';pillBg='rgba(79,163,232,0.13)';pillFg='#9fd0ff';meterGrad='';}
-  else if(displayRemaining<=0){statusCol='#ff8792';pillTxt='Invoice';pillBg='rgba(255,92,106,0.14)';pillFg='#ff8792';meterGrad='linear-gradient(90deg,#ff5c6a,#ff8792)';}
-  else if(displayRemaining<=2){statusCol='#ffc06b';pillTxt='Renew';pillBg='rgba(255,179,71,0.14)';pillFg='#ffc06b';meterGrad='linear-gradient(90deg,#ffb347,#ffce85)';}
-  else{statusCol='#8fe8c4';pillTxt='On track';pillBg='rgba(67,217,162,0.13)';pillFg='#8fe8c4';meterGrad='linear-gradient(90deg,#2f9e6f,#43d9a2)';}
-  const showMeter=hasPkg&&!c.paused;
-  const countHtml=(showMeter)?`<div class="dh-crow-ct" style="color:${statusCol};">${displayRemaining}${displayTotal>0?`<small> / ${displayTotal}</small>`:''}</div>`:'';
+  const effectiveCol = !hasPkg?'var(--muted)':displayRemaining<=0?'var(--danger)':displayRemaining<=2?'var(--warn)':'var(--success)';
+  const badge = c.paused
+    ? '<span class="badge badge-paused">⏸ Paused</span>'
+    : sharedPkg
+    ? displayRemaining<=0?'<span class="badge badge-red">OUT</span>'
+      :displayRemaining<=2?`<span class="badge badge-yellow">${displayRemaining} shared</span>`
+      :`<span class="badge badge-green">${displayRemaining} shared</span>`
+    : !hasPkg?'<span class="badge badge-blue">Pay per session</span>'
+      :c.remaining<0?`<span class="badge badge-red">${c.remaining} sessions</span>`
+      :c.remaining===0?'<span class="badge badge-red">0 remaining</span>'
+      :c.remaining<=2?`<span class="badge badge-yellow">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`
+      :`<span class="badge badge-green">${c.package_size>0?c.remaining+' / '+c.package_size:c.remaining+' left'}</span>`;
   const lastSess = c._sessions && c._sessions.length > 0 ? c._sessions[0] : null;
   const lastSessText = lastSess ? _relDayLabel(lastSess) : null;
   const _cardTier = (JSON.parse(localStorage.getItem('bm_tiers')||'{}'))[c.id];
-  const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : '';
+  const tierDotColor = _cardTier === 'gold' ? '#FFD700' : _cardTier === 'silver' ? '#C0C8D0' : _cardTier === 'bronze' ? '#FF8C47' : 'rgba(180,200,230,0.18)';
   const sessionCount = (c._sessions||[]).length;
-  const runTag = c.run_program_id ? ` · 🏃 Wk ${c.run_program_week||1}` : '';
-  const subLine = (lastSessText
-    ? `${lastSessText} · ${sessionCount} session${sessionCount===1?'':'s'}${runTag}`
-    : `No sessions yet${runTag}`) + (sharedPkg?' · shared':'');
-  const dot = tierDotColor ? `<span style="width:7px;height:7px;border-radius:50%;background:${tierDotColor};box-shadow:0 0 7px ${tierDotColor}99;flex-shrink:0;display:inline-block;"></span>` : '';
-  return `<div class="dh-crow" onclick="openClientDetail('${c.id}')">
-    <div style="${_avatarStyle(c,46)}">${c.first[0]||''}${c.last?c.last[0]:''}</div>
-    <div class="dh-crow-m">
-      <div class="dh-crow-n">${dot}${c.first} ${c.last||''}${c.level?`<span class="dh-crow-lv">${c.level}</span>`:''}</div>
-      <div class="dh-crow-s">${subLine}</div>
+  const runTag = c.run_program_id ? `<span style="color:rgba(255,140,71,0.6);font-weight:600;">· 🏃 Wk ${c.run_program_week||1}</span>` : '';
+  const subLine = lastSessText
+    ? `Last · ${lastSessText} &nbsp;·&nbsp; ${sessionCount} session${sessionCount===1?'':'s'} ${runTag}`
+    : `No sessions yet ${runTag}`;
+  return `<div class="client-card" onclick="openClientDetail('${c.id}')">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:${hasPkg?'12':'0'}px">
+      <div class="client-avatar" style="${_avatarStyle(c,46)}">${c.first[0]}${c.last?c.last[0]:''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:${tierDotColor};flex-shrink:0;display:inline-block;"></span>
+          <span style="font-weight:700;font-size:15px;color:#e8edf5;">${c.first} ${c.last||''}</span>
+          ${c.level?`<span style="font-size:11px;color:rgba(180,200,230,0.35);font-weight:500;">${c.level}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:rgba(180,200,230,0.45);line-height:1.4;">${subLine}</div>
+      </div>
+      ${badge}
     </div>
-    <div class="dh-crow-r">${countHtml}<span class="dh-spill" style="background:${pillBg};color:${pillFg};">${pillTxt}</span></div>
-    ${showMeter?`<div class="dh-crow-mtr"><i style="width:${effectivePct}%;background:${meterGrad};"></i></div>`:''}
+    ${hasPkg?`<div class="prog-wrap" style="height:6px;margin-top:0;"><div class="prog-fill" style="width:${effectivePct}%;background:${effectiveCol}"></div></div>`:''}
   </div>`;
 }
 
