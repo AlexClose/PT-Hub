@@ -6463,6 +6463,22 @@ function startClientPortal(id) {
     });
   }
 
+  // Shared has-data check for both client-portal workout sheets (program-day AND custom workout —
+  // whichever is currently open is the only one whose inputs exist in the DOM, so checking both id
+  // patterns unconditionally is safe). Mirrors the coach's _coachLogHasData guard. After a successful
+  // save the sheet's inner HTML is replaced with the success screen, so these inputs no longer exist
+  // and this naturally returns false — no separate "force" flag needed for the post-save close calls.
+  function _portalWorkoutHasData(){
+    var i=0;while(document.getElementById('wr-'+i)||document.getElementById('wt-'+i)){if((document.getElementById('wr-'+i)||{}).value&&(document.getElementById('wr-'+i)||{}).value.trim())return true;if((document.getElementById('wt-'+i)||{}).value&&(document.getElementById('wt-'+i)||{}).value.trim())return true;i++;}
+    var names=document.querySelectorAll('[id^="cex-name-"]');for(var k=0;k<names.length;k++){if((names[k].value||'').trim())return true;}
+    var adv=document.querySelectorAll('[id^="cex-reps-"],[id^="cex-wt-"]');for(var j=0;j<adv.length;j++){if((adv[j].value||'').trim())return true;}
+    return false;
+  }
+  // Insurance: force-save the program-day draft the instant iOS suspends the page — mirrors the
+  // coach's own visibilitychange save (saveDraftCoach). _saveDraft already no-ops safely when the
+  // sheet isn't open or has nothing typed (hasData guard), so this is safe to call unconditionally.
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&window._saveDraft){try{window._saveDraft();}catch(e){}}});
+
   // Client-portal ambient background — same "living dark" mote engine as the coach dashboard
   // (dust rising from a soft bottom light source), so the portal reads as the same app rather than
   // a plainer sibling. Runs once: renderClientShell only replaces document.body a single time per
@@ -7155,6 +7171,7 @@ function startClientPortal(id) {
         // sheet only via the deliberate "← Back" button.
       }
       window._closeWorkoutSheet = function(skipAnim) {
+        if (_portalWorkoutHasData() && !confirm('Discard this in-progress workout? Your entered sets will be lost.')) return;
         var s = document.getElementById('workout-sheet'); if (!s) return;
         if (!skipAnim) { s.style.transition='transform .32s cubic-bezier(0.32,0,0.2,1)'; s.style.transform='translateY(100%)'; }
         s.classList.remove('sheet-open');
@@ -7948,6 +7965,7 @@ function startClientPortal(id) {
     window._portalDay = day;
     // skipAnim=true means swipe already set the transform; just clean up after delay
     window._closeWorkoutSheet = function(skipAnim) {
+      if (_portalWorkoutHasData() && !confirm('Discard this in-progress workout? Your entered sets will be lost.')) return;
       var s = document.getElementById('workout-sheet');
       if (!s) return;
       if (!skipAnim) {
@@ -8256,12 +8274,21 @@ function startClientPortal(id) {
     if (!day) return;
     var draft = {dayName: day.name, inputs: {}};
     var exercises = day.exercises || [];
+    var hasData = false;
     for (var i = 0; i < exercises.length; i++) {
       var wr = document.getElementById('wr-' + i);
       var wt = document.getElementById('wt-' + i);
       draft.inputs[i] = {reps: wr ? wr.value : '', weight: wt ? wt.value : ''};
+      if ((draft.inputs[i].reps||'').trim() || (draft.inputs[i].weight||'').trim()) hasData = true;
     }
-    try { sessionStorage.setItem('bm_workout_draft', JSON.stringify(draft)); } catch(e) {}
+    // NEVER overwrite a stored draft with an empty one (matches saveDraftCoach) — a freshly-rendered
+    // sheet saves before the client types anything; without this guard that empty save could wipe a
+    // real in-progress draft if it ran between an iOS eviction and _restoreDraft firing.
+    if (!hasData) return;
+    // localStorage, not sessionStorage — sessionStorage is more readily cleared when iOS evicts a
+    // backgrounded PWA/tab from memory, which is exactly when a client is most likely to lock their
+    // phone mid-set and lose the draft.
+    try { localStorage.setItem('bm_workout_draft', JSON.stringify(draft)); } catch(e) {}
   };
 
   window._fillLastPortal = function() {
@@ -8283,7 +8310,7 @@ function startClientPortal(id) {
 
   window._restoreDraft = function() {
     try {
-      var raw = sessionStorage.getItem('bm_workout_draft');
+      var raw = localStorage.getItem('bm_workout_draft');
       if (!raw) return;
       var draft = JSON.parse(raw);
       if (!window._portalDay || draft.dayName !== window._portalDay.name) return;
@@ -8307,7 +8334,7 @@ function startClientPortal(id) {
   };
 
   window._clearDraft = function() {
-    try { sessionStorage.removeItem('bm_workout_draft'); } catch(e) {}
+    try { localStorage.removeItem('bm_workout_draft'); } catch(e) {}
   };
 
   window._toggleSessions = function(total) {
