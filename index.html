@@ -1079,7 +1079,7 @@ function canonExName(str){
   var s=str.trim().replace(/\s+/g,' ');
   var sl=s.toLowerCase();
   for(var i=0;i<_KNOWN_EXERCISES.length;i++){if(_KNOWN_EXERCISES[i].toLowerCase()===sl)return _KNOWN_EXERCISES[i];}
-  if(Array.isArray(window.library)){for(var i=0;i<window.library.length;i++){var ln=window.library[i].name||'';if(ln.toLowerCase()===sl)return ln;}}
+  if(Array.isArray(library)){for(var i=0;i<library.length;i++){var ln=library[i].name||'';if(ln.toLowerCase()===sl)return ln;}}
   var SYN={'lat pull down':'Lat Pulldown','lat pull-down':'Lat Pulldown','lat pulldowns':'Lat Pulldown','pulldown':'Lat Pulldown','pull down':'Lat Pulldown',
     'bench':'Bench Press','flat bench':'Bench Press','flat bench press':'Bench Press','barbell bench':'Bench Press','barbell bench press':'Bench Press',
     'incline bench':'Incline Bench Press','incline press':'Incline Bench Press','decline bench':'Decline Bench Press','decline press':'Decline Bench Press',
@@ -1117,7 +1117,7 @@ var _EX_SUGGEST=["Bench Press","Incline Bench Press","Decline Bench Press","Dumb
 var _exAcTokCache={};
 function _exAcGetList(){
   var seen={},all=_EX_SUGGEST.concat(_KNOWN_EXERCISES);
-  if(Array.isArray(window.library))window.library.forEach(function(e){if(e.name)all.push(e.name);});
+  if(Array.isArray(library))library.forEach(function(e){if(e.name)all.push(e.name);});
   if(Array.isArray(_exDb))_exDb.forEach(function(e){if(e.name)all.push(e.name);}); // full dataset = every exercise findable
   return all.filter(function(n){var k=(n||'').toLowerCase();if(!n||seen[k])return false;seen[k]=true;return true;});
 }
@@ -1612,7 +1612,7 @@ var _EX_ALIAS={
 var _EXDB_MUS={chest:'Chest',lats:'Back','middle back':'Back','lower back':'Back',lower_back:'Back',back:'Back',traps:'Back',neck:'Back',biceps:'Arms',triceps:'Arms',forearms:'Arms',quadriceps:'Legs',quads:'Legs',hamstrings:'Legs',calves:'Legs',abductors:'Legs',adductors:'Legs',glutes:'Glutes',glute_med:'Glutes',shoulders:'Shoulders',abdominals:'Core',abs:'Core'};
 function _jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,"\\'");}
 function _cap(s){return String(s||'').replace(/\b\w/g,function(c){return c.toUpperCase();});}
-function _normExName(s){return (s||'').toLowerCase().replace(/^ss\d+:\s*/i,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
+function _normExName(s){return (s||'').toLowerCase().replace(_SS_TAG_RE,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();}
 function _exTokens(s){var n=_normExName(s);return n?n.split(' '):[];}
 // Tokens: normalize, expand abbreviations (db->dumbbell), singularize plurals (curls->curl), dedupe.
 function _exTokArr(s){
@@ -1772,7 +1772,7 @@ function _buildExSeriesMap(sessions){
     var ord=s.created_at||s.date||'';
     s.workout.forEach(function(e){
       if(!e||!(e.weight||e.reps))return;
-      var k=(e.name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');
+      var k=(e.name||'').toLowerCase().replace(_SS_TAG_RE,'').replace(/\s+/g,'_');
       if(!k)return;
       var b=_bestSet(e.reps,e.weight);if(!b||!b.weight)return;
       (map[k]||(map[k]=[])).push({date:s.date||'',ord:ord,best:b,reps:e.reps||'',weight:e.weight||''});
@@ -3561,7 +3561,7 @@ function _genCandMech(e){return _GEN_ISO_RE.test(e.name||'')?'isolation':String(
 // of itself (regenerating kept flip-flopping the lead exercise between two near-identical variants).
 var _EQUIP_WORDS_RE=/\b(barbell|dumbbell|db|machine|cable|smith|kettlebell|kb|band|banded|ez.?bar|bodyweight|body.?only|plate.?loaded|hammer strength|selectorized|trap bar|safety bar|assisted|weighted|incline|decline|flat)\b/gi;
 function _exBaseMovement(name){
-  return (name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(_EQUIP_WORDS_RE,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+  return (name||'').toLowerCase().replace(_SS_TAG_RE,'').replace(_EQUIP_WORDS_RE,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 }
 // The dataset's raw primaryMuscles tags are narrower than how a coach actually thinks about
 // swaps — "Chest Supported Row" (middle back) and "T-Bar Row" (lats) are both just "a back
@@ -4050,7 +4050,7 @@ const _PRESC_VARIETY_ISO=[
 function _prescSuggestionFor(clientId,name){
   if(!name)return null;
   const c=clients.find(function(x){return x.id===clientId;});
-  const key=name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');
+  const key=name.toLowerCase().replace(_SS_TAG_RE,'').replace(/\s+/g,'_');
   const last=c&&c.exercise_history&&c.exercise_history[key];
   // Compound anchors can take heavy low-rep work; everything else stays in the hypertrophy range.
   const isCompound=(typeof _exMechanic==='function')&&_exMechanic(name)==='compound';
@@ -4803,7 +4803,7 @@ function updateLogWorkout(clientId){
       html+=`<div id="ex-row-${ei}" ${isSuperset?'data-ss="1"':''} class="${isSuperset?'':'log-ex-card'}" style="position:relative;">
         <div class="log-ex-head"><div class="log-num">${ei+1}</div>${_exThumbHTML(ex.name,displayName,46,'coach:'+clientId)}<div class="workout-ex-name" onclick="_openExDetailCoach('${_jsq(ex.name)}','${_jsq(displayName)}','${clientId}')" style="cursor:pointer;">${displayName}</div></div>
         <div class="log-ref"><div><div class="log-ref-lbl">Target</div><div class="log-ref-val">${ex.prescription}${ex.load?' · '+ex.load:''}</div></div></div>
-        ${(()=>{const gk=ex.name.toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);const gh=_progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);return gh?`<div class="log-guide-wrap">${gh}</div>`:'';})()}
+        ${(()=>{const gk=ex.name.toLowerCase().replace(_SS_TAG_RE,'').replace(/\s+/g,'_');const g=_exGuideFor(_serMap,gk,ex.prescription,last);const gh=_progressionGuideHtml(g,`_applyTargetCoach(${ei},'${g.sugg?_suggestRepsStr(g.sugg):''}','${g.sugg?g.sugg.weight:''}')`,`showExHistory('${clientId}','${_jsq(ex.name)}','${_jsq(displayName)}',${ei})`);return gh?`<div class="log-guide-wrap">${gh}</div>`:'';})()}
         <div class="log-body">
           <label class="log-field"><div class="log-field-lbl">Sets × Reps</div><input id="wr-${ei}" class="log-input" placeholder="${last&&last.reps?last.reps:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
           <label class="log-field"><div class="log-field-lbl">Weight / Load</div><input id="wt-${ei}" class="log-input" placeholder="${last&&last.weight?last.weight:'—'}" oninput="checkExRowCoach(${ei});saveDraftCoach()"></label>
@@ -4975,7 +4975,7 @@ function showExHistory(clientId, exName, displayName, ei){
   sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
   document.body.appendChild(sheet);
 }
-function showSuccessAnimation(name){
+function showSuccessAnimation(name,pbs){
   if(navigator.vibrate){navigator.vibrate([10,40,20,40,40]);}
   // Remove any existing
   document.querySelectorAll('.success-overlay').forEach(e=>e.remove());
@@ -4984,19 +4984,21 @@ function showSuccessAnimation(name){
   const confettiColors=['#ff5c6a','#ff8c47','#f59e0b','#43d9a2','#7ec8ff','#a78bfa','#fb7185','#34d399'];
   let confettiHtml='';
   for(let ci=0;ci<28;ci++){const cx=(Math.random()*110-5).toFixed(1);const cd=(Math.random()*0.7).toFixed(2);const dur=(0.8+Math.random()*0.7).toFixed(2);const cc=confettiColors[Math.floor(Math.random()*confettiColors.length)];const cs=4+Math.floor(Math.random()*6);const cr=Math.floor(Math.random()*360);const isRect=Math.random()>0.45;confettiHtml+=`<div style="position:absolute;left:${cx}%;top:-8px;width:${cs}px;height:${isRect?cs*2:cs}px;border-radius:${isRect?2:50}%;background:${cc};animation:confettiFall ${dur}s ${cd}s ease-in forwards;transform:rotate(${cr}deg);pointer-events:none;"></div>`;}
+  const pbHtml=(pbs&&pbs.length)?`<div style="font-size:12px;color:#f59e0b;letter-spacing:0.3px;text-align:center;max-width:260px;">🏆 PB: ${pbs.map(n=>_attr(n)).join(', ')}</div>`:'';
   overlay.innerHTML = confettiHtml + `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;animation:burstIn .45s cubic-bezier(.34,1.56,.64,1) forwards">
       <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#43d9a2);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 60px rgba(67,217,162,0.6);">⚡</div>
       <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:#ffffff;letter-spacing:2px;text-transform:uppercase;">${name} — Done!</div>
       <div style="font-size:13px;color:rgba(67,217,162,0.8);letter-spacing:1px;">Session Logged ✓</div>
+      ${pbHtml}
     </div>`;
   document.body.appendChild(overlay);
-  // Fade out after 1s
+  // Fade out after 1s (longer when there's a PB to actually read)
   setTimeout(()=>{
     overlay.style.transition='opacity .3s ease';
     overlay.style.opacity='0';
     setTimeout(()=>overlay.remove(), 300);
-  }, 1000);
+  }, (pbs&&pbs.length)?2200:1000);
 }
 
 async function confirmLogSession(){
@@ -6420,10 +6422,15 @@ function startClientPortal(id) {
 
       window._portalClientId = client.id;
       try{_loadExDb();}catch(e){}
+      // The portal never runs init(), so `library` starts empty — populate it once up front (was
+      // only ever fetched after a custom workout was logged, leaving autocomplete and the muscle
+      // heatmap's library-name lookup empty for the whole session until then).
+      try{db.getLibrary().then(function(lib){if(Array.isArray(lib))library=lib;}).catch(function(){});}catch(e){}
       window._portalClientName = client.first || 'there';
       window._portalHistory = client.exercise_history || {};
       window._portalPackageSize = client.package_size || 0;
       window._portalRemaining = client.remaining || 0;
+      window._portalSharedPackageId = client.shared_package_id || null;
       window._portalScheduleStr = client.schedule || '';
       window._portalRunScheduleStr = client.run_schedule || '';
       window._portalScheduleDays = parseSchedule(client.schedule || '');
@@ -6438,6 +6445,21 @@ function startClientPortal(id) {
     })
     .catch(function(err) {
       document.body.innerHTML = '<p style="color:red;padding:20px;">Error: ' + err.message + '</p>';
+    });
+  }
+
+  // Shared-package decrement for client self-logging (program-day AND custom workout). The client's
+  // own `remaining` is stale/unused for shared-package clients (same reason the coach dashboard
+  // excludes them from its low/out filters) — the real count lives on the shared_packages row, keyed
+  // by window._portalSharedPackageId. Reads the live value rather than trusting any cached copy since
+  // the portal never loads the coach's `sharedPackages` array. No-ops (resolved promise) when the
+  // client isn't on a shared package, or the package is already at 0.
+  function _portalDecrementSharedPkg(){
+    if(!window._portalSharedPackageId) return Promise.resolve();
+    return sb('GET','shared_packages',null,'?id=eq.'+window._portalSharedPackageId+'&select=remaining_sessions').then(function(rows){
+      var sp=rows&&rows[0];
+      if(!sp||!(sp.remaining_sessions>0))return;
+      return db.updateSharedPkg(window._portalSharedPackageId,{remaining_sessions:Math.max(0,sp.remaining_sessions-1)});
     });
   }
 
@@ -7259,10 +7281,13 @@ function startClientPortal(id) {
         newHistory[key] = {reps:e.reps, weight:e.weight, date:dateStr, pb: isPB ? e.weight : (newHistory[key]&&newHistory[key].pb ? newHistory[key].pb : '')};
       });
       var inner = document.getElementById('workout-sheet-inner') || document.getElementById('portal-body');
-      // Idempotent stages: "Please try again" after a partial failure must not re-POST the session
-      // or the exercise_logs (was duplicating both). One log batch = one POST (array body) so it's
-      // all-or-nothing instead of N separate fetches that can partially land.
-      if (!window._custSaveState) window._custSaveState = {sess:false, logs:false};
+      // Idempotent stages: "Please try again" after a partial failure must not re-POST the session,
+      // the exercise_logs, or re-decrement remaining/a shared package twice. One log batch = one POST
+      // (array body) so it's all-or-nothing instead of N separate fetches that can partially land.
+      // `remaining`/shared-package decrement mirror the program-day portal save (_doPortalSave) and
+      // the coach's confirmLogSession — a custom-workout self-log is still a session against the
+      // client's package, not a freebie.
+      if (!window._custSaveState) window._custSaveState = {sess:false, logs:false, hist:false, shared:false};
       var _cst = window._custSaveState;
       (_cst.sess ? Promise.resolve() : fetch(SUPABASE_URL+'/rest/v1/sessions', {method:'POST',headers:H,body:JSON.stringify({client_id:window._portalClientId,date:dateStr,note:'',workout:workout})})
         .then(function(r){ if(!r.ok) throw new Error('Failed to save session'); _cst.sess=true; }))
@@ -7275,11 +7300,15 @@ function startClientPortal(id) {
         return fetch(SUPABASE_URL+'/rest/v1/exercise_logs',{method:'POST',headers:H,body:JSON.stringify(rows)})
           .then(function(r){ if(!r.ok) throw new Error('Failed to save exercise logs'); _cst.logs=true; });
       }).then(function() {
-        return fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+window._portalClientId, {method:'PATCH',headers:H,body:JSON.stringify({exercise_history:newHistory})})
-          .then(function(r){ if(!r.ok) throw new Error('Failed to update history'); });
+        if (_cst.hist) return;
+        var newRemaining = (window._portalPackageSize > 0 || (window._portalRemaining||0) > 0) ? (window._portalRemaining||0) - 1 : (window._portalRemaining||0);
+        return fetch(SUPABASE_URL+'/rest/v1/clients?id=eq.'+window._portalClientId, {method:'PATCH',headers:H,body:JSON.stringify({exercise_history:newHistory, remaining:newRemaining})})
+          .then(function(r){ if(!r.ok) throw new Error('Failed to update history'); _cst.hist=true; window._portalHistory=newHistory; window._portalRemaining=newRemaining; });
+      }).then(function() {
+        if (_cst.shared) return;
+        return _portalDecrementSharedPkg().then(function(){ _cst.shared=true; });
       }).then(function() {
         window._custSaveState = null; // clean slate for the next workout
-        window._portalHistory = newHistory;
         // Feed the coach exercise library (deduped by demo identity). The portal never runs
         // init(), so the `library` global is empty here — load it first or we'd POST duplicates.
         try {
@@ -7995,7 +8024,7 @@ function startClientPortal(id) {
         '<div id="ex-row-' + i + '"' + (isSuperset ? ' data-ss="1"' : '') + ' style="' + (isSuperset ? 'padding:16px;position:relative;transition:background 0.25s;' : 'background:rgba(15,19,23,0.6);border:1px solid rgba(100,160,255,0.12);border-radius:12px;padding:16px;margin-bottom:12px;position:relative;transition:border-color 0.25s,background 0.25s;') + '">' +
           '<div style="display:flex;align-items:center;gap:11px;margin-bottom:4px;">' + _exThumbHTML(ex.name,name,44,'portal') + '<div onclick="window._openExDetailPortal(\'' + _jsq(ex.name) + '\',\'' + _jsq(name) + '\')" style="font-weight:700;font-size:16px;color:#fff;cursor:pointer;flex:1;">' + name + '</div></div>' +
           '<div style="font-size:12px;color:rgba(126,200,255,0.8);margin-bottom:10px;font-weight:500;">' + (ex.prescription || '') + (ex.load ? ' &nbsp;·&nbsp; ' + ex.load : '') + '</div>' +
-          (function(){var gk=(ex.name||'').toLowerCase().replace(/^ss\w+:\s*/i,'').replace(/\s+/g,'_');var g=_exGuideFor(_serMap,gk,ex.prescription,lastData);return _progressionGuideHtml(g,"window._applyTargetPortal("+i+",'"+(g.sugg?_suggestRepsStr(g.sugg):'')+"','"+(g.sugg?g.sugg.weight:'')+"')","window._openExDetailPortal('"+_jsq(ex.name)+"','"+_jsq(name)+"')");})() +
+          (function(){var gk=(ex.name||'').toLowerCase().replace(_SS_TAG_RE,'').replace(/\s+/g,'_');var g=_exGuideFor(_serMap,gk,ex.prescription,lastData);return _progressionGuideHtml(g,"window._applyTargetPortal("+i+",'"+(g.sugg?_suggestRepsStr(g.sugg):'')+"','"+(g.sugg?g.sugg.weight:'')+"')","window._openExDetailPortal('"+_jsq(ex.name)+"','"+_jsq(name)+"')");})() +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
             '<div>' +
               '<input id="wr-' + i + '" type="text" placeholder="' + (lastData&&lastData.reps?lastData.reps:'e.g. 3x10') + '" oninput="window._checkExRow(' + i + ');window._saveDraft();" style="width:100%;padding:13px;border:1px solid rgba(100,160,255,0.25);border-radius:10px;font-size:14px;text-align:center;box-sizing:border-box;background:#1a1f28;color:#fff;font-weight:600;outline:none;transition:all 0.2s;" onfocus="this.style.borderColor=\'rgba(79,163,232,0.5)\';this.style.background=\'#141820\';" onblur="this.style.borderColor=\'rgba(100,160,255,0.25)\';this.style.background=\'#1a1f28\';">' +
@@ -8109,10 +8138,13 @@ function startClientPortal(id) {
         '</div>';
 
       var exLogs = workout.map(function(w){ return {client_id: window._portalClientId, session_date: dateStr, exercise_name: (w.name||'').replace(_SS_TAG_RE,''), reps: w.reps, weight: w.weight, day_name: day.name}; });
-      // Two-stage idempotent save: each stage is guarded by its own flag so a Retry after a partial
-      // failure NEVER duplicates the session and never skips the client update. In-memory state and
-      // the draft are only touched after the corresponding write actually persisted.
-      var _sessSaved = false, _patchDone = false;
+      // Three-stage idempotent save: each stage is guarded by its own flag so a Retry after a partial
+      // failure NEVER duplicates the session, never re-decrements a package twice, and never skips a
+      // step that hasn't actually landed yet. In-memory state and the draft are only touched after the
+      // corresponding write actually persisted. Shared-package clients get their own decrement stage
+      // (mirrors the coach's confirmLogSession _coachSharedUpdated flag, same reasoning) since the
+      // client's own `remaining` field is stale/unused once they're on a shared package.
+      var _sessSaved = false, _patchDone = false, _sharedDone = false;
       function _doPortalSave(){
         var ss = document.getElementById('save-status');
         if (ss) { ss.innerHTML = 'Saving…'; ss.style.color = 'rgba(180,200,230,0.45)'; }
@@ -8135,6 +8167,10 @@ function startClientPortal(id) {
             window._portalRemaining = newRemaining;
             window._clearDraft();
           });
+        })
+        .then(function(){
+          if (_sharedDone) return;
+          return _portalDecrementSharedPkg().then(function(){ _sharedDone = true; });
         })
         .then(function() {
           var s2 = document.getElementById('save-status');
@@ -8550,14 +8586,29 @@ async function renderBusinessView() {
   ]);
   const activeClients = clients.filter(function(c){return !c.paused;});
 
-  const owes = activeClients.filter(function(c){return (c.remaining||0)<0;});
-  const expiring = activeClients.filter(function(c){return c.package_size>0&&(c.remaining||0)>0&&(c.remaining||0)<=2;});
+  // Shared-package clients are EXCLUDED here — their real count lives on the shared_packages row
+  // (sharedPkg.remaining_sessions), not each member's stale individual `remaining`. Same reason the
+  // dashboard's low/out filters exclude them (2b39f29) — this tab just never got the same fix.
+  const owes = activeClients.filter(function(c){return !c.shared_package_id&&(c.remaining||0)<0;});
+  const expiring = activeClients.filter(function(c){return !c.shared_package_id&&c.package_size>0&&(c.remaining||0)>0&&(c.remaining||0)<=2;});
+  const sharedOwesPkgs = sharedPackages.filter(function(p){return p.remaining_sessions<0;});
+  const sharedExpiringPkgs = sharedPackages.filter(function(p){return p.remaining_sessions>0&&p.remaining_sessions<=2;});
   const inactive = activeClients.filter(function(c){return !recentIds.has(c.id);});
 
   const monthClientIds = new Set((monthLogs||[]).map(function(l){return l.client_id;}));
   const monthSessionSet = new Set((monthLogs||[]).map(function(l){return l.client_id+'|'+l.session_date;}));
 
-  const attentionCount = owes.length + expiring.length;
+  const attentionCount = owes.length + expiring.length + sharedOwesPkgs.length + sharedExpiringPkgs.length;
+  const _sharedRow = function(pkg, colorRgb, label) {
+    const linkedList = clients.filter(function(x){return x.shared_package_id===pkg.id;});
+    const linked = linkedList.map(function(x){return x.first;}).join(' & ');
+    const firstId = linkedList[0] ? linkedList[0].id : '';
+    const tap = firstId ? "onclick=\"renderClientModal(clients.find(function(x){return x.id==='"+firstId+"';}));openModal('clientModal');\"" : '';
+    return '<div style="background:rgba('+colorRgb+',0.05);border:1px solid rgba('+colorRgb+',0.18);border-radius:12px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" '+tap+'>'
+      +'<div><div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:2px;">'+linked+'</div>'
+      +'<div style="font-size:12px;color:rgba('+colorRgb+',0.8);">Shared package — '+label+'</div></div>'
+      +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
+  };
   const sectionHdr = function(label, gradient, count, countColor) {
     return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
       +'<div style="width:4px;height:18px;border-radius:2px;background:'+gradient+';flex-shrink:0;"></div>'
@@ -8585,6 +8636,8 @@ async function renderBusinessView() {
         +'<div style="font-size:12px;color:rgba(255,140,71,0.8);">'+c.remaining+' session'+(c.remaining===1?'':'s')+' remaining — renew soon</div></div>'
         +'<div style="color:rgba(180,200,230,0.3);font-size:16px;">›</div></div>';
     });
+    sharedOwesPkgs.forEach(function(pkg) { html += _sharedRow(pkg,'255,92,106','owes '+Math.abs(pkg.remaining_sessions)+' session'+(Math.abs(pkg.remaining_sessions)===1?'':'s')); });
+    sharedExpiringPkgs.forEach(function(pkg) { html += _sharedRow(pkg,'255,140,71',pkg.remaining_sessions+' session'+(pkg.remaining_sessions===1?'':'s')+' remaining — renew soon'); });
   }
   html += '</div>';
 
@@ -8891,6 +8944,10 @@ function exerciseToMuscles(name) {
   // Exclude reverse/rear fly (rear delt) which also contains "fly"
   if(!n.includes('reverse')&&!n.includes('rear')&&/chest.?fly|pec.?dec|pec.?deck|crossover|svend|\bfly\b|\bflye\b/.test(n))
     return[{muscle:'chest',weight:1.0}];
+  // Pike / handstand push-up — vertical press, shoulder-dominant (contains "push-up" but is NOT a
+  // chest press variant like a flat/incline push-up). Must come BEFORE the chest rule below.
+  if(/pike push|handstand push/.test(n))
+    return[{muscle:'shoulders',weight:1.0},{muscle:'triceps',weight:0.5}];
   // Chest press — triceps secondary, shoulders (front delt) tertiary
   // Guard: "bench" alone must not grab hip thrusts / glute bridges / bench rows / bench step-ups
   if((/bench|push.?up/.test(n)) && !/thrust|glute|bridge|\brow\b|step.?up|sit.?up|crunch/.test(n))
@@ -8941,12 +8998,15 @@ function exerciseToMuscles(name) {
   // Calves — BEFORE glutes so "donkey calf raise" doesn't hit glutes first
   if(/\bcalf\b|\bcalves\b/.test(n))
     return[{muscle:'calves',weight:1.0}];
+  // Lunges / split squats / sit-to-stand — quads primary, glutes secondary. Must come BEFORE the
+  // generic squat rule below: "split squat" and "bulgarian split squat" both contain the substring
+  // "squat" and would otherwise silently fall into the squat mapping, wrongly crediting hamstring
+  // volume these unilateral lifts don't primarily emphasize.
+  if(/lunge|step.?up|bulgarian|split squat|box.*jump|jump.*squat|sit.?to.?stand/.test(n))
+    return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Squats / leg press — quads primary, glutes + hamstrings secondary
   if(/squat|leg press|\bquad\b|hack squat|pendulum squat/.test(n))
     return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5},{muscle:'hamstrings',weight:0.5}];
-  // Lunges / split squats / sit-to-stand — quads primary, glutes secondary
-  if(/lunge|step.?up|bulgarian|split squat|box.*jump|jump.*squat|sit.?to.?stand/.test(n))
-    return[{muscle:'quads',weight:1.0},{muscle:'glutes',weight:0.5}];
   // Leg extension — quad isolation
   if(/leg extension/.test(n))
     return[{muscle:'quads',weight:1.0}];
