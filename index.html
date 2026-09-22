@@ -10316,6 +10316,68 @@ async function saveCoachBodyStat(cid) {
   ensure();
 })();
 
+// ── VERSION CHECK / AUTO-REFRESH ──
+// Polls /api/version, which reflects VERCEL_GIT_COMMIT_SHA and updates automatically on every
+// deploy (no manual bumping) — so a push made while someone's mid-session gets picked up without
+// them having to know to reload. Reloads immediately once it's safe to (no modal/sheet open with
+// unsaved work — checked fresh on every tick, so an in-progress log just defers it), otherwise
+// shows a small non-blocking banner and keeps checking. Builds its own notice element rather than
+// using toast() since the client portal's #toast div doesn't exist after renderClientShell
+// replaces document.body. Runs identically for both the coach shell and the client portal (one
+// shared script/timer, regardless of which UI is currently rendered).
+(function(){
+  var POLL_MS=90000;
+  var _cur=null,_pending=null,_bannerShown=false;
+  function _fetchVersion(){
+    return fetch('/api/version',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function _isSafeToReload(){
+    if(document.querySelector('.modal-overlay.open'))return false;
+    var ws=document.getElementById('workout-sheet');if(ws&&ws.classList.contains('sheet-open'))return false;
+    var bs=document.getElementById('body-stat-sheet');if(bs&&bs.classList.contains('sheet-open'))return false;
+    return true;
+  }
+  function _showUpdateBanner(){
+    if(_bannerShown||document.getElementById('bm-update-banner'))return;
+    _bannerShown=true;
+    var b=document.createElement('div');
+    b.id='bm-update-banner';
+    b.textContent='Update available — will apply shortly';
+    b.style.cssText='position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#1a1f28;border:1px solid rgba(79,163,232,0.35);color:#7ec8ff;font-size:12px;font-weight:600;padding:9px 16px;border-radius:20px;z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,0.4);pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(b);
+  }
+  function _doReload(newVersion){
+    try{sessionStorage.setItem('bm_pending_update_to',newVersion);}catch(e){}
+    location.reload();
+  }
+  function _checkNow(){
+    _fetchVersion().then(function(d){
+      if(!d||!d.version)return;
+      if(_cur===null){_cur=d.version;return;} // first check just establishes the baseline
+      if(d.version===_cur)return;
+      _pending=d.version;
+      if(_isSafeToReload())_doReload(_pending);
+      else _showUpdateBanner();
+    });
+  }
+  // One-time "updated" notice right after a version-triggered reload completes.
+  try{
+    var updatedTo=sessionStorage.getItem('bm_pending_update_to');
+    if(updatedTo){
+      sessionStorage.removeItem('bm_pending_update_to');
+      setTimeout(function(){
+        var n=document.createElement('div');
+        n.textContent='Updated to latest version ✓ ('+updatedTo.slice(0,7)+')';
+        n.style.cssText='position:fixed;bottom:calc(70px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#132a20;border:1px solid rgba(67,217,162,0.35);color:#43d9a2;font-size:12px;font-weight:600;padding:9px 16px;border-radius:20px;z-index:99999;box-shadow:0 6px 24px rgba(0,0,0,0.4);pointer-events:none;white-space:nowrap;';
+        document.body.appendChild(n);
+        setTimeout(function(){n.remove();},3200);
+      },900);
+    }
+  }catch(e){}
+  _checkNow();
+  setInterval(_checkNow,POLL_MS);
+})();
+
 startApp();
 </script>
 
