@@ -4829,6 +4829,7 @@ function _coachLogHasData(){
 // now recoverable via the draft, which captures program + ad-hoc rows; this guard catches accidental taps.)
 function closeLogSession(force){
   if(!force&&_coachLogHasData()){if(!confirm('Discard this in-progress session? Your entered sets will be lost.'))return;}
+  _stopAiLogVoice();
   clearDraftCoach();
   closeModal('logModal');
 }
@@ -4860,6 +4861,7 @@ function openLogSession(id, preselectedDay){
   window._adhocCount=0;
   window._logRenderedDi=undefined;
   window._coachSessionSaved=false;window._coachClientUpdated=false;window._coachSharedUpdated=false;
+  _stopAiLogVoice();window._aiLogValues={};
   document.getElementById('logModalTitle').textContent=c.first;
   try{const av=document.getElementById('logModalAvatar');if(av)av.innerHTML='<div class="client-avatar" style="'+_avatarStyle(c,48)+'">'+(c.first[0]||'')+(c.last?c.last[0]:'')+'</div>';}catch(e){}
   document.getElementById('logNote').value='';
@@ -4913,11 +4915,13 @@ function updateLogWorkout(clientId){
     window._coachExCount=0;window._coachExData=[];
     document.getElementById('logExercises').innerHTML=
       `<div style="font-size:12px;color:rgba(180,200,230,0.35);padding:10px 0 16px;text-align:center;border-bottom:1px solid rgba(100,160,255,0.07);margin-bottom:12px;letter-spacing:0.3px;">Custom workout — add any exercises below</div>`
+      +_aiLogButtonHtml()
       +`<div id="adhoc-exercises"></div>`
       +`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:4px;">`
       +`<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`
       +`<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
       +`</div>`;
+    window._aiLogValues={};
     addAdHocExercise();
     try{_setupBlockDrag(document.getElementById('adhoc-exercises'));}catch(e){}
     saveDraftCoach();
@@ -4964,11 +4968,13 @@ function updateLogWorkout(clientId){
     });
     return html;
     })()
+  + _aiLogButtonHtml()
   + `<div id="adhoc-exercises"></div>`
   + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;margin-bottom:4px;">`
   + `<button onclick="addAdHocExercise()" style="width:100%;background:rgba(255,255,255,0.03);border:1px dashed rgba(100,160,255,0.25);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(100,160,255,0.5)';this.style.color='#7ec8ff';" onmouseout="this.style.borderColor='rgba(100,160,255,0.25)';this.style.color='rgba(126,200,255,0.5)';">+ Add Exercise</button>`
   + `<button onclick="addAdHocSuperset()" style="width:100%;background:rgba(37,99,235,0.07);border:1px dashed rgba(37,99,235,0.35);border-radius:10px;padding:12px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:rgba(126,200,255,0.5);cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(37,99,235,0.15)';this.style.borderColor='rgba(37,99,235,0.6)';this.style.color='#7ec8ff';" onmouseout="this.style.background='rgba(37,99,235,0.07)';this.style.borderColor='rgba(37,99,235,0.35)';this.style.color='rgba(126,200,255,0.5)';">⊕ Superset</button>`
   + `</div>`;
+  window._aiLogValues={};
   try{_thumbsRefresh();}catch(e){}
   try{document.querySelectorAll('#logExercises .log-input').forEach(_fitLogInput);}catch(e){}
   try{_setupBlockDrag(document.getElementById('adhoc-exercises'));}catch(e){}
@@ -5027,7 +5033,7 @@ function autoFillLog(){
   toast('Filled from last session ✓');
 }
 
-function addAdHocExercise(supGroup, supLabel, ssWrap){
+function addAdHocExercise(supGroup, supLabel, ssWrap, noFocus){
   const inWrap=!!ssWrap;
   const container=ssWrap||document.getElementById('adhoc-exercises');
   if(!container)return;
@@ -5058,7 +5064,8 @@ function addAdHocExercise(supGroup, supLabel, ssWrap){
     +`</div>`
     +`</div>`;
   container.appendChild(row);
-  if(!isSS||supLabel==='B') setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
+  // noFocus: voice-created rows shouldn't yank the on-screen keyboard open mid-conversation.
+  if((!isSS||supLabel==='B')&&!noFocus) setTimeout(function(){const inp=document.getElementById('an-adhoc-'+n);if(inp)inp.focus();},50);
 }
 function addAdHocSuperset(){
   const container=document.getElementById('adhoc-exercises'); if(!container)return;
@@ -5072,6 +5079,141 @@ function addAdHocSuperset(){
   container.appendChild(wrap);
   addAdHocExercise(grp,'A',wrap);
   addAdHocExercise(grp,'B',wrap);
+}
+
+// ── AI LIVE VOICE LOG (Custom Workout / ad-hoc rows) ──
+// The program-build assistant above is "plan first, apply later." This one is different on purpose:
+// the coach narrates SETS AS THEY HAPPEN (or about to happen) while actively training someone, and
+// the AI writes straight into the real ad-hoc log rows in near-real-time — no separate chat/preview
+// to review, because the whole point is not looking at the phone. Every recognized sentence is sent
+// to /api/ai-log immediately (continuous recognition, dispatched per finalized utterance, not
+// per-turn like the chat assistant); the endpoint returns the FULL cumulative set of exercises
+// mentioned so far, which gets reconciled into the actual #adhoc-exercises inputs. Fields the coach
+// has since hand-edited are never clobbered (see _aiLogValues below) — voice fills fields, it never
+// fights the coach's own typing.
+function _aiLogButtonHtml(){
+  return '<div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(124,92,255,0.14),rgba(67,217,162,0.07));border:1px solid rgba(124,92,255,0.3);border-radius:12px;padding:10px 14px;margin-bottom:12px;">'
+    +'<button id="ai-log-mic" onclick="_toggleAiLogVoice()" title="Narrate the workout — hands-free logging" style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:rgba(124,92,255,0.18);border:1px solid rgba(124,92,255,0.4);color:#c4b5fd;font-size:16px;cursor:pointer;">🎤</button>'
+    +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:11px;font-weight:700;color:#c4b5fd;letter-spacing:0.3px;">AI Voice Log</div>'
+      +'<div id="ai-log-interim" style="font-size:11px;color:rgba(180,200,230,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap the mic and just talk through the workout</div>'
+    +'</div>'
+  +'</div>';
+}
+function _toggleAiLogVoice(){
+  const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!Rec){alert('Voice input isn\'t supported in this browser — you can still type.');return;}
+  const btn=document.getElementById('ai-log-mic');
+  if(window._aiLogRecog){
+    window._aiLogStopping=true;
+    try{window._aiLogRecog.stop();}catch(e){}
+    window._aiLogRecog=null;
+    if(btn){btn.style.background='rgba(124,92,255,0.18)';btn.style.color='#c4b5fd';btn.textContent='🎤';}
+    return;
+  }
+  window._aiLogValues=window._aiLogValues||{};
+  window._aiLogStopping=false;
+  const recog=new Rec();
+  recog.continuous=true;recog.interimResults=true;recog.lang='en-US';
+  recog.onresult=function(e){
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal){
+        const chunk=(e.results[i][0].transcript||'').trim();
+        if(chunk)_sendAiLogChunk(chunk);
+      }else{
+        interim+=e.results[i][0].transcript;
+      }
+    }
+    const cap=document.getElementById('ai-log-interim');
+    if(cap&&interim)cap.textContent=interim;
+  };
+  recog.onerror=function(){}; // benign errors (no-speech, aborted) — onend's auto-restart handles recovery
+  recog.onend=function(){
+    if(window._aiLogStopping){window._aiLogRecog=null;return;}
+    // iOS can silently end a "continuous" recognizer mid-session — restart transparently so the
+    // coach doesn't have to notice or re-tap the mic.
+    try{recog.start();}catch(e){window._aiLogRecog=null;const b=document.getElementById('ai-log-mic');if(b){b.style.background='rgba(124,92,255,0.18)';b.textContent='🎤';}}
+  };
+  try{recog.start();}catch(e){return;}
+  window._aiLogRecog=recog;
+  if(btn){btn.style.background='#ff5c6a';btn.style.color='#fff';btn.textContent='●';}
+}
+function _stopAiLogVoice(){
+  if(window._aiLogRecog){
+    window._aiLogStopping=true;
+    try{window._aiLogRecog.stop();}catch(e){}
+    window._aiLogRecog=null;
+  }
+}
+function _collectAdHocExercisesForAi(){
+  const container=document.getElementById('adhoc-exercises');if(!container)return[];
+  const names=container.querySelectorAll('[id^="an-adhoc-"]');
+  const out=[];
+  names.forEach(function(nameEl){
+    const idx=nameEl.id.replace('an-adhoc-','');
+    const name=(nameEl.value||'').trim();if(!name)return;
+    const wr=document.getElementById('wr-adhoc-'+idx),wt=document.getElementById('wt-adhoc-'+idx);
+    out.push({name:name,reps:wr?wr.value||'':'',weight:wt?wt.value||'':''});
+  });
+  return out;
+}
+function _sendAiLogChunk(chunk){
+  if(!pendingLogId)return;
+  const current=_collectAdHocExercisesForAi();
+  const cap=document.getElementById('ai-log-interim');
+  fetch('/api/ai-log',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chunk:chunk,currentExercises:current})
+  }).then(function(r){if(!r.ok)throw new Error('AI log request failed');return r.json();})
+  .then(function(data){
+    if(Array.isArray(data.exercises))_reconcileAdHocFromAi(data.exercises);
+    if(cap)cap.textContent=data.reply||'Got it ✓';
+  }).catch(function(){
+    if(cap)cap.textContent='⚠️ Didn\'t catch that — you can type it in manually';
+  });
+}
+function _reconcileAdHocFromAi(exercises){
+  const container=document.getElementById('adhoc-exercises');if(!container)return;
+  window._aiLogValues=window._aiLogValues||{};
+  exercises.forEach(function(ex){
+    const name=(ex.name||'').trim();if(!name)return;
+    const key=name.toLowerCase();
+    const nameInputs=container.querySelectorAll('[id^="an-adhoc-"]');
+    let matchIdx=null;
+    for(let i=0;i<nameInputs.length;i++){
+      if((nameInputs[i].value||'').trim().toLowerCase()===key){matchIdx=nameInputs[i].id.replace('an-adhoc-','');break;}
+    }
+    if(matchIdx===null){
+      // reuse an untouched blank row (e.g. the one auto-created when the sheet opened) before
+      // creating a brand new one, so voice logging doesn't leave stray empty rows behind.
+      let blankIdx=null;
+      for(let j=0;j<nameInputs.length;j++){
+        const idx=nameInputs[j].id.replace('an-adhoc-','');
+        const wrEl=document.getElementById('wr-adhoc-'+idx),wtEl=document.getElementById('wt-adhoc-'+idx);
+        if(!(nameInputs[j].value||'').trim()&&!(wrEl&&wrEl.value.trim())&&!(wtEl&&wtEl.value.trim())){blankIdx=idx;break;}
+      }
+      if(blankIdx!==null){
+        matchIdx=blankIdx;
+      }else{
+        addAdHocExercise(null,null,null,true);
+        matchIdx=String(window._adhocCount-1);
+      }
+      const nameEl=document.getElementById('an-adhoc-'+matchIdx);
+      if(nameEl){nameEl.value=name;try{_syncRowThumb(nameEl);}catch(e){}}
+    }
+    const wr=document.getElementById('wr-adhoc-'+matchIdx);
+    const wt=document.getElementById('wt-adhoc-'+matchIdx);
+    const prevAi=window._aiLogValues[key]||{reps:'',weight:''};
+    // Only overwrite a field if the coach hasn't hand-edited it since the AI last set it —
+    // voice fills fields, it never fights a manual correction.
+    if(wr&&(wr.value||'')===prevAi.reps)wr.value=ex.reps||'';
+    if(wt&&(wt.value||'')===prevAi.weight)wt.value=ex.weight||'';
+    if(wr)_fitLogInput(wr);
+    if(wt)_fitLogInput(wt);
+    window._aiLogValues[key]={reps:ex.reps||'',weight:ex.weight||''};
+  });
+  saveDraftCoach();
 }
 
 function showExHistory(clientId, exName, displayName, ei){
@@ -5153,6 +5295,7 @@ function showSuccessAnimation(name,pbs){
 }
 
 async function confirmLogSession(){
+  _stopAiLogVoice();
   const markBtn=document.querySelector('button[onclick="confirmLogSession()"]');
   if(markBtn){markBtn.disabled=true;markBtn.innerHTML='<span style="display:inline-flex;align-items:center;gap:8px;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 0.7s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Saving...</span>';}
   const c=clients.find(x=>x.id===pendingLogId);if(!c)return;
