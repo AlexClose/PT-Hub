@@ -5091,27 +5091,56 @@ function addAdHocSuperset(){
 // mentioned so far, which gets reconciled into the actual #adhoc-exercises inputs. Fields the coach
 // has since hand-edited are never clobbered (see _aiLogValues below) — voice fills fields, it never
 // fights the coach's own typing.
+// Record-then-process, like a voice memo — NOT live per-sentence dispatch (that first version was
+// fragile on iOS Safari's speech engine and, worse, only the tiny mic icon was tappable so a stop-tap
+// anywhere else on the bar silently did nothing). Tap once: start recording, talk through as much of
+// the workout as you want. Tap again: stop, and the WHOLE recording is sent in one shot and merged
+// into the current rows. Tap again later ("we also did X at the end"): starts a fresh recording that
+// gets merged on top of whatever's already logged — the AI always gets the current row state as
+// context. The ENTIRE bar is one tap target now, not just the icon.
 function _aiLogButtonHtml(){
-  return '<div style="display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(124,92,255,0.14),rgba(67,217,162,0.07));border:1px solid rgba(124,92,255,0.3);border-radius:12px;padding:10px 14px;margin-bottom:12px;">'
-    +'<button id="ai-log-mic" onclick="_toggleAiLogVoice()" title="Narrate the workout — hands-free logging" style="flex-shrink:0;width:40px;height:40px;border-radius:10px;background:rgba(124,92,255,0.18);border:1px solid rgba(124,92,255,0.4);color:#c4b5fd;font-size:16px;cursor:pointer;">🎤</button>'
+  return '<div id="ai-log-bar" onclick="_toggleAiLogVoice()" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(124,92,255,0.14),rgba(67,217,162,0.07));border:1px solid rgba(124,92,255,0.3);border-radius:14px;padding:14px 16px;margin-bottom:12px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;">'
+    +'<div id="ai-log-mic" style="flex-shrink:0;width:48px;height:48px;border-radius:12px;background:rgba(124,92,255,0.18);border:1px solid rgba(124,92,255,0.4);color:#c4b5fd;font-size:20px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s;">🎤</div>'
     +'<div style="flex:1;min-width:0;">'
-      +'<div style="font-size:11px;font-weight:700;color:#c4b5fd;letter-spacing:0.3px;">AI Voice Log</div>'
-      +'<div id="ai-log-interim" style="font-size:11px;color:rgba(180,200,230,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tap the mic and just talk through the workout</div>'
+      +'<div id="ai-log-status" style="font-size:13px;font-weight:800;color:#c4b5fd;font-family:Syne,sans-serif;letter-spacing:0.2px;">Tap to voice-log this workout</div>'
+      +'<div id="ai-log-interim" style="font-size:11.5px;color:rgba(180,200,230,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">Talk through it like you\'re telling an assistant</div>'
     +'</div>'
   +'</div>';
+}
+function _setAiLogUi(state,msg){
+  const mic=document.getElementById('ai-log-mic');
+  const status=document.getElementById('ai-log-status');
+  const interim=document.getElementById('ai-log-interim');
+  window._aiLogProcessing=(state==='processing');
+  if(!mic||!status)return;
+  if(state==='recording'){
+    mic.style.background='#ff5c6a';mic.style.color='#fff';mic.style.borderColor='#ff5c6a';mic.textContent='●';
+    status.textContent='Recording — tap to stop';status.style.color='#ff8a95';
+    if(interim)interim.textContent='Listening…';
+  }else if(state==='processing'){
+    mic.style.background='rgba(124,92,255,0.18)';mic.style.color='#c4b5fd';mic.style.borderColor='rgba(124,92,255,0.4)';mic.textContent='⏳';
+    status.textContent='Adding to workout…';status.style.color='#c4b5fd';
+  }else if(state==='done'){
+    mic.style.background='rgba(67,217,162,0.18)';mic.style.color='#43d9a2';mic.style.borderColor='rgba(67,217,162,0.4)';mic.textContent='✓';
+    status.textContent='Tap to add more';status.style.color='#43d9a2';
+    if(interim)interim.textContent=msg||'Added ✓';
+    setTimeout(function(){if(!window._aiLogRecog&&!window._aiLogProcessing)_setAiLogUi('idle');},2600);
+  }else if(state==='error'){
+    mic.style.background='rgba(255,92,106,0.15)';mic.style.color='#ff8a95';mic.style.borderColor='rgba(255,92,106,0.4)';mic.textContent='!';
+    status.textContent='Tap to try again';status.style.color='#ff8a95';
+    if(interim)interim.textContent=msg||'Something went wrong';
+  }else{ // idle
+    mic.style.background='rgba(124,92,255,0.18)';mic.style.color='#c4b5fd';mic.style.borderColor='rgba(124,92,255,0.4)';mic.textContent='🎤';
+    status.textContent='Tap to voice-log this workout';status.style.color='#c4b5fd';
+    if(interim)interim.textContent='Talk through it like you\'re telling an assistant';
+  }
 }
 function _toggleAiLogVoice(){
   const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Rec){alert('Voice input isn\'t supported in this browser — you can still type.');return;}
-  const btn=document.getElementById('ai-log-mic');
-  if(window._aiLogRecog){
-    window._aiLogStopping=true;
-    try{window._aiLogRecog.stop();}catch(e){}
-    window._aiLogRecog=null;
-    if(btn){btn.style.background='rgba(124,92,255,0.18)';btn.style.color='#c4b5fd';btn.textContent='🎤';}
-    return;
-  }
-  window._aiLogValues=window._aiLogValues||{};
+  if(window._aiLogRecog){_finishAiLogRecording();return;}
+  if(window._aiLogProcessing)return; // ignore taps while a previous recording is being processed
+  window._aiLogTranscript='';window._aiLogInterimText='';
   window._aiLogStopping=false;
   const recog=new Rec();
   recog.continuous=true;recog.interimResults=true;recog.lang='en-US';
@@ -5119,32 +5148,57 @@ function _toggleAiLogVoice(){
     let interim='';
     for(let i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal){
-        const chunk=(e.results[i][0].transcript||'').trim();
-        if(chunk)_sendAiLogChunk(chunk);
+        window._aiLogTranscript=(window._aiLogTranscript?window._aiLogTranscript+' ':'')+(e.results[i][0].transcript||'').trim();
       }else{
         interim+=e.results[i][0].transcript;
       }
     }
+    window._aiLogInterimText=interim;
     const cap=document.getElementById('ai-log-interim');
-    if(cap&&interim)cap.textContent=interim;
+    if(cap)cap.textContent=((window._aiLogTranscript||'')+' '+interim).trim()||'Listening…';
   };
   recog.onerror=function(){}; // benign errors (no-speech, aborted) — onend's auto-restart handles recovery
   recog.onend=function(){
     if(window._aiLogStopping){window._aiLogRecog=null;return;}
-    // iOS can silently end a "continuous" recognizer mid-session — restart transparently so the
-    // coach doesn't have to notice or re-tap the mic.
-    try{recog.start();}catch(e){window._aiLogRecog=null;const b=document.getElementById('ai-log-mic');if(b){b.style.background='rgba(124,92,255,0.18)';b.textContent='🎤';}}
+    // iOS can silently end a "continuous" recognizer mid-recording — resume transparently; the
+    // transcript accumulated so far survives the restart since it lives outside the recognizer.
+    try{recog.start();}catch(e){window._aiLogRecog=null;_setAiLogUi('idle');}
   };
   try{recog.start();}catch(e){return;}
   window._aiLogRecog=recog;
-  if(btn){btn.style.background='#ff5c6a';btn.style.color='#fff';btn.textContent='●';}
+  _setAiLogUi('recording');
+}
+function _finishAiLogRecording(){
+  window._aiLogStopping=true;
+  const recog=window._aiLogRecog;
+  window._aiLogRecog=null;
+  try{recog&&recog.stop();}catch(e){}
+  // Include whatever hadn't been finalized yet — better to send a slightly-rough trailing phrase
+  // than silently drop the last thing the coach said right before tapping stop.
+  const text=((window._aiLogTranscript||'')+' '+(window._aiLogInterimText||'')).trim();
+  if(!text){_setAiLogUi('idle');return;}
+  if(!pendingLogId){_setAiLogUi('idle');return;}
+  _setAiLogUi('processing');
+  const current=_collectAdHocExercisesForAi();
+  fetch('/api/ai-log',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({chunk:text,currentExercises:current})
+  }).then(function(r){if(!r.ok)throw new Error('AI log request failed');return r.json();})
+  .then(function(data){
+    if(Array.isArray(data.exercises))_reconcileAdHocFromAi(data.exercises);
+    _setAiLogUi('done',data.reply||'Added ✓');
+  }).catch(function(){
+    _setAiLogUi('error','Didn\'t catch that — try again or type it in');
+  });
 }
 function _stopAiLogVoice(){
+  // Used when the log modal is closing/switching — discard, don't process.
+  window._aiLogStopping=true;
   if(window._aiLogRecog){
-    window._aiLogStopping=true;
     try{window._aiLogRecog.stop();}catch(e){}
     window._aiLogRecog=null;
   }
+  window._aiLogTranscript='';window._aiLogInterimText='';window._aiLogProcessing=false;
 }
 function _collectAdHocExercisesForAi(){
   const container=document.getElementById('adhoc-exercises');if(!container)return[];
@@ -5157,21 +5211,6 @@ function _collectAdHocExercisesForAi(){
     out.push({name:name,reps:wr?wr.value||'':'',weight:wt?wt.value||'':''});
   });
   return out;
-}
-function _sendAiLogChunk(chunk){
-  if(!pendingLogId)return;
-  const current=_collectAdHocExercisesForAi();
-  const cap=document.getElementById('ai-log-interim');
-  fetch('/api/ai-log',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({chunk:chunk,currentExercises:current})
-  }).then(function(r){if(!r.ok)throw new Error('AI log request failed');return r.json();})
-  .then(function(data){
-    if(Array.isArray(data.exercises))_reconcileAdHocFromAi(data.exercises);
-    if(cap)cap.textContent=data.reply||'Got it ✓';
-  }).catch(function(){
-    if(cap)cap.textContent='⚠️ Didn\'t catch that — you can type it in manually';
-  });
 }
 function _reconcileAdHocFromAi(exercises){
   const container=document.getElementById('adhoc-exercises');if(!container)return;
