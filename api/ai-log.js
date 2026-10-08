@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 
 // Logged-set shape (NOT the program-builder's {name,prescription,load} shape) — reps/weight here are
-// what was actually performed (or the immediate target for a set about to be done), matching how the
-// rest of the app already stores ad-hoc log rows: a single value when every set was the same ("10" /
-// "135"), comma-separated when sets varied ("10,8,6" / "135,145,155").
+// what was actually performed (or the immediate target for a set about to be done).
 const LoggedExerciseSchema = z.object({
   name: z.string().describe('Exercise name in plain, common gym terminology.'),
-  reps: z.string().describe('Reps actually performed (or the stated target for a set about to start). Single value like "10" if all sets are/were the same; comma-separated like "10,8,6" only if sets genuinely varied. Empty string if not yet known.'),
-  weight: z.string().describe('Weight actually used (or a stated target). Same single-value-vs-comma-separated rule as reps. Empty string if not yet known (e.g. bodyweight, or the coach hasn\'t reported it yet).'),
+  // IMPORTANT: this is the app's own "Sets × Reps" field (that's its literal label in the UI, and
+  // how parseSets() elsewhere in the app reads it) — NOT a bare rep count. A coach saying "three by
+  // twelve" or "three sets of twelve" must become "3x12" here, never just "12" or just "3" alone.
+  reps: z.string().describe('The "Sets × Reps" field. Default/most common format: "SxR" like "3x12" - use this whenever a set count AND a rep count were both stated, however phrased ("three by twelve", "three sets of twelve", "three twelve-rep sets", "3x12" are all the SAME thing -> "3x12"). Only use a comma-separated per-set list like "10,8,6" when sets genuinely had DIFFERENT rep counts. Only use a bare number like "12" when truly just ONE set was done/stated with no set count. Empty string if not yet known.'),
+  weight: z.string().describe('Weight actually used (or a stated target), as a plain number or comma-separated per-set list like "135,145,155" if it varied by set - this one is NOT combined with an "x", just the number(s). Empty string if not yet known (e.g. bodyweight, or the coach hasn\'t reported it yet).'),
 });
 
 const ResultSchema = z.object({
@@ -25,7 +26,7 @@ Rules:
 - Past tense ("we just did X for 3x10 at 135", "that was 8 reps at 145") = a completed set - fill in reps and weight with what was reported.
 - Future/intent tense ("now let's do Y for 3x12", "next up is Z") = an exercise about to start - add it with reps set to the stated target if given, but leave weight EMPTY unless a weight was also mentioned. The coach will report the actual weight after the set, or type it in by hand.
 - If the coach corrects or updates something just said ("actually make that 145", "that was 12 not 10"), UPDATE the most recently relevant exercise - don't create a duplicate entry.
-- If sets genuinely varied rep/weight, use comma-separated values matching position (e.g. reps "10,8,6" with weight "135,145,155"). Otherwise use one value for both.
+- "reps" is a Sets × Reps field, not a bare rep count - see its schema description. Any spoken form of "N sets of M reps" (including "N by M") becomes "NxM". Examples: "bench press three by twelve at one thirty five" -> reps:"3x12", weight:"135". "four sets of eight pull-ups" -> reps:"4x8". "one set of twenty push-ups" -> reps:"20" (bare number is only right here because exactly one set was stated).
 - Use plain, common exercise names a coach would recognize.
 - Never invent an exercise, rep count, or weight that wasn't actually said. If the transcript doesn't add or change anything (small talk, unrelated speech, unclear audio), just return the list unchanged with a brief reply like "Didn't catch an exercise there."
 - Keep "reply" to a handful of words - this is a glance, not a read (e.g. "3 exercises added ✓").`;
