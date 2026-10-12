@@ -392,7 +392,12 @@ display:flex;align-items:center;justify-content:space-between;
 .ex-pair-check{flex-shrink:0;align-self:center;width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,140,71,0.5);background:rgba(255,140,71,0.06);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;cursor:pointer;user-select:none;-webkit-user-select:none;}
 .ex-pair-check.sel{background:var(--warn,#ff8c47);border-color:var(--warn,#ff8c47);}
 .edit-ex-row.pair-sel{border-color:rgba(255,140,71,0.6);background:rgba(255,140,71,0.05);}
-.pair-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,140,71,0.08);border:1px solid rgba(255,140,71,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+/* Sticks to the top of .modal's own scroll viewport (its nearest scrolling ancestor) so the
+   Combine/Cancel controls stay reachable after scrolling down a long exercise list to make a
+   selection — previously this rendered only at the top of #editExerciseList and required scrolling
+   all the way back up to confirm. Opaque (not the translucent look used elsewhere) since list rows
+   scroll underneath it while stuck. */
+.pair-mode-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(18,14,10,0.97);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,140,71,0.4);border-radius:10px;padding:10px 12px;margin-bottom:10px;position:sticky;top:0;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,0.35);}
 .pair-mode-bar .pm-msg{flex:1;min-width:140px;font-size:12px;color:#ffb380;font-weight:600;}
 #editExerciseList.pairing .ex-drag-handle{display:none;}
 
@@ -929,6 +934,13 @@ text-shadow:0 0 20px rgba(67,217,162,0.5);
     <div class="modal-handle"></div>
     <div class="modal-title" id="editProgTitle">Edit Program Day</div>
     <p class="muted" style="margin-bottom:16px;font-size:12px">Hold ⠿ to drag and reorder · Edit any field · Add or remove exercises</p>
+    <div id="prog-voice-bar" onclick="_toggleProgVoiceBuild()" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(124,92,255,0.14),rgba(67,217,162,0.07));border:1px solid rgba(124,92,255,0.3);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;">
+      <div id="prog-voice-mic" style="flex-shrink:0;width:48px;height:48px;border-radius:12px;background:rgba(124,92,255,0.18);border:1px solid rgba(124,92,255,0.4);color:#c4b5fd;font-size:20px;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s;">🎤</div>
+      <div style="flex:1;min-width:0;">
+        <div id="prog-voice-status" style="font-size:13px;font-weight:800;color:#c4b5fd;font-family:Syne,sans-serif;letter-spacing:0.2px;">Tap to voice-build this day</div>
+        <div id="prog-voice-interim" style="font-size:11.5px;color:rgba(180,200,230,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">Describe the whole day, or just what to change</div>
+      </div>
+    </div>
     <div id="editExerciseList"></div>
     <div id="exPairTrigger"></div>
     <div id="dayGapNudge"></div>
@@ -1546,6 +1558,7 @@ function closeModal(id){
   // Save, so canceling out of a "build new program" day edit left it stale and could route a LATER,
   // unrelated day edit's save into the wrong place.
   if(id==='editProgramModal'){
+    _stopProgVoiceBuild();
     if(window._editProgSaveMode==='gen'){window._genEditingDayIndex=null;_openGenPreview();}
     window._editProgSaveMode=null;
   }
@@ -3998,6 +4011,108 @@ function _applyAiChatToEditor(){
   _closeAiChatSheetSilent();
   renderEditExerciseList();openModal('editProgramModal');
 }
+// ── VOICE BUILD, directly inside the program-day editor ──
+// A second entry point to the SAME /api/ai-build endpoint the chat sheet above uses (not a new
+// backend, not a new schema) — the coach wanted to reprogram a day with voice right inside the
+// normal edit screen instead of going through the separate chat sheet. Record-then-process, same
+// UX pattern as the live workout-logging voice feature below: tap to start, talk through the whole
+// day (or just what to change), tap to stop, the WHOLE recording is sent in one request. No running
+// message history is kept — editingExercises itself (converted to the AI's shape and sent back as
+// currentExercises) is the memory between recordings, so "now add lateral raises at the end" on a
+// second recording still has full context of what's already in the editor.
+function _setProgVoiceUi(state,msg){
+  const mic=document.getElementById('prog-voice-mic');
+  const status=document.getElementById('prog-voice-status');
+  const interim=document.getElementById('prog-voice-interim');
+  window._progVoiceProcessing=(state==='processing');
+  if(!mic||!status)return;
+  if(state==='recording'){
+    mic.style.background='#ff5c6a';mic.style.color='#fff';mic.style.borderColor='#ff5c6a';mic.textContent='●';
+    status.textContent='Recording — tap to stop';status.style.color='#ff8a95';
+    if(interim)interim.textContent='Listening…';
+  }else if(state==='processing'){
+    mic.style.background='rgba(124,92,255,0.18)';mic.style.color='#c4b5fd';mic.style.borderColor='rgba(124,92,255,0.4)';mic.textContent='⏳';
+    status.textContent='Building…';status.style.color='#c4b5fd';
+  }else if(state==='done'){
+    mic.style.background='rgba(67,217,162,0.18)';mic.style.color='#43d9a2';mic.style.borderColor='rgba(67,217,162,0.4)';mic.textContent='✓';
+    status.textContent='Tap to keep going';status.style.color='#43d9a2';
+    if(interim)interim.textContent=msg||'Updated ✓';
+    setTimeout(function(){if(!window._progVoiceRecog&&!window._progVoiceProcessing)_setProgVoiceUi('idle');},2600);
+  }else if(state==='error'){
+    mic.style.background='rgba(255,92,106,0.15)';mic.style.color='#ff8a95';mic.style.borderColor='rgba(255,92,106,0.4)';mic.textContent='!';
+    status.textContent='Tap to try again';status.style.color='#ff8a95';
+    if(interim)interim.textContent=msg||'Something went wrong';
+  }else{ // idle
+    mic.style.background='rgba(124,92,255,0.18)';mic.style.color='#c4b5fd';mic.style.borderColor='rgba(124,92,255,0.4)';mic.textContent='🎤';
+    status.textContent='Tap to voice-build this day';status.style.color='#c4b5fd';
+    if(interim)interim.textContent='Describe the whole day, or just what to change';
+  }
+}
+function _toggleProgVoiceBuild(){
+  const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!Rec){alert('Voice input isn\'t supported in this browser — you can still type.');return;}
+  if(window._progVoiceRecog){_finishProgVoiceBuild();return;}
+  if(window._progVoiceProcessing)return; // ignore taps while a previous recording is being processed
+  window._progVoiceTranscript='';window._progVoiceInterimText='';window._progVoiceStopping=false;
+  const recog=new Rec();
+  recog.continuous=true;recog.interimResults=true;recog.lang='en-US';
+  recog.onresult=function(e){
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal){
+        window._progVoiceTranscript=(window._progVoiceTranscript?window._progVoiceTranscript+' ':'')+(e.results[i][0].transcript||'').trim();
+      }else{
+        interim+=e.results[i][0].transcript;
+      }
+    }
+    window._progVoiceInterimText=interim;
+    const cap=document.getElementById('prog-voice-interim');
+    if(cap)cap.textContent=((window._progVoiceTranscript||'')+' '+interim).trim()||'Listening…';
+  };
+  recog.onerror=function(){}; // benign errors — onend's auto-restart handles recovery
+  recog.onend=function(){
+    if(window._progVoiceStopping){window._progVoiceRecog=null;return;}
+    try{recog.start();}catch(e){window._progVoiceRecog=null;_setProgVoiceUi('idle');}
+  };
+  try{recog.start();}catch(e){return;}
+  window._progVoiceRecog=recog;
+  _setProgVoiceUi('recording');
+}
+function _finishProgVoiceBuild(){
+  window._progVoiceStopping=true;
+  const recog=window._progVoiceRecog;
+  window._progVoiceRecog=null;
+  try{recog&&recog.stop();}catch(e){}
+  const text=((window._progVoiceTranscript||'')+' '+(window._progVoiceInterimText||'')).trim();
+  if(!text){_setProgVoiceUi('idle');return;}
+  _setProgVoiceUi('processing');
+  const current=editingExercises.map(function(e){return {name:e.name||'',prescription:e.prescription||'',load:e.load||'',superset_group:e.ss||null};});
+  const titleEl=document.getElementById('editProgTitle');
+  const dayName=titleEl?titleEl.textContent.replace(/^Edit\s*—\s*/,''):'';
+  fetch('/api/ai-build',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({dayName:dayName,currentExercises:current,messages:[{role:'user',content:text}]})
+  }).then(function(r){if(!r.ok)throw new Error('AI build request failed');return r.json();})
+  .then(function(data){
+    if(Array.isArray(data.exercises)){
+      _exExitPairState();
+      editingExercises=_parseExForEdit(_aiExToRaw(data.exercises));
+      renderEditExerciseList();
+    }
+    _setProgVoiceUi('done',data.reply||'Updated ✓');
+  }).catch(function(){
+    _setProgVoiceUi('error','Didn\'t catch that — try again or type it in');
+  });
+}
+function _stopProgVoiceBuild(){
+  // Used when the editor modal is closing (Cancel/Save/backdrop) — discard, don't process.
+  window._progVoiceStopping=true;
+  if(window._progVoiceRecog){
+    try{window._progVoiceRecog.stop();}catch(e){}
+    window._progVoiceRecog=null;
+  }
+  window._progVoiceTranscript='';window._progVoiceInterimText='';window._progVoiceProcessing=false;
+}
 // The suggestion chip is the "ambient default" — visible only when there's a name but no
 // prescription yet, shows a scheme deliberately different from that client's history for this
 // exercise, one tap fills it. Disappears the moment there's a value, never a popup.
@@ -5204,17 +5319,150 @@ function _collectAdHocExercisesForAi(){
   const container=document.getElementById('adhoc-exercises');if(!container)return[];
   const names=container.querySelectorAll('[id^="an-adhoc-"]');
   const out=[];
+  const grpMap={};let nextGrp=1;
   names.forEach(function(nameEl){
     const idx=nameEl.id.replace('an-adhoc-','');
     const name=(nameEl.value||'').trim();if(!name)return;
     const wr=document.getElementById('wr-adhoc-'+idx),wt=document.getElementById('wt-adhoc-'+idx);
-    out.push({name:name,reps:wr?wr.value||'':'',weight:wt?wt.value||'':''});
+    // Report current superset grouping too, so a later recording ("now add X to that superset")
+    // has the same context the AI would see in the exercises-logged-so-far of the chat assistant.
+    const row=nameEl.closest('[id^="adhoc-row-"]');
+    const wrap=row&&row.closest('[data-ss-wrap]');
+    let sg=null;
+    if(wrap){
+      const domKey=wrap.dataset.ssWrap;
+      if(!grpMap[domKey])grpMap[domKey]=nextGrp++;
+      sg=grpMap[domKey];
+    }
+    out.push({name:name,reps:wr?wr.value||'':'',weight:wt?wt.value||'':'',superset_group:sg});
   });
   return out;
+}
+// Standalone-row CSS (matches addAdHocExercise's non-superset branch) — reused whenever a row is
+// pulled back out of a superset wrapper.
+function _adhocStandaloneCss(){return 'background:var(--surface2);border:1px solid rgba(100,160,255,0.18);border-radius:var(--radius-sm);margin-bottom:12px;position:relative;display:flex;align-items:stretch;overflow:hidden;';}
+function _adhocEnsureWrap(existingWrap){
+  if(existingWrap)return existingWrap;
+  const container=document.getElementById('adhoc-exercises');if(!container)return null;
+  if(!window._adhocSSN)window._adhocSSN=0;
+  const grp='ahs-'+(window._adhocSSN++);
+  const wrap=document.createElement('div');
+  wrap.dataset.ssWrap=grp;wrap.dataset.dragitem='1';
+  wrap.style.cssText='background:rgba(255,140,71,0.03);border:2px solid rgba(255,140,71,0.35);border-radius:12px;overflow:hidden;margin-bottom:12px;';
+  wrap.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(255,140,71,0.08);border-bottom:1px solid rgba(255,140,71,0.18);"><div class="ex-drag-handle" title="Drag superset to reorder" style="color:rgba(255,179,128,0.55);padding:0 4px;">⠿</div><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div><span style="font-size:9px;font-weight:700;color:#ffb380;letter-spacing:2px;white-space:nowrap;">⊕ SUPERSET</span><div style="flex:1;height:1px;background:rgba(255,140,71,0.3);border-radius:1px;"></div></div>';
+  container.appendChild(wrap);
+  return wrap;
+}
+// A wrap left with 0 or 1 member (e.g. after a row was moved out into a different/new group) is a
+// stale tag, not a real superset — dissolve it, mirroring the program editor's removeEx() self-heal.
+function _adhocDemoteOrphanWraps(){
+  const container=document.getElementById('adhoc-exercises');if(!container)return;
+  container.querySelectorAll('[data-ss-wrap]').forEach(function(wrap){
+    const rows=wrap.querySelectorAll('[id^="adhoc-row-"]');
+    if(rows.length===0){wrap.remove();return;}
+    if(rows.length===1){
+      const row=rows[0];
+      row.style.cssText=_adhocStandaloneCss();
+      delete row.dataset.supGroup;
+      container.insertBefore(row,wrap);
+      wrap.remove();
+    }
+  });
 }
 function _reconcileAdHocFromAi(exercises){
   const container=document.getElementById('adhoc-exercises');if(!container)return;
   window._aiLogValues=window._aiLogValues||{};
+  // Shared across every pass below so a blank starter/leftover row is only ever claimed ONCE per
+  // call, whichever pass (grouped or standalone) gets to it first.
+  const claimedBlankIdxs=new Set();
+  function findExistingRow(name){
+    const key=name.trim().toLowerCase();
+    const nameInputs=container.querySelectorAll('[id^="an-adhoc-"]');
+    for(let i=0;i<nameInputs.length;i++){
+      if((nameInputs[i].value||'').trim().toLowerCase()===key)return nameInputs[i];
+    }
+    return null;
+  }
+  function findBlankRow(){
+    const nameInputs=container.querySelectorAll('[id^="an-adhoc-"]');
+    for(let j=0;j<nameInputs.length;j++){
+      const idx=nameInputs[j].id.replace('an-adhoc-','');
+      if(claimedBlankIdxs.has(idx))continue;
+      const wrEl=document.getElementById('wr-adhoc-'+idx),wtEl=document.getElementById('wt-adhoc-'+idx);
+      if(!(nameInputs[j].value||'').trim()&&!(wrEl&&wrEl.value.trim())&&!(wtEl&&wtEl.value.trim()))return nameInputs[j];
+    }
+    return null;
+  }
+  // Group the AI's full cumulative list by superset_group — a "group" of just one isn't a real
+  // superset (the model shouldn't do this, but treat it as standalone defensively either way).
+  const groups={};
+  exercises.forEach(function(ex){
+    if(ex.superset_group==null)return;
+    const gk=String(ex.superset_group);
+    (groups[gk]=groups[gk]||[]).push(ex);
+  });
+
+  // Pass 1: build/extend a real DOM superset wrap for each AI group with 2+ members — reusing an
+  // existing wrap if any member is already in one, otherwise moving/claiming-a-blank-row/creating
+  // rows into a fresh one (claiming a leftover blank row first avoids a dangling empty row behind
+  // whenever the very first voice turn describes a brand-new superset).
+  Object.keys(groups).forEach(function(gk){
+    const members=groups[gk];
+    if(members.length<2)return;
+    let targetWrap=null;
+    members.forEach(function(ex){
+      const nameEl=findExistingRow(ex.name);
+      const row=nameEl&&nameEl.closest('[id^="adhoc-row-"]');
+      const w=row&&row.closest('[data-ss-wrap]');
+      if(w&&!targetWrap)targetWrap=w;
+    });
+    targetWrap=_adhocEnsureWrap(targetWrap);
+    if(!targetWrap)return;
+    members.forEach(function(ex,mi){
+      let nameEl=findExistingRow(ex.name);
+      let row=nameEl&&nameEl.closest('[id^="adhoc-row-"]');
+      if(!row){
+        const blank=findBlankRow();
+        if(blank){
+          claimedBlankIdxs.add(blank.id.replace('an-adhoc-',''));
+          blank.value=ex.name;try{_syncRowThumb(blank);}catch(e){}
+          nameEl=blank;row=nameEl.closest('[id^="adhoc-row-"]');
+        }
+      }
+      if(row){
+        if(row.closest('[data-ss-wrap]')!==targetWrap)targetWrap.appendChild(row);
+      }else{
+        addAdHocExercise(targetWrap.dataset.ssWrap,mi===0?'A':'B',targetWrap,true);
+        const idx=String(window._adhocCount-1);
+        nameEl=document.getElementById('an-adhoc-'+idx);
+        if(nameEl){nameEl.value=ex.name;try{_syncRowThumb(nameEl);}catch(e){}}
+        row=nameEl&&nameEl.closest('[id^="adhoc-row-"]');
+      }
+      if(row){
+        row.style.cssText='position:relative;display:flex;align-items:stretch;'+(mi<members.length-1?'border-bottom:1px solid rgba(255,140,71,0.2);':'');
+        row.dataset.supGroup=targetWrap.dataset.ssWrap;
+      }
+    });
+  });
+
+  // Pass 2: an exercise the AI now reports as standalone that's still sitting inside a wrap from an
+  // earlier recording ("actually that wasn't a superset") gets pulled back out.
+  exercises.forEach(function(ex){
+    const gk=ex.superset_group==null?null:String(ex.superset_group);
+    const isRealGroup=gk!=null&&groups[gk]&&groups[gk].length>1;
+    if(isRealGroup)return;
+    const nameEl=findExistingRow(ex.name);
+    const row=nameEl&&nameEl.closest('[id^="adhoc-row-"]');
+    const wrap=row&&row.closest('[data-ss-wrap]');
+    if(wrap){
+      row.style.cssText=_adhocStandaloneCss();
+      delete row.dataset.supGroup;
+      container.insertBefore(row,wrap);
+    }
+  });
+  _adhocDemoteOrphanWraps();
+
+  // Pass 3: fill in reps/weight exactly as before — unaffected by where a row now lives.
   exercises.forEach(function(ex){
     const name=(ex.name||'').trim();if(!name)return;
     const key=name.toLowerCase();
