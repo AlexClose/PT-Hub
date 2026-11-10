@@ -3306,14 +3306,16 @@ function renderClientModal(c){
 
     <div id="cmt-${c.id}-progress" style="display:${tbc('progress')}">
       <div style="background:rgba(16,22,29,0.22);border:1px solid var(--border2);border-radius:16px;padding:16px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="display:flex;gap:3px;background:rgba(0,0,0,0.25);border-radius:9px;padding:3px;flex:1;margin-right:10px;">
             <button id="rpt-tab-${c.id}-week" onclick="setReportPeriod('${c.id}','week')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">Week</button>
-            <button id="rpt-tab-${c.id}-14d" onclick="setReportPeriod('${c.id}','14d')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">14 Days</button>
+            <button id="rpt-tab-${c.id}-14d" onclick="setReportPeriod('${c.id}','14d')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">14D</button>
+            <button id="rpt-tab-${c.id}-30d" onclick="setReportPeriod('${c.id}','30d')" style="flex:1;background:transparent;border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:rgba(180,200,230,0.4);cursor:pointer;">30D</button>
             <button id="rpt-tab-${c.id}-month" onclick="setReportPeriod('${c.id}','month')" style="flex:1;background:rgba(255,255,255,0.09);border:none;border-radius:7px;padding:6px 0;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:#fff;cursor:pointer;">Month</button>
           </div>
           <button onclick="openProgressReport('${c.id}')" style="background:rgba(79,163,232,0.1);color:#7ec8ff;border:1px solid rgba(79,163,232,0.2);border-radius:7px;padding:5px 11px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;flex-shrink:0;">Share ↗</button>
         </div>
+        <select id="rpt-month-sel-${c.id}" onchange="setReportMonth('${c.id}',this.value)" style="display:block;width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:#fff;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;padding:7px 10px;margin-bottom:10px;outline:none;">${_rptMonthOptions(window['_rptMonthSel_'+c.id])}</select>
         <div id="monthly-${c.id}" style="min-height:148px"><div class="skeleton" style="height:88px;border-radius:12px;margin-bottom:10px"></div><div class="skeleton" style="height:42px;border-radius:12px"></div></div>
       </div>
 
@@ -8993,9 +8995,24 @@ function startClientPortal(id) {
     if (label) label.textContent = done + ' / ' + total;
   };
 
+// 13 options (this month back through 12 months ago) for the Progress-tab month picker — value is
+// "YYYY-MM", shown as "November 2026" etc. `selected` falls back to the current month when unset.
+function _rptMonthOptions(selected) {
+  const now = new Date();
+  const cur = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  selected = selected || cur;
+  let html = '';
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const label = d.toLocaleString('default', {month:'long', year:'numeric'});
+    html += `<option value="${val}"${val===selected?' selected':''}>${label}</option>`;
+  }
+  return html;
+}
 function setReportPeriod(cid, period) {
   window['_rptPeriod_'+cid] = period;
-  ['week','14d','month'].forEach(t => {
+  ['week','14d','30d','month'].forEach(t => {
     const btn = document.getElementById('rpt-tab-'+cid+'-'+t);
     if (!btn) return;
     const active = t === period;
@@ -9003,8 +9020,15 @@ function setReportPeriod(cid, period) {
     btn.style.color = active ? '#fff' : 'rgba(180,200,230,0.4)';
     btn.style.fontWeight = active ? '700' : '600';
   });
+  const monthSel = document.getElementById('rpt-month-sel-'+cid);
+  if (monthSel) monthSel.style.display = period === 'month' ? 'block' : 'none';
   const c = clients.find(x => x.id === cid);
   if (c) renderMonthlyReport(c, period);
+}
+function setReportMonth(cid, value) {
+  window['_rptMonthSel_'+cid] = value;
+  const c = clients.find(x => x.id === cid);
+  if (c) renderMonthlyReport(c, 'month');
 }
 
 async function renderMonthlyReport(c, period) {
@@ -9013,27 +9037,45 @@ async function renderMonthlyReport(c, period) {
   if (!el) return;
 
   const now = new Date();
-  let periodStart, prevStart, prevEnd, periodLabel;
+  let periodStart, periodEnd, prevStart, prevEnd, periodLabel;
 
   if (period === 'week') {
     const dow = now.getDay();
     const daysToMon = dow === 0 ? 6 : dow - 1;
     periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysToMon);
+    periodEnd = now;
     prevEnd = new Date(periodStart - 1);
     prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() - 6);
     periodLabel = 'This Week';
   } else if (period === '14d') {
     periodStart = new Date(now.getTime() - 13 * 86400000);
     periodStart.setHours(0,0,0,0);
+    periodEnd = now;
     prevEnd = new Date(periodStart.getTime() - 1);
     prevStart = new Date(prevEnd.getTime() - 13 * 86400000);
     prevStart.setHours(0,0,0,0);
     periodLabel = 'Last 14 Days';
+  } else if (period === '30d') {
+    periodStart = new Date(now.getTime() - 29 * 86400000);
+    periodStart.setHours(0,0,0,0);
+    periodEnd = now;
+    prevEnd = new Date(periodStart.getTime() - 1);
+    prevStart = new Date(prevEnd.getTime() - 29 * 86400000);
+    prevStart.setHours(0,0,0,0);
+    periodLabel = 'Last 30 Days';
   } else {
-    periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-    periodLabel = now.toLocaleString('default', {month: 'long'});
+    // 'month' — either the real current month, or a specific month picked from the dropdown
+    // (window['_rptMonthSel_'+cid], set by setReportMonth). Needs an explicit periodEnd (unlike
+    // the other periods, which always run up to "now") so a past month's stats don't pick up
+    // logs from the months after it.
+    let y = now.getFullYear(), m = now.getMonth();
+    const selMonth = window['_rptMonthSel_'+c.id];
+    if (selMonth) { const parts = selMonth.split('-'); y = parseInt(parts[0],10); m = parseInt(parts[1],10) - 1; }
+    periodStart = new Date(y, m, 1);
+    periodEnd = new Date(y, m + 1, 0, 23, 59, 59, 999);
+    prevStart = new Date(y, m - 1, 1);
+    prevEnd = new Date(y, m, 0, 23, 59, 59, 999);
+    periodLabel = periodStart.toLocaleString('default', {month: 'long', year: 'numeric'});
   }
 
   // session_date is US-locale TEXT — server-side gte/lt/lte against ISO strings are lexicographic
@@ -9044,8 +9086,10 @@ async function renderMonthlyReport(c, period) {
     (Array.isArray(allLogs)?allLogs:[]).forEach(l => {
       const d = new Date(l.session_date||'');
       if (isNaN(d)) return;
-      if (d >= periodStart) logs.push(l);
-      else { prevLogs.push(l); if (d >= prevStart && d <= prevEnd) lastMonthLogs.push(l); }
+      if (d >= periodStart && d <= periodEnd) logs.push(l);
+      else if (d < periodStart) { prevLogs.push(l); if (d >= prevStart && d <= prevEnd) lastMonthLogs.push(l); }
+      // else: d > periodEnd — only reachable when browsing a past month — excluded entirely,
+      // it happened after the period being viewed so it's neither "current" nor "before it".
     });
   } catch(e) { logs = []; lastMonthLogs = []; prevLogs = []; }
 
@@ -9053,7 +9097,7 @@ async function renderMonthlyReport(c, period) {
   const monthlySessions = sessions.filter(s => {
     if (!s.date) return false;
     const d = new Date(s.date);
-    return d >= periodStart;
+    return d >= periodStart && d <= periodEnd;
   });
   const lastMonthSessions = sessions.filter(s => {
     if (!s.date) return false;
