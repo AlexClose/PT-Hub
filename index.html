@@ -2107,11 +2107,17 @@ function getTodayClients(){
   ];
   const todayIdx=new Date().getDay();
   const patterns=dayPatterns[todayIdx];
+  const todayDate=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   return clients.filter(c=>{
-    if(!c.schedule)return false;
     if(c.paused)return false;
-    const sched=c.schedule.toLowerCase();
-    return patterns.some(p=>sched.includes(p));
+    const scheduledToday=!!c.schedule&&patterns.some(p=>c.schedule.toLowerCase().includes(p));
+    if(scheduledToday)return true;
+    // Clients with no fixed day (or a day that isn't today) still count once a session is actually
+    // logged for them today — e.g. Bill trains on whatever day fits that week, not a set schedule.
+    // They're never shown as "still need to log" (nothing to miss, they weren't expected), they just
+    // show up already done, so a session outside the fixed roster isn't silently dropped from the
+    // day's count.
+    return (c._sessions||[]).some(s=>s.date===todayDate);
   });
 }
 function clientTodayWorkout(c){
@@ -2149,7 +2155,7 @@ function renderTodaySessions(){
   // Build expanded list
   const list=todayClients.map(c=>{
     const isLogged=(c._sessions||[]).some(s=>s.date===todayDate);
-    const timeMatch=c.schedule.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
+    const timeMatch=(c.schedule||'').match(/\d{1,2}:\d{2}\s*(?:AM|PM)/i);
     const time=timeMatch?timeMatch[0]:'';
     const wkName=clientTodayWorkout(c);
     const rp=c.run_program_id?runPrograms.find(p=>p.id===c.run_program_id):null;
